@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package janus_rpc;
+
+enum TxnType {
+    READ = 0;
+}
