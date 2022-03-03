@@ -3,5 +3,5 @@ members = [
     "src/rpc",
     "src/common",
     "src/yuxi",
-    "src/multi_paxos"
+    "src/multi_paxos",
 ]

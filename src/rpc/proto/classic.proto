@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package classic_rpc;
+
+
+enum OP_TYPE {
+    Write = 0;
+    Insert = 1;
+    Read = 2;
+}
+
+message Operation {
+    OP_TYPE type = 1;
+    string key = 2;
+    string value = 3;
+}
+
+message Txn {
+    int64 txn_id = 1;
+    repeated Operation ops = 2;
+}
+

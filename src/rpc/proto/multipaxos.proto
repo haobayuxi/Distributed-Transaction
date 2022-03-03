@@ -2,29 +2,25 @@ syntax = "proto3";
 
 package multipaxos_rpc;
 
-message SetMsg {
+
+message Log {
+    
     string key = 1;
     string value = 2;
-    int32 command_id = 3;
+    int32 txn_id = 3;
 }
 
-enum MsgType {
-    Append = 0;
+message MPaxosMsg {
 
-}
-
-message Msg {
-    MsgType type = 1;
     int32 from = 2;
     int32 ballot = 3;
     int32 index = 4;
-    SetMsg value = 5;
 }
 
 message Reply {
 
 }
 
-service Greeter {
-    rpc Set(stream Msg) returns (Reply);
+service MPaxos {
+    rpc MPaxos(stream MPaxosMsg) returns (Reply);
 }

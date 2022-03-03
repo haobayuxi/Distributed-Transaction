@@ -2,7 +2,11 @@ use std::error::Error;
 use std::process::exit;
 
 fn run() -> Result<(), Box<dyn Error>> {
-    let proto_files = &["proto/multipaxos.proto", "proto/janus.proto"];
+    let proto_files = &[
+        "proto/multipaxos.proto",
+        "proto/janus.proto",
+        "proto/classic.proto",
+    ];
 
     tonic_build::configure()
         .out_dir("src")
@@ -18,5 +22,5 @@ fn main() {
     }
 
     // Tells cargo to only rebuild if the proto file changed
-    // println!("cargo:rerun-if-changed=proto");
+    println!("cargo:rerun-if-changed=proto");
 }

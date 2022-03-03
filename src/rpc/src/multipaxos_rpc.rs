@@ -1,40 +1,31 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SetMsg {
+pub struct Log {
     #[prost(string, tag = "1")]
     pub key: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub value: ::prost::alloc::string::String,
     #[prost(int32, tag = "3")]
-    pub command_id: i32,
+    pub txn_id: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Msg {
-    #[prost(enumeration = "MsgType", tag = "1")]
-    pub r#type: i32,
+pub struct MPaxosMsg {
     #[prost(int32, tag = "2")]
     pub from: i32,
     #[prost(int32, tag = "3")]
     pub ballot: i32,
     #[prost(int32, tag = "4")]
     pub index: i32,
-    #[prost(message, optional, tag = "5")]
-    pub value: ::core::option::Option<SetMsg>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Reply {}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum MsgType {
-    Append = 0,
-}
 #[doc = r" Generated client implementations."]
-pub mod greeter_client {
+pub mod m_paxos_client {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
-    pub struct GreeterClient<T> {
+    pub struct MPaxosClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl GreeterClient<tonic::transport::Channel> {
+    impl MPaxosClient<tonic::transport::Channel> {
         #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -45,7 +36,7 @@ pub mod greeter_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> GreeterClient<T>
+    impl<T> MPaxosClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::ResponseBody: Body + HttpBody + Send + 'static,
@@ -60,9 +51,9 @@ pub mod greeter_client {
             let inner = tonic::client::Grpc::with_interceptor(inner, interceptor);
             Self { inner }
         }
-        pub async fn set(
+        pub async fn m_paxos(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::Msg>,
+            request: impl tonic::IntoStreamingRequest<Message = super::MPaxosMsg>,
         ) -> Result<tonic::Response<super::Reply>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
@@ -71,43 +62,43 @@ pub mod greeter_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/multipaxos_rpc.Greeter/Set");
+            let path = http::uri::PathAndQuery::from_static("/multipaxos_rpc.MPaxos/MPaxos");
             self.inner
                 .client_streaming(request.into_streaming_request(), path, codec)
                 .await
         }
     }
-    impl<T: Clone> Clone for GreeterClient<T> {
+    impl<T: Clone> Clone for MPaxosClient<T> {
         fn clone(&self) -> Self {
             Self {
                 inner: self.inner.clone(),
             }
         }
     }
-    impl<T> std::fmt::Debug for GreeterClient<T> {
+    impl<T> std::fmt::Debug for MPaxosClient<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "GreeterClient {{ ... }}")
+            write!(f, "MPaxosClient {{ ... }}")
         }
     }
 }
 #[doc = r" Generated server implementations."]
-pub mod greeter_server {
+pub mod m_paxos_server {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
-    #[doc = "Generated trait containing gRPC methods that should be implemented for use with GreeterServer."]
+    #[doc = "Generated trait containing gRPC methods that should be implemented for use with MPaxosServer."]
     #[async_trait]
-    pub trait Greeter: Send + Sync + 'static {
-        async fn set(
+    pub trait MPaxos: Send + Sync + 'static {
+        async fn m_paxos(
             &self,
-            request: tonic::Request<tonic::Streaming<super::Msg>>,
+            request: tonic::Request<tonic::Streaming<super::MPaxosMsg>>,
         ) -> Result<tonic::Response<super::Reply>, tonic::Status>;
     }
     #[derive(Debug)]
-    pub struct GreeterServer<T: Greeter> {
+    pub struct MPaxosServer<T: MPaxos> {
         inner: _Inner<T>,
     }
     struct _Inner<T>(Arc<T>, Option<tonic::Interceptor>);
-    impl<T: Greeter> GreeterServer<T> {
+    impl<T: MPaxos> MPaxosServer<T> {
         pub fn new(inner: T) -> Self {
             let inner = Arc::new(inner);
             let inner = _Inner(inner, None);
@@ -119,9 +110,9 @@ pub mod greeter_server {
             Self { inner }
         }
     }
-    impl<T, B> Service<http::Request<B>> for GreeterServer<T>
+    impl<T, B> Service<http::Request<B>> for MPaxosServer<T>
     where
-        T: Greeter,
+        T: MPaxos,
         B: HttpBody + Send + Sync + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -134,18 +125,18 @@ pub mod greeter_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/multipaxos_rpc.Greeter/Set" => {
+                "/multipaxos_rpc.MPaxos/MPaxos" => {
                     #[allow(non_camel_case_types)]
-                    struct SetSvc<T: Greeter>(pub Arc<T>);
-                    impl<T: Greeter> tonic::server::ClientStreamingService<super::Msg> for SetSvc<T> {
+                    struct MPaxosSvc<T: MPaxos>(pub Arc<T>);
+                    impl<T: MPaxos> tonic::server::ClientStreamingService<super::MPaxosMsg> for MPaxosSvc<T> {
                         type Response = super::Reply;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<tonic::Streaming<super::Msg>>,
+                            request: tonic::Request<tonic::Streaming<super::MPaxosMsg>>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).set(request).await };
+                            let fut = async move { (*inner).m_paxos(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -153,7 +144,7 @@ pub mod greeter_server {
                     let fut = async move {
                         let interceptor = inner.1;
                         let inner = inner.0;
-                        let method = SetSvc(inner);
+                        let method = MPaxosSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = if let Some(interceptor) = interceptor {
                             tonic::server::Grpc::with_interceptor(codec, interceptor)
@@ -176,13 +167,13 @@ pub mod greeter_server {
             }
         }
     }
-    impl<T: Greeter> Clone for GreeterServer<T> {
+    impl<T: MPaxos> Clone for MPaxosServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self { inner }
         }
     }
-    impl<T: Greeter> Clone for _Inner<T> {
+    impl<T: MPaxos> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(self.0.clone(), self.1.clone())
         }
@@ -192,7 +183,7 @@ pub mod greeter_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: Greeter> tonic::transport::NamedService for GreeterServer<T> {
-        const NAME: &'static str = "multipaxos_rpc.Greeter";
+    impl<T: MPaxos> tonic::transport::NamedService for MPaxosServer<T> {
+        const NAME: &'static str = "multipaxos_rpc.MPaxos";
     }
 }
