@@ -1,7 +1,7 @@
 use rpc::multipaxos_rpc::{
     m_paxos_client::MPaxosClient,
     m_paxos_server::{MPaxos, MPaxosServer},
-    MPaxosMsg,
+    MPaxosMsg, Reply,
 };
 use std::time::Duration;
 use tokio::{
@@ -14,6 +14,7 @@ use tokio::{
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::{Stream, StreamExt};
 use tonic::{
+    codegen::http::request,
     transport::{Channel, Server},
     Request, Response, Status, Streaming,
 };
@@ -71,21 +72,23 @@ pub async fn run_server(rpc_server: MPaxos_Rpc_Server) {
 
 #[tonic::async_trait]
 impl MPaxos for MPaxos_Rpc_Server {
-    fn m_paxos<'life0, 'async_trait>(
-        &'life0 self,
-        request: tonic::Request<tonic::Streaming<rpc::multipaxos_rpc::MPaxosMsg>>,
-    ) -> core::pin::Pin<
-        Box<
-            dyn core::future::Future<
-                    Output = Result<tonic::Response<rpc::multipaxos_rpc::Reply>, tonic::Status>,
-                > + core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
-        todo!()
+    async fn m_paxos(
+        &self,
+        request: Request<Streaming<MPaxosMsg>>,
+    ) -> Result<Response<Reply>, Status> {
+        let mut stream = request.into_inner();
+        let sender = self.sender.clone();
+        tokio::spawn(async move {
+            while let Some(peer_request) = stream.next().await {
+                match peer_request {
+                    Ok(msg) => {
+                        sender.send(msg);
+                    }
+                    Err(_) => {}
+                }
+            }
+        });
+        let reply = Reply {};
+        Ok(Response::new(reply))
     }
 }

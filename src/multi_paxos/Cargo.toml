@@ -14,3 +14,4 @@ tokio-stream = "0.1.6"
 tonic = "0.4.3"
 log = "0.4"
 tracing = { version = "0.1", features = ["log"] }
+async-stream = "0.3"

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package multipaxos_rpc;
 
+import "classic.proto";
 
 message Log {
     
@@ -15,6 +16,7 @@ message MPaxosMsg {
     int32 from = 2;
     int32 ballot = 3;
     int32 index = 4;
+    classic.Txn txns = 5;
 }
 
 message Reply {

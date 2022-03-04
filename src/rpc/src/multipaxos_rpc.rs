@@ -15,6 +15,8 @@ pub struct MPaxosMsg {
     pub ballot: i32,
     #[prost(int32, tag = "4")]
     pub index: i32,
+    #[prost(message, optional, tag = "5")]
+    pub txns: ::core::option::Option<super::classic::Txn>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Reply {}
