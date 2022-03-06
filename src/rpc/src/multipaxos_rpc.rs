@@ -1,14 +1,7 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Log {
-    #[prost(string, tag = "1")]
-    pub key: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub value: ::prost::alloc::string::String,
-    #[prost(int32, tag = "3")]
-    pub txn_id: i32,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MPaxosMsg {
+    #[prost(enumeration = "MPaxosMsgType", tag = "1")]
+    pub msg_type: i32,
     #[prost(int32, tag = "2")]
     pub from: i32,
     #[prost(int32, tag = "3")]
@@ -20,6 +13,12 @@ pub struct MPaxosMsg {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Reply {}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum MPaxosMsgType {
+    Set = 0,
+    SetResponse = 1,
+}
 #[doc = r" Generated client implementations."]
 pub mod m_paxos_client {
     #![allow(unused_variables, dead_code, missing_docs)]

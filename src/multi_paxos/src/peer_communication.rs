@@ -43,12 +43,12 @@ impl MPaxos_Rpc_Client {
     }
 }
 
-pub struct MPaxos_Rpc_Server {
+pub struct MPaxosRpcServer {
     addr_to_listen: String,
     sender: UnboundedSender<MPaxosMsg>,
 }
 
-impl MPaxos_Rpc_Server {
+impl MPaxosRpcServer {
     pub fn new(addr_to_listen: String, sender: UnboundedSender<MPaxosMsg>) -> Self {
         Self {
             addr_to_listen,
@@ -57,7 +57,7 @@ impl MPaxos_Rpc_Server {
     }
 }
 
-pub async fn run_server(rpc_server: MPaxos_Rpc_Server) {
+pub async fn run_server(rpc_server: MPaxosRpcServer) {
     let addr = rpc_server.addr_to_listen.parse().unwrap();
 
     tracing::info!("PeerServer listening on: {:?}", addr);
@@ -71,7 +71,7 @@ pub async fn run_server(rpc_server: MPaxos_Rpc_Server) {
 }
 
 #[tonic::async_trait]
-impl MPaxos for MPaxos_Rpc_Server {
+impl MPaxos for MPaxosRpcServer {
     async fn m_paxos(
         &self,
         request: Request<Streaming<MPaxosMsg>>,

@@ -4,15 +4,13 @@ package multipaxos_rpc;
 
 import "classic.proto";
 
-message Log {
-    
-    string key = 1;
-    string value = 2;
-    int32 txn_id = 3;
+enum MPaxosMsgType{
+    SET = 0;
+    SET_RESPONSE = 1;
 }
 
 message MPaxosMsg {
-
+    MPaxosMsgType msg_type = 1;
     int32 from = 2;
     int32 ballot = 3;
     int32 index = 4;
