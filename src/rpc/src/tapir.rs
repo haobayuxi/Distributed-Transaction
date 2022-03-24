@@ -2,6 +2,10 @@
 pub struct ReadStruct {
     #[prost(string, tag = "1")]
     pub key: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "2")]
+    pub value: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(int64, optional, tag = "3")]
+    pub timestamp: ::core::option::Option<i64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteStruct {
@@ -9,9 +13,11 @@ pub struct WriteStruct {
     pub key: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub value: ::prost::alloc::string::String,
+    #[prost(int64, optional, tag = "3")]
+    pub timestamp: ::core::option::Option<i64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Txn {
+pub struct TapirMsg {
     #[prost(int64, tag = "1")]
     pub txn_id: i64,
     #[prost(message, repeated, tag = "2")]
@@ -22,32 +28,27 @@ pub struct Txn {
     pub executor_id: i32,
     #[prost(enumeration = "TxnOp", tag = "5")]
     pub op: i32,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Msgs {
-    #[prost(int32, tag = "1")]
+    #[prost(int32, tag = "6")]
     pub from: i32,
-    #[prost(message, repeated, tag = "2")]
-    pub txns: ::prost::alloc::vec::Vec<Txn>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Reply {}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum TxnOp {
-    Abort = 0,
-    Validation = 1,
-    Commit = 2,
-    Prepare = 3,
+    TAbort = 0,
+    TRead = 1,
+    TCommit = 2,
+    TPrepare = 3,
+    TPrepareOk = 4,
+    TReadRes = 5,
 }
 #[doc = r" Generated client implementations."]
-pub mod communication_client {
+pub mod tapir_client {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
-    pub struct CommunicationClient<T> {
+    pub struct TapirClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl CommunicationClient<tonic::transport::Channel> {
+    impl TapirClient<tonic::transport::Channel> {
         #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -58,7 +59,7 @@ pub mod communication_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> CommunicationClient<T>
+    impl<T> TapirClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::ResponseBody: Body + HttpBody + Send + 'static,
@@ -75,8 +76,8 @@ pub mod communication_client {
         }
         pub async fn txn_msg(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::Msgs>,
-        ) -> Result<tonic::Response<super::Reply>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::TapirMsg>,
+        ) -> Result<tonic::Response<super::TapirMsg>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -84,43 +85,41 @@ pub mod communication_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/classic.communication/TxnMsg");
-            self.inner
-                .client_streaming(request.into_streaming_request(), path, codec)
-                .await
+            let path = http::uri::PathAndQuery::from_static("/tapir.Tapir/TxnMsg");
+            self.inner.unary(request.into_request(), path, codec).await
         }
     }
-    impl<T: Clone> Clone for CommunicationClient<T> {
+    impl<T: Clone> Clone for TapirClient<T> {
         fn clone(&self) -> Self {
             Self {
                 inner: self.inner.clone(),
             }
         }
     }
-    impl<T> std::fmt::Debug for CommunicationClient<T> {
+    impl<T> std::fmt::Debug for TapirClient<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "CommunicationClient {{ ... }}")
+            write!(f, "TapirClient {{ ... }}")
         }
     }
 }
 #[doc = r" Generated server implementations."]
-pub mod communication_server {
+pub mod tapir_server {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
-    #[doc = "Generated trait containing gRPC methods that should be implemented for use with CommunicationServer."]
+    #[doc = "Generated trait containing gRPC methods that should be implemented for use with TapirServer."]
     #[async_trait]
-    pub trait Communication: Send + Sync + 'static {
+    pub trait Tapir: Send + Sync + 'static {
         async fn txn_msg(
             &self,
-            request: tonic::Request<tonic::Streaming<super::Msgs>>,
-        ) -> Result<tonic::Response<super::Reply>, tonic::Status>;
+            request: tonic::Request<super::TapirMsg>,
+        ) -> Result<tonic::Response<super::TapirMsg>, tonic::Status>;
     }
     #[derive(Debug)]
-    pub struct CommunicationServer<T: Communication> {
+    pub struct TapirServer<T: Tapir> {
         inner: _Inner<T>,
     }
     struct _Inner<T>(Arc<T>, Option<tonic::Interceptor>);
-    impl<T: Communication> CommunicationServer<T> {
+    impl<T: Tapir> TapirServer<T> {
         pub fn new(inner: T) -> Self {
             let inner = Arc::new(inner);
             let inner = _Inner(inner, None);
@@ -132,9 +131,9 @@ pub mod communication_server {
             Self { inner }
         }
     }
-    impl<T, B> Service<http::Request<B>> for CommunicationServer<T>
+    impl<T, B> Service<http::Request<B>> for TapirServer<T>
     where
-        T: Communication,
+        T: Tapir,
         B: HttpBody + Send + Sync + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -147,15 +146,15 @@ pub mod communication_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/classic.communication/TxnMsg" => {
+                "/tapir.Tapir/TxnMsg" => {
                     #[allow(non_camel_case_types)]
-                    struct TxnMsgSvc<T: Communication>(pub Arc<T>);
-                    impl<T: Communication> tonic::server::ClientStreamingService<super::Msgs> for TxnMsgSvc<T> {
-                        type Response = super::Reply;
+                    struct TxnMsgSvc<T: Tapir>(pub Arc<T>);
+                    impl<T: Tapir> tonic::server::UnaryService<super::TapirMsg> for TxnMsgSvc<T> {
+                        type Response = super::TapirMsg;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<tonic::Streaming<super::Msgs>>,
+                            request: tonic::Request<super::TapirMsg>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).txn_msg(request).await };
@@ -164,7 +163,7 @@ pub mod communication_server {
                     }
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let interceptor = inner.1;
+                        let interceptor = inner.1.clone();
                         let inner = inner.0;
                         let method = TxnMsgSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
@@ -173,7 +172,7 @@ pub mod communication_server {
                         } else {
                             tonic::server::Grpc::new(codec)
                         };
-                        let res = grpc.client_streaming(method, req).await;
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
@@ -189,13 +188,13 @@ pub mod communication_server {
             }
         }
     }
-    impl<T: Communication> Clone for CommunicationServer<T> {
+    impl<T: Tapir> Clone for TapirServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self { inner }
         }
     }
-    impl<T: Communication> Clone for _Inner<T> {
+    impl<T: Tapir> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(self.0.clone(), self.1.clone())
         }
@@ -205,7 +204,7 @@ pub mod communication_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: Communication> tonic::transport::NamedService for CommunicationServer<T> {
-        const NAME: &'static str = "classic.communication";
+    impl<T: Tapir> tonic::transport::NamedService for TapirServer<T> {
+        const NAME: &'static str = "tapir.Tapir";
     }
 }

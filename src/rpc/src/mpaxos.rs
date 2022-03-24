@@ -11,8 +11,7 @@ pub struct MPaxosMsg {
     #[prost(message, optional, tag = "5")]
     pub txns: ::core::option::Option<super::classic::Txn>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Reply {}
+//// mpaxos
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum MPaxosMsgType {
@@ -52,10 +51,10 @@ pub mod m_paxos_client {
             let inner = tonic::client::Grpc::with_interceptor(inner, interceptor);
             Self { inner }
         }
-        pub async fn m_paxos(
+        pub async fn replication(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::MPaxosMsg>,
-        ) -> Result<tonic::Response<super::Reply>, tonic::Status> {
+        ) -> Result<tonic::Response<super::super::classic::Reply>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -63,7 +62,7 @@ pub mod m_paxos_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/multipaxos_rpc.MPaxos/MPaxos");
+            let path = http::uri::PathAndQuery::from_static("/mpaxos.MPaxos/replication");
             self.inner
                 .client_streaming(request.into_streaming_request(), path, codec)
                 .await
@@ -89,10 +88,10 @@ pub mod m_paxos_server {
     #[doc = "Generated trait containing gRPC methods that should be implemented for use with MPaxosServer."]
     #[async_trait]
     pub trait MPaxos: Send + Sync + 'static {
-        async fn m_paxos(
+        async fn replication(
             &self,
             request: tonic::Request<tonic::Streaming<super::MPaxosMsg>>,
-        ) -> Result<tonic::Response<super::Reply>, tonic::Status>;
+        ) -> Result<tonic::Response<super::super::classic::Reply>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct MPaxosServer<T: MPaxos> {
@@ -126,18 +125,18 @@ pub mod m_paxos_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/multipaxos_rpc.MPaxos/MPaxos" => {
+                "/mpaxos.MPaxos/replication" => {
                     #[allow(non_camel_case_types)]
-                    struct MPaxosSvc<T: MPaxos>(pub Arc<T>);
-                    impl<T: MPaxos> tonic::server::ClientStreamingService<super::MPaxosMsg> for MPaxosSvc<T> {
-                        type Response = super::Reply;
+                    struct replicationSvc<T: MPaxos>(pub Arc<T>);
+                    impl<T: MPaxos> tonic::server::ClientStreamingService<super::MPaxosMsg> for replicationSvc<T> {
+                        type Response = super::super::classic::Reply;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<tonic::Streaming<super::MPaxosMsg>>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).m_paxos(request).await };
+                            let fut = async move { (*inner).replication(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -145,7 +144,7 @@ pub mod m_paxos_server {
                     let fut = async move {
                         let interceptor = inner.1;
                         let inner = inner.0;
-                        let method = MPaxosSvc(inner);
+                        let method = replicationSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = if let Some(interceptor) = interceptor {
                             tonic::server::Grpc::with_interceptor(codec, interceptor)
@@ -185,6 +184,6 @@ pub mod m_paxos_server {
         }
     }
     impl<T: MPaxos> tonic::transport::NamedService for MPaxosServer<T> {
-        const NAME: &'static str = "multipaxos_rpc.MPaxos";
+        const NAME: &'static str = "mpaxos.MPaxos";
     }
 }

@@ -3,20 +3,42 @@ syntax = "proto3";
 package classic;
 
 
-enum OP_TYPE {
-    Write = 0;
-    Insert = 1;
-    Read = 2;
+
+message Read_Struct{
+    string key = 1;
 }
 
-message Operation {
-    OP_TYPE type = 1;
-    string key = 2;
-    string value = 3;
+message Write_Struct {
+    string key = 1;
+    string value = 2;
 }
 
 message Txn {
     int64 txn_id = 1;
-    repeated Operation ops = 2;
+    repeated Read_Struct read_set = 2;
+    repeated Write_Struct write_set = 3;
+    int32 executor_id = 4;
+    TxnOP op = 5;
+}
+
+
+enum TxnOP {
+    Abort = 0;
+    Validation = 1;
+    Commit = 2;
+    Prepare = 3;
+}
+
+message Msgs {
+    int32 from = 1;
+    repeated Txn txns = 2;
+}
+
+message Reply {
+
+}
+
+service communication {
+    rpc TxnMsg(stream Msgs) returns (Reply) {}
 }
 

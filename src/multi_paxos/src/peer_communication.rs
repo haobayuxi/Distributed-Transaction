@@ -1,7 +1,8 @@
-use rpc::multipaxos_rpc::{
-    m_paxos_client::MPaxosClient,
-    m_paxos_server::{MPaxos, MPaxosServer},
-    MPaxosMsg, Reply,
+use common::PeerMsg;
+use rpc::{
+    classic::Reply,
+    mpaxos::m_paxos_server::MPaxos,
+    mpaxos::{m_paxos_client::MPaxosClient, MPaxosMsg},
 };
 use std::time::Duration;
 use tokio::{
@@ -39,53 +40,40 @@ impl MPaxos_Rpc_Client {
     pub async fn run_client(&mut self, receiver: Receiver<MPaxosMsg>) {
         let receiver = ReceiverStream::new(receiver);
 
-        let _response = self.client.m_paxos(receiver).await;
+        let _response = self.client.replication(receiver).await;
     }
 }
 
-pub struct MPaxosRpcServer {
-    addr_to_listen: String,
-    sender: UnboundedSender<MPaxosMsg>,
+pub struct MPaxosServer {
+    // sender to dispatcher
+    sender: UnboundedSender<PeerMsg>,
 }
 
-impl MPaxosRpcServer {
-    pub fn new(addr_to_listen: String, sender: UnboundedSender<MPaxosMsg>) -> Self {
-        Self {
-            addr_to_listen,
-            sender,
-        }
-    }
-}
-
-pub async fn run_server(rpc_server: MPaxosRpcServer) {
-    let addr = rpc_server.addr_to_listen.parse().unwrap();
-
-    tracing::info!("PeerServer listening on: {:?}", addr);
-
-    let server = MPaxosServer::new(rpc_server);
-
-    match Server::builder().add_service(server).serve(addr).await {
-        Ok(_) => tracing::info!("rpc server start done"),
-        Err(e) => panic!("rpc server start fail {}", e),
+impl MPaxosServer {
+    pub fn new(sender: UnboundedSender<PeerMsg>) -> Self {
+        Self { sender }
     }
 }
 
 #[tonic::async_trait]
-impl MPaxos for MPaxosRpcServer {
-    async fn m_paxos(
+impl MPaxos for MPaxosServer {
+    async fn replication(
         &self,
-        request: Request<Streaming<MPaxosMsg>>,
-    ) -> Result<Response<Reply>, Status> {
+        request: tonic::Request<Streaming<MPaxosMsg>>,
+    ) -> Result<tonic::Response<Reply>, tonic::Status> {
         let mut stream = request.into_inner();
         let sender = self.sender.clone();
         tokio::spawn(async move {
             while let Some(peer_request) = stream.next().await {
+                // info!("server receive a msg {:?}", peer_request.clone().unwrap().msg.unwrap());
                 match peer_request {
                     Ok(msg) => {
-                        sender.send(msg);
+                        sender.send(PeerMsg::MPaxos(msg));
                     }
-                    Err(_) => {}
-                }
+                    Err(_) => {
+                        //todo handle network err
+                    }
+                };
             }
         });
         let reply = Reply {};

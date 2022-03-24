@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package new_rpc;
-
-message Msg {
-    int32 from = ,
-    int32 
-}

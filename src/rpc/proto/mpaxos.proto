@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package multipaxos_rpc;
-
+package mpaxos;
 import "classic.proto";
 
+/// mpaxos
 enum MPaxosMsgType{
     SET = 0;
     SET_RESPONSE = 1;
@@ -17,10 +17,6 @@ message MPaxosMsg {
     classic.Txn txns = 5;
 }
 
-message Reply {
-
-}
-
 service MPaxos {
-    rpc MPaxos(stream MPaxosMsg) returns (Reply);
+    rpc replication(stream MPaxosMsg) returns(classic.Reply) {}
 }

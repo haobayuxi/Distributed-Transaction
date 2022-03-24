@@ -1,5 +1,12 @@
 use std::{collections::HashMap, vec};
 
+pub static EXEC_NUM: i32 = 10;
+pub static PORT: i32 = 20000;
+
+pub struct Config {
+    pub server_addrs: HashMap<i32, String>,
+}
+
 pub struct MPaxosConfig {
     pub server_ids: Vec<i32>,
     pub server_addrs: HashMap<i32, String>,

@@ -2,7 +2,7 @@ use common::config::MPaxosConfig;
 use rpc::{
     classic::Txn,
     janus_rpc::TxnType,
-    multipaxos_rpc::{MPaxosMsg, MPaxosMsgType},
+    mpaxos::{MPaxosMsg, MPaxosMsgType},
 };
 use std::collections::HashMap;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -36,7 +36,7 @@ impl Peer {
 
     pub fn handle_msg(&mut self, msg: MPaxosMsg) {
         match msg.msg_type() {
-            MPaxosMsgType::Set => self.handle_leader_put(msg.txns.unwrap()),
+            MPaxosMsgType::Set => self.handle_leader_put(msg),
             MPaxosMsgType::SetResponse => todo!(),
         }
     }
@@ -84,7 +84,10 @@ impl Peer {
 
     async fn run(&mut self) {
         loop {
-            match self.receiver.recv().await.unwrap() {}
+            match self.receiver.recv().await {
+                Some(txn) => todo!(),
+                None => todo!(),
+            }
         }
     }
 }
