@@ -1,5 +1,5 @@
 [package]
-name = "tapir"
+name = "server"
 version = "0.1.0"
 authors = ["wuhao2016 <whaohit@gmail.com>"]
 edition = "2018"
@@ -8,11 +8,13 @@ edition = "2018"
 
 [[bin]]
 name = "tapir_server"
-path = "src/server.rs"
+path = "src/tapir_server.rs"
 
 [dependencies]
 rpc = { path = "../rpc" }
-common = { path = "../common"}
+common = { path = "../common" }
+tapir = { path = "../tapir" }
+janus = { path = "../janus" }
 tokio = { version = "1.0", features = ["full"] }
 tonic = "0.4.3"
 tokio-stream = "0.1.6"

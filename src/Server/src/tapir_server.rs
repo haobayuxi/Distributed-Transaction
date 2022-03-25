@@ -1,12 +1,11 @@
 use std::{collections::HashMap, hash::Hash, sync::Arc};
 
 use rpc::tapir::TapirMsg;
+use tapir::{executor::Executor, Msg};
 use tokio::sync::{
     mpsc::{unbounded_channel, UnboundedSender},
     RwLock,
 };
-
-use crate::{executor::Executor, Msg};
 
 pub struct Server {
     server_id: i32,
@@ -54,4 +53,9 @@ impl Server {
     }
 
     fn run_dispatcher(&mut self) {}
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    Ok(())
 }

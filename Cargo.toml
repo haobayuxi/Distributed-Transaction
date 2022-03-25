@@ -4,4 +4,5 @@ members = [
     "src/common",
     "src/tapir",
     "src/janus",
+    "src/Server",
 ]

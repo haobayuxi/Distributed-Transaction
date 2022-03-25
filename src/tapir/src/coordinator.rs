@@ -5,8 +5,6 @@ use rpc::tapir::{tapir_client::TapirClient, ReadStruct, TapirMsg, TxnOp, WriteSt
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
 
-use crate::peer_communication::RpcClient;
-
 pub struct TapirCoordinator {
     // replica_id: i32,
     read_optimize: bool,

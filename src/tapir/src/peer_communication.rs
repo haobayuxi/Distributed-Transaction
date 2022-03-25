@@ -14,25 +14,6 @@ use tonic::{transport::Channel, Request, Response, Streaming};
 
 use crate::Msg;
 
-pub struct RpcClient {
-    client: TapirClient<Channel>,
-}
-
-impl RpcClient {
-    pub async fn new(addr: String) -> Self {
-        loop {
-            match TapirClient::connect(addr.clone()).await {
-                Ok(client) => {
-                    return Self { client };
-                }
-                Err(_) => {
-                    sleep(Duration::from_millis(100)).await;
-                }
-            }
-        }
-    }
-}
-
 pub struct RpcServer {
     sender: UnboundedSender<Msg>,
 }

@@ -1,4 +1,4 @@
 pub mod classic;
-pub mod janus_rpc;
+pub mod janus;
 pub mod mpaxos;
 pub mod tapir;

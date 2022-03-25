@@ -37,6 +37,6 @@ enum TxnOP {
 
 
 service Janus {
-    rpc JanusMsg(JanusMsg) returns (JanusMsg) {}
+    rpc JanusTxn(JanusMsg) returns (JanusMsg) {}
 }
 
