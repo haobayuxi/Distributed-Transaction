@@ -27,6 +27,10 @@ pub fn convert_ip_addr(ip: String, add_http: bool) -> String {
     }
 }
 
+pub fn get_client_id(txnid: i64) -> i32 {
+    return (txnid >> 15) as i32;
+}
+
 pub fn transaction_to_pieces(txn: Txn) -> HashMap<i32, Txn> {
     HashMap::new()
 }
