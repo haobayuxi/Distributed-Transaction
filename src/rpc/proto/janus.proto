@@ -33,6 +33,7 @@ enum TxnOP {
     ReadOnlyRes = 4;
     PrepareRes = 5;
     AcceptRes = 6;
+    CommitRes = 7;
 }
 
 

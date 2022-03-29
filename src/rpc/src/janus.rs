@@ -39,6 +39,7 @@ pub enum TxnOp {
     ReadOnlyRes = 4,
     PrepareRes = 5,
     AcceptRes = 6,
+    CommitRes = 7,
 }
 #[doc = r" Generated client implementations."]
 pub mod janus_client {
