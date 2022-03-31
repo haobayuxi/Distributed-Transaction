@@ -12,18 +12,33 @@ use tokio::sync::{
     RwLock,
 };
 
+use crate::Msg;
+
 struct Node {
     executed: bool,
-    txn: JanusMsg,
+    msg: Msg,
     // tarjan
     dfn: i32,
     low: i32,
 }
+
+impl Node {
+    fn new(msg: Msg) -> Self {
+        Self {
+            executed: false,
+            msg,
+            dfn: -1,
+            low: -1,
+        }
+    }
+}
+
 pub struct DepGraph {
     // dep graph
-    graph: Arc<RwLock<HashMap<i64, Node>>>,
+    graph: HashMap<i64, Node>,
     // wait list
-    wait_list: UnboundedReceiver<i64>,
+    wait_list: Vec<i64>,
+    recv: UnboundedReceiver<Msg>,
     // job senders
     executors: HashMap<i32, UnboundedSender<JanusMsg>>,
 
@@ -31,58 +46,58 @@ pub struct DepGraph {
     stack: Vec<i64>,
     index: i32,
     visit: i32,
+    // used for tarjan
+    waiting_for: i64,
     last_executed: Vec<i64>,
 }
 
 impl DepGraph {
     pub fn new(
         executors: HashMap<i32, UnboundedSender<JanusMsg>>,
-        recv: UnboundedReceiver<JanusMsg>,
+        recv: UnboundedReceiver<Msg>,
         client_num: usize,
     ) -> Self {
         let mut last_executed = Vec::new();
         last_executed.reserve(client_num);
 
-        let graph = Arc::new(RwLock::new(HashMap::new()));
-        let graph_clone = graph.clone();
-
-        //
-        let (waitlist_sender, wait_list) = unbounded_channel::<i64>();
-        tokio::spawn(async move {
-            loop {
-                match recv.recv().await {
-                    Some(commit) => {
-                        let txnid = commit.txn_id;
-                        let commit_node = Node {
-                            executed: false,
-                            txn: commit,
-                            dfn: -1,
-                            low: -1,
-                        };
-                        let guard = graph_clone.write().await;
-                        guard.insert(txnid, commit_node);
-                        waitlist_sender.send(txnid);
-                    }
-                    None => {}
-                }
-            }
-        });
         Self {
-            graph,
+            graph: HashMap::new(),
             executors,
-            wait_list,
+            wait_list: Vec::new(),
+            recv,
             stack: Vec::new(),
             index: 0,
             visit: 0,
             last_executed,
+            waiting_for: -1,
         }
     }
 
     async fn run(&mut self) {
         loop {
-            let to_executed = self.wait_list.recv().await.unwrap();
-            self.find_scc(to_executed);
+            match self.recv.recv().await {
+                Some(msg) => {
+                    let txnid = msg.txn.txn_id;
+                    let node = Node::new(msg);
+                    self.graph.insert(txnid, node);
+                    if self.waiting_for == -1 {
+                        // find scc
+                        self.find_scc(txnid);
+                    } else if self.waiting_for == txnid {
+                        // continue find scc
+                        let to_find_scc = self.stack[self.visit as usize];
+                        self.continue_find_scc(to_find_scc);
+                    } else {
+                        continue;
+                    }
+                }
+                None => continue,
+            }
         }
+    }
+
+    fn continue_find_scc(&mut self, txnid: i64) -> bool {
+        return true;
     }
 
     fn find_scc(&mut self, txnid: i64) -> bool {
@@ -100,7 +115,7 @@ impl DepGraph {
                 self.index += 1;
                 node.dfn = self.index;
                 node.low = self.index;
-                let deps = node.txn.deps.clone();
+                let deps = node.msg.txn.deps.clone();
                 next_dfn = node.low;
                 for dep in deps.iter() {
                     if *dep == 0 {

@@ -1,7 +1,7 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReadStruct {
-    #[prost(string, tag = "1")]
-    pub key: ::prost::alloc::string::String,
+    #[prost(int64, tag = "1")]
+    pub key: i64,
     #[prost(string, optional, tag = "2")]
     pub value: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(int64, optional, tag = "3")]
@@ -9,8 +9,8 @@ pub struct ReadStruct {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteStruct {
-    #[prost(string, tag = "1")]
-    pub key: ::prost::alloc::string::String,
+    #[prost(int64, tag = "1")]
+    pub key: i64,
     #[prost(string, tag = "2")]
     pub value: ::prost::alloc::string::String,
     #[prost(int64, optional, tag = "3")]
@@ -30,6 +30,8 @@ pub struct TapirMsg {
     pub op: i32,
     #[prost(int32, tag = "6")]
     pub from: i32,
+    #[prost(int64, tag = "7")]
+    pub timestamp: i64,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

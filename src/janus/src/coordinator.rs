@@ -58,13 +58,14 @@ impl JanusCoordinator {
         for (server_id, per_server) in self.txn.iter() {
             let mut client = self.servers.get(server_id).unwrap().clone();
             let result_sender = sender.clone();
-            let read_request = TapirMsg {
+            let read_request = JanusMsg {
                 txn_id: self.txn_id,
                 read_set: per_server.read_set.clone(),
                 write_set: per_server.write_set.clone(),
                 executor_id: 0,
-                op: TxnOp::TPrepare.into(),
+                op: TxnOp::Prepare.into(),
                 from: self.id,
+                deps: todo!(),
             };
             tokio::spawn(async move {
                 let result = client.txn_msg(read_request).await.unwrap().into_inner();

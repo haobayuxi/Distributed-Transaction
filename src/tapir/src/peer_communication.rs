@@ -1,16 +1,9 @@
-use std::time::Duration;
-
 use rpc::tapir::tapir_server::Tapir;
 use rpc::tapir::TapirMsg;
-use rpc::{classic::Reply, tapir::tapir_client::TapirClient};
 use tokio::sync::mpsc::channel;
-use tokio::{
-    sync::mpsc::{Receiver, UnboundedSender},
-    time::sleep,
-};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio::sync::mpsc::UnboundedSender;
 use tonic::Status;
-use tonic::{transport::Channel, Request, Response, Streaming};
+use tonic::{transport::Channel, Request, Response};
 
 use crate::Msg;
 

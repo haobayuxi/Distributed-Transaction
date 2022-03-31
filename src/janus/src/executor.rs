@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use rpc::janus::{JanusMsg, TxnOp};
+use tokio::sync::RwLock;
 
 use crate::Msg;
 
@@ -8,7 +9,7 @@ pub struct Executor {
     id: i32,
     server_id: i32,
     // memory
-
+    mem: Arc<HashMap<String, RwLock<String>>>,
     // txns
     txns: HashMap<i64, JanusMsg>,
 }
@@ -29,7 +30,7 @@ impl Executor {
         };
 
         for read in txn.read_set {
-            result.read_set.push();
+            let readd = result.read_set.push();
         }
 
         for write in txn.write_set {}

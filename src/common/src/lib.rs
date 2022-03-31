@@ -1,16 +1,11 @@
+use std::time::{Instant, SystemTime};
+
+use chrono::Local;
+
 pub mod config;
+pub mod table;
 
-use std::{collections::HashMap, hash::Hash};
-
-use rpc::{
-    classic::{Msgs, Txn},
-    mpaxos::MPaxosMsg,
-};
-
-pub enum PeerMsg {
-    Txn(Msgs),
-    MPaxos(MPaxosMsg),
-}
+pub static CID_LEN: i32 = 12;
 
 // remove or add http:// prefix
 pub fn convert_ip_addr(ip: String, add_http: bool) -> String {
@@ -28,30 +23,11 @@ pub fn convert_ip_addr(ip: String, add_http: bool) -> String {
 }
 
 pub fn get_client_id(txnid: i64) -> i32 {
-    return (txnid >> 15) as i32;
+    return (txnid >> CID_LEN) as i32;
 }
 
-pub fn transaction_to_pieces(txn: Txn) -> HashMap<i32, Txn> {
-    HashMap::new()
+pub fn get_local_time(coordinator_id: i32) -> i64 {
+    // use microsecond as ts
+    let time = Local::now().timestamp_nanos() / 1000;
+    return time << CID_LEN + coordinator_id;
 }
-// pub struct ReadStruct {
-//     pub key: String,
-//     pub txn_id: i64,
-// }
-
-// impl ReadStruct {
-//     pub fn new(key: String, txn_id: i64) -> Self {
-//         Self { key, txn_id }
-//     }
-// }
-// pub struct WriteStruct {
-//     pub key: String,
-//     pub value: String,
-//     pub txn_id: i64,
-// }
-
-// impl WriteStruct {
-//     pub fn new(key: String, value: String, txn_id: i64) -> Self {
-//         Self { key, value, txn_id }
-//     }
-// }

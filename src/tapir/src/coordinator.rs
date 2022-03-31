@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use common::config::Config;
+use common::{config::Config, get_local_time};
 use rpc::tapir::{tapir_client::TapirClient, ReadStruct, TapirMsg, TxnOp, WriteStruct};
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
@@ -19,6 +19,7 @@ impl TapirCoordinator {
     pub fn new() {}
 
     async fn run_transaction(&mut self) -> bool {
+        let timestamp = get_local_time(self.id);
         let mut result_num: i32 = 0;
         let (sender, mut receiver) = unbounded_channel::<TapirMsg>();
         // get the read set
@@ -34,6 +35,7 @@ impl TapirCoordinator {
                     executor_id: 0,
                     op: TxnOp::TRead.into(),
                     from: self.id,
+                    timestamp,
                 };
                 tokio::spawn(async move {
                     let result = client.txn_msg(read_request).await.unwrap().into_inner();
@@ -64,6 +66,7 @@ impl TapirCoordinator {
                 executor_id: 0,
                 op: TxnOp::TPrepare.into(),
                 from: self.id,
+                timestamp,
             };
             tokio::spawn(async move {
                 let result = client.txn_msg(read_request).await.unwrap().into_inner();
