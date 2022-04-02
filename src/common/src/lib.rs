@@ -1,11 +1,10 @@
-use std::time::{Instant, SystemTime};
-
 use chrono::Local;
 
 pub mod config;
-pub mod table;
 
 pub static CID_LEN: i32 = 12;
+pub static SHARD_NUM: i32 = 1;
+pub static EXECUTOR_NUM: i32 = 16;
 
 // remove or add http:// prefix
 pub fn convert_ip_addr(ip: String, add_http: bool) -> String {

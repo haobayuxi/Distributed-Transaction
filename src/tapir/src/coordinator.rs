@@ -1,22 +1,105 @@
 use std::{collections::HashMap, time::Duration};
 
-use common::{config::Config, get_local_time};
+use common::{
+    config::{self, Config},
+    get_local_time, SHARD_NUM,
+};
 use rpc::tapir::{tapir_client::TapirClient, ReadStruct, TapirMsg, TxnOp, WriteStruct};
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
 
+static RETRY: i32 = 20;
+
 pub struct TapirCoordinator {
-    // replica_id: i32,
+    config: Config,
     read_optimize: bool,
     id: i32,
     txn_id: i64,
+    // sharded txn
     txn: HashMap<i32, TapirMsg>,
     // send to servers
     servers: HashMap<i32, TapirClient<Channel>>,
+    workload: Vec<(Vec<ReadStruct>, Vec<WriteStruct>)>,
 }
 
 impl TapirCoordinator {
-    pub fn new() {}
+    pub fn new(id: i32, read_optimize: bool, config: Config) -> Self {
+        Self {
+            read_optimize,
+            id,
+            txn_id: 0,
+            txn: HashMap::new(),
+            servers: HashMap::new(),
+            workload: Vec::new(),
+            config,
+        }
+    }
+
+    pub async fn init_run(&mut self) {
+        self.init_workload();
+        self.init_rpc().await;
+        // run transactions
+        for txn in self.workload.iter() {}
+    }
+
+    fn get_servers_by_shardid(&mut self, shard: i32) -> Vec<i32> {
+        self.config.shards.get(&shard).unwrap().clone()
+    }
+
+    fn shard_the_transaction(&mut self, read_set: Vec<i64>, write_set: Vec<(i64, String)>) {
+        self.txn.clear();
+        // group read write into multi shards, try to read from one of the server
+        for read in read_set {
+            let shard = (read as i32) % SHARD_NUM;
+            let serverids = self.get_servers_by_shardid(shard);
+            
+            for server_id = 
+            if result.contains_key(&executor_id) {
+                let msg = result.get_mut(&executor_id).unwrap();
+                msg.read_set.push(read);
+            } else {
+                let msg = JanusMsg {
+                    txn_id: txn.txn_id,
+                    read_set: vec![read],
+                    write_set: Vec::new(),
+                    executor_ids: Vec::new(),
+                    op: txn.op,
+                    from: txn.from,
+                    deps: txn.deps.clone(),
+                };
+                result.insert(executor_id, msg);
+            }
+        }
+
+        for write in txn.write_set {
+            let executor_id = (write.key as i32) % EXECUTOR_NUM;
+            if result.contains_key(&executor_id) {
+                let msg = result.get_mut(&executor_id).unwrap();
+                msg.write_set.push(write);
+            } else {
+                let msg = JanusMsg {
+                    txn_id: txn.txn_id,
+                    read_set: Vec::new(),
+                    write_set: vec![write],
+                    executor_ids: Vec::new(),
+                    op: txn.op,
+                    from: txn.from,
+                    deps: txn.deps.clone(),
+                };
+                result.insert(executor_id, msg);
+            }
+        }
+    }
+
+    fn init_workload(&mut self) {
+        let readstruct = ReadStruct {
+            key: 100,
+            value: None,
+            timestamp: None,
+        };
+        let read_vec = vec![readstruct];
+        self.workload = vec![(read_vec, Vec::new()); 100];
+    }
 
     async fn run_transaction(&mut self) -> bool {
         let timestamp = get_local_time(self.id);
@@ -85,13 +168,13 @@ impl TapirCoordinator {
         // txn success
         return true;
     }
-    pub async fn init_rpc(&mut self, config: Config) {
+    pub async fn init_rpc(&mut self) {
         // hold the clients to all the server
-        for (id, server_addr) in config.server_addrs {
+        for (id, server_addr) in self.config.server_addrs.iter() {
             loop {
                 match TapirClient::connect(server_addr.clone()).await {
                     Ok(client) => {
-                        self.servers.insert(id, client);
+                        self.servers.insert(*id, client);
                     }
                     Err(_) => {
                         sleep(Duration::from_millis(100)).await;
@@ -100,6 +183,4 @@ impl TapirCoordinator {
             }
         }
     }
-
-    fn shard_the_transaction(&mut self, read_set: Vec<String>, write_set: Vec<(String, String)>) {}
 }

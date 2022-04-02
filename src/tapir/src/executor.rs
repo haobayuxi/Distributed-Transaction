@@ -1,9 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use rpc::{
-    janus::janus_server::Janus,
-    tapir::{tapir_server::Tapir, ReadStruct, TapirMsg, TxnOp, WriteStruct},
-};
+use rpc::tapir::{ReadStruct, TapirMsg, TxnOp, WriteStruct};
 use tokio::sync::{mpsc::UnboundedReceiver, OwnedRwLockWriteGuard, RwLock};
 
 use crate::{Msg, TapirMeta};

@@ -20,7 +20,7 @@ impl JanusCoordinator {
 
     async fn run_transaction(&mut self) -> bool {
         let mut result_num: i32 = 0;
-        let (sender, mut receiver) = unbounded_channel::<TapirMsg>();
+        let (sender, mut receiver) = unbounded_channel::<JanusMsg>();
         // get the read set
         for (server_id, per_server) in self.txn.iter() {
             if per_server.read_set.len() > 0 {
@@ -31,13 +31,13 @@ impl JanusCoordinator {
                     txn_id: self.txn_id,
                     read_set: per_server.read_set.clone(),
                     write_set: Vec::new(),
-                    executor_id: 0,
-                    op: TxnOp::R.into(),
+                    executor_ids: Vec::new(),
+                    op: TxnOp::ReadOnly.into(),
                     from: self.id,
                     deps: Vec::new(),
                 };
                 tokio::spawn(async move {
-                    let result = client.txn_msg(read_request).await.unwrap().into_inner();
+                    let result = client.janus_txn(read_request).await.unwrap().into_inner();
                     result_sender.send(result);
                 });
             }
@@ -62,13 +62,13 @@ impl JanusCoordinator {
                 txn_id: self.txn_id,
                 read_set: per_server.read_set.clone(),
                 write_set: per_server.write_set.clone(),
-                executor_id: 0,
+                executor_ids: Vec::new(),
                 op: TxnOp::Prepare.into(),
                 from: self.id,
-                deps: todo!(),
+                deps: Vec::new(),
             };
             tokio::spawn(async move {
-                let result = client.txn_msg(read_request).await.unwrap().into_inner();
+                let result = client.janus_txn(read_request).await.unwrap().into_inner();
                 result_sender.send(result);
             });
         }
@@ -76,7 +76,7 @@ impl JanusCoordinator {
         while result_num > 0 {
             result_num -= 1;
             let prepare_res = receiver.recv().await.unwrap();
-            if prepare_res.op == TxnOp::TAbort.into() {
+            if prepare_res.op == TxnOp::Accept.into() {
                 // abort all the txn
                 return false;
             }

@@ -1,14 +1,14 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReadStruct {
-    #[prost(string, tag = "1")]
-    pub key: ::prost::alloc::string::String,
+    #[prost(int64, tag = "1")]
+    pub key: i64,
     #[prost(string, optional, tag = "2")]
     pub value: ::core::option::Option<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteStruct {
-    #[prost(string, tag = "1")]
-    pub key: ::prost::alloc::string::String,
+    #[prost(int64, tag = "1")]
+    pub key: i64,
     #[prost(string, tag = "2")]
     pub value: ::prost::alloc::string::String,
 }
@@ -20,8 +20,8 @@ pub struct JanusMsg {
     pub read_set: ::prost::alloc::vec::Vec<ReadStruct>,
     #[prost(message, repeated, tag = "3")]
     pub write_set: ::prost::alloc::vec::Vec<WriteStruct>,
-    #[prost(int32, tag = "4")]
-    pub executor_id: i32,
+    #[prost(int32, repeated, tag = "4")]
+    pub executor_ids: ::prost::alloc::vec::Vec<i32>,
     #[prost(enumeration = "TxnOp", tag = "5")]
     pub op: i32,
     #[prost(int32, tag = "6")]

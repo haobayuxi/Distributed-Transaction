@@ -9,8 +9,8 @@ pub mod executor;
 pub mod peer_communication;
 
 pub struct Msg {
-    tmsg: TapirMsg,
-    callback: Sender<TapirMsg>,
+    pub tmsg: TapirMsg,
+    pub callback: Sender<TapirMsg>,
 }
 
 // tapir meta for every row
