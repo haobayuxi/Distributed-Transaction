@@ -1,6 +1,8 @@
 use chrono::Local;
 
 pub mod config;
+pub mod tatp;
+pub mod ycsb;
 
 pub static CID_LEN: i32 = 12;
 pub static SHARD_NUM: i32 = 1;

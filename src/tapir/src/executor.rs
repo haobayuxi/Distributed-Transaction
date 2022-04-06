@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use common::tatp::{AccessInfo, CallForwarding, Subscriber};
 use rpc::tapir::{ReadStruct, TapirMsg, TxnOp, WriteStruct};
 use tokio::sync::{mpsc::UnboundedReceiver, OwnedRwLockWriteGuard, RwLock};
 
@@ -8,14 +9,20 @@ use crate::{Msg, TapirMeta};
 pub struct Executor {
     id: i32,
     server_id: i32,
+    // ycsb
     mem: Arc<HashMap<i64, RwLock<(TapirMeta, String)>>>,
+    // tatp
+    subscriber: Arc<HashMap<u64, Subscriber>>,
+    access_info: Arc<HashMap<u64, AccessInfo>>,
+    special_facility: Arc<HashMap<u64, AccessInfo>>,
+    call_forwarding: Arc<HashMap<u64, CallForwarding>>,
     // write lock guard
     // guards: HashMap<String, OwnedRwLockWriteGuard<(i64, String)>>,
     recv: UnboundedReceiver<Msg>,
 }
 
 impl Executor {
-    pub fn new(
+    pub fn new_ycsb(
         id: i32,
         server_id: i32,
         mem: Arc<HashMap<i64, RwLock<(TapirMeta, String)>>>,
@@ -27,6 +34,10 @@ impl Executor {
             mem,
             // guards: HashMap::new(),
             recv,
+            subscriber: Arc::new(HashMap::new()),
+            access_info: Arc::new(HashMap::new()),
+            special_facility: Arc::new(HashMap::new()),
+            call_forwarding: Arc::new(HashMap::new()),
         }
     }
 
@@ -71,6 +82,7 @@ impl Executor {
                 op: TxnOp::TReadRes.into(),
                 from: server_id,
                 timestamp: 0,
+                txn_type: None,
             };
             msg.callback.send(read_back).await;
         });
@@ -111,6 +123,7 @@ impl Executor {
                     op: TxnOp::TAbort.into(),
                     from: self.server_id,
                     timestamp: 0,
+                    txn_type: None,
                 };
                 // send back to client
                 msg.callback.send(abort_msg).await;
@@ -155,6 +168,7 @@ impl Executor {
                     op: TxnOp::TAbort.into(),
                     from: self.server_id,
                     timestamp: 0,
+                    txn_type: None,
                 };
                 // send back to client
                 msg.callback.send(abort_msg).await;
@@ -171,6 +185,7 @@ impl Executor {
             op: TxnOp::TPrepareOk.into(),
             from: self.server_id,
             timestamp: 0,
+            txn_type: None,
         };
         msg.callback.send(prepare_ok).await;
     }

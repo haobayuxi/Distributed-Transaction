@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use common::{config::Config, convert_ip_addr};
+use common::{config::Config, convert_ip_addr, ycsb::init_data};
 use log::info;
 use serde::{Deserialize, Serialize};
 use tapir::{
@@ -52,6 +52,11 @@ impl Server {
             Arc::new(RwLock::new((0, "testvalue".to_string()))),
         );
         // self.mem = Arc::new(mem);
+        let data = init_data();
+        for (key, value) in data {
+            self.mem
+                .insert(key, RwLock::new((TapirMeta::default(), value)));
+        }
     }
 
     async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {

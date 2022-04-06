@@ -2,9 +2,9 @@ use std::{collections::HashMap, time::Duration};
 
 use common::{
     config::{self, Config},
-    get_local_time, SHARD_NUM,
+    get_local_time, SHARD_NUM, tatp::GetSubscriberDataQuery,
 };
-use rpc::tapir::{tapir_client::TapirClient, ReadStruct, TapirMsg, TxnOp, WriteStruct};
+use rpc::tapir::{tapir_client::TapirClient, ReadStruct, TapirMsg, TxnOp, WriteStruct, TxnType};
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
 
@@ -51,42 +51,48 @@ impl TapirCoordinator {
         // group read write into multi shards, try to read from one of the server
         for read in read_set {
             let shard = (read as i32) % SHARD_NUM;
-            let serverids = self.get_servers_by_shardid(shard);
-            
-            for server_id = 
-            if result.contains_key(&executor_id) {
-                let msg = result.get_mut(&executor_id).unwrap();
-                msg.read_set.push(read);
+            let read_struct = ReadStruct {
+                key: read,
+                value: None,
+                timestamp: None,
+            };
+            if self.txn.contains_key(&shard) {
+                let msg = self.txn.get_mut(&shard).unwrap();
+
+                msg.read_set.push(read_struct);
             } else {
-                let msg = JanusMsg {
-                    txn_id: txn.txn_id,
-                    read_set: vec![read],
+                let msg = TapirMsg {
+                    txn_id: self.txn_id,
+                    read_set: vec![read_struct],
                     write_set: Vec::new(),
-                    executor_ids: Vec::new(),
-                    op: txn.op,
-                    from: txn.from,
-                    deps: txn.deps.clone(),
+                    executor_id: 0,
+                    op: TxnOp::TPrepare.into(),
+                    from: self.id,
+                    timestamp: 0,
+                    txn_type: TxnType::YCSB.into(),
                 };
-                result.insert(executor_id, msg);
+                self.txn.insert(shard, msg);
             }
         }
 
-        for write in txn.write_set {
-            let executor_id = (write.key as i32) % EXECUTOR_NUM;
-            if result.contains_key(&executor_id) {
-                let msg = result.get_mut(&executor_id).unwrap();
-                msg.write_set.push(write);
+        for (key, value) in write_set {
+            let shard = (key as i32) % SHARD_NUM;
+            let write_struct = WriteStruct { key, value };
+            if self.txn.contains_key(&shard) {
+                let msg = self.txn.get_mut(&shard).unwrap();
+
+                msg.write_set.push(write_struct);
             } else {
-                let msg = JanusMsg {
-                    txn_id: txn.txn_id,
+                let msg = TapirMsg {
+                    txn_id: self.txn_id,
                     read_set: Vec::new(),
-                    write_set: vec![write],
-                    executor_ids: Vec::new(),
-                    op: txn.op,
-                    from: txn.from,
-                    deps: txn.deps.clone(),
+                    write_set: vec![write_struct],
+                    executor_id: 0,
+                    op: TxnOp::TPrepare.into(),
+                    from: self.id,
+                    timestamp: 0,
                 };
-                result.insert(executor_id, msg);
+                self.txn.insert(shard, msg);
             }
         }
     }
@@ -105,10 +111,18 @@ impl TapirCoordinator {
         let timestamp = get_local_time(self.id);
         let mut result_num: i32 = 0;
         let (sender, mut receiver) = unbounded_channel::<TapirMsg>();
-        // get the read set
-        for (server_id, per_server) in self.txn.iter() {
+        // get the read set from server
+        let read_server_index = self.id % 3;
+        for (shard, per_server) in self.txn.iter() {
             if per_server.read_set.len() > 0 {
                 result_num += 1;
+                let server_id = self
+                    .config
+                    .shards
+                    .get(shard)
+                    .unwrap()
+                    .get(read_server_index as usize)
+                    .unwrap();
                 let mut client = self.servers.get(server_id).unwrap().clone();
                 let result_sender = sender.clone();
                 let read_request = TapirMsg {
@@ -137,24 +151,27 @@ impl TapirCoordinator {
                 None => todo!(),
             }
         }
-        // prepare
-        result_num = self.txn.len() as i32;
-        for (server_id, per_server) in self.txn.iter() {
-            let mut client = self.servers.get(server_id).unwrap().clone();
-            let result_sender = sender.clone();
-            let read_request = TapirMsg {
-                txn_id: self.txn_id,
-                read_set: per_server.read_set.clone(),
-                write_set: per_server.write_set.clone(),
-                executor_id: 0,
-                op: TxnOp::TPrepare.into(),
-                from: self.id,
-                timestamp,
-            };
-            tokio::spawn(async move {
-                let result = client.txn_msg(read_request).await.unwrap().into_inner();
-                result_sender.send(result);
-            });
+        // prepare, prepare will send to all the server in the shard
+        result_num = (self.txn.len() * 3) as i32;
+        for (shard, per_server) in self.txn.iter() {
+            let server_ids = self.config.shards.get(shard).unwrap();
+            for server_id in server_ids.iter() {
+                let mut client = self.servers.get(server_id).unwrap().clone();
+                let result_sender = sender.clone();
+                let read_request = TapirMsg {
+                    txn_id: self.txn_id,
+                    read_set: per_server.read_set.clone(),
+                    write_set: per_server.write_set.clone(),
+                    executor_id: 0,
+                    op: TxnOp::TPrepare.into(),
+                    from: self.id,
+                    timestamp,
+                };
+                tokio::spawn(async move {
+                    let result = client.txn_msg(read_request).await.unwrap().into_inner();
+                    result_sender.send(result);
+                });
+            }
         }
         // handle prepare response
         while result_num > 0 {
@@ -183,4 +200,88 @@ impl TapirCoordinator {
             }
         }
     }
+
+
+    ///////////////////////
+    /// tpcc txns
+    // async fn get_subscriber_data(&mut self,  query: GetSubscriberDataQuery) -> bool {
+    //     let s_id = query.s_id;
+    //     let timestamp = get_local_time(self.id);
+    //     let mut result_num: i32 = 0;
+    //     let (sender, mut receiver) = unbounded_channel::<TapirMsg>();
+    //     // get the read set from server
+    //     let read_server_index = self.id % 3;
+    //     let shard = self.shard_the_transaction(read_set, write_set)
+    //     for (shard, per_server) in self.txn.iter() {
+    //         if per_server.read_set.len() > 0 {
+    //             result_num += 1;
+    //             let server_id = self
+    //                 .config
+    //                 .shards
+    //                 .get(shard)
+    //                 .unwrap()
+    //                 .get(read_server_index as usize)
+    //                 .unwrap();
+    //             let mut client = self.servers.get(server_id).unwrap().clone();
+    //             let result_sender = sender.clone();
+    //             let read_request = TapirMsg {
+    //                 txn_id: self.txn_id,
+    //                 read_set: per_server.read_set.clone(),
+    //                 write_set: Vec::new(),
+    //                 executor_id: 0,
+    //                 op: TxnOp::TRead.into(),
+    //                 from: self.id,
+    //                 timestamp,
+    //             };
+    //             tokio::spawn(async move {
+    //                 let result = client.txn_msg(read_request).await.unwrap().into_inner();
+    //                 result_sender.send(result);
+    //             });
+    //         }
+    //     }
+    //     // while result_num
+    //     while result_num > 0 {
+    //         result_num -= 1;
+    //         let read = receiver.recv().await.unwrap();
+    //         match self.txn.get_mut(&read.from) {
+    //             Some(msg) => {
+    //                 msg.read_set = read.read_set;
+    //             }
+    //             None => todo!(),
+    //         }
+    //     }
+    //     // prepare, prepare will send to all the server in the shard
+    //     result_num = (self.txn.len() * 3) as i32;
+    //     for (shard, per_server) in self.txn.iter() {
+    //         let server_ids = self.config.shards.get(shard).unwrap();
+    //         for server_id in server_ids.iter() {
+    //             let mut client = self.servers.get(server_id).unwrap().clone();
+    //             let result_sender = sender.clone();
+    //             let read_request = TapirMsg {
+    //                 txn_id: self.txn_id,
+    //                 read_set: per_server.read_set.clone(),
+    //                 write_set: per_server.write_set.clone(),
+    //                 executor_id: 0,
+    //                 op: TxnOp::TPrepare.into(),
+    //                 from: self.id,
+    //                 timestamp,
+    //             };
+    //             tokio::spawn(async move {
+    //                 let result = client.txn_msg(read_request).await.unwrap().into_inner();
+    //                 result_sender.send(result);
+    //             });
+    //         }
+    //     }
+    //     // handle prepare response
+    //     while result_num > 0 {
+    //         result_num -= 1;
+    //         let prepare_res = receiver.recv().await.unwrap();
+    //         if prepare_res.op == TxnOp::TAbort.into() {
+    //             // abort all the txn
+    //             return false;
+    //         }
+    //     }
+    //     // txn success
+    //     true
+    // }
 }

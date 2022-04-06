@@ -9,6 +9,9 @@ pub struct Config {
     pub server_addrs: HashMap<i32, String>,
     pub executor_num: i32,
     pub shards: HashMap<i32, Vec<i32>>,
+    pub req_per_query: usize,
+    pub table_size: u64,
+    pub zipf_theta: f64,
 }
 
 impl Default for Config {
@@ -30,6 +33,9 @@ impl Default for Config {
             server_addrs,
             executor_num: 16,
             shards,
+            req_per_query: 10,
+            table_size: 1000,
+            zipf_theta: 0.0,
         }
     }
 }

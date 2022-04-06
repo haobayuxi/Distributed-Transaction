@@ -13,7 +13,6 @@ message Read_Struct{
 message Write_Struct {
     int64 key = 1;
     string value = 2;
-    optional int64 timestamp = 3;
 }
 
 message TapirMsg {
@@ -24,6 +23,17 @@ message TapirMsg {
     TxnOP op = 5;
     int32 from = 6;
     int64 timestamp = 7;
+    optional TxnType txn_type = 8;
+}
+
+enum TxnType {
+    TATP_GET_SUBSCRIBER_DATA = 0;
+    TATP_GET_NEW_DESTINATION = 1;
+    TATP_GET_ACCESS_DATA = 2;
+    TATP_UPDATE_SUBSCRIBER_DATA = 3;
+    TATP_UPDATE_LOCATION = 4;
+    TATP_INSERT_CALL_FORWARDING = 5;
+    YCSB = 6;
 }
 
 
