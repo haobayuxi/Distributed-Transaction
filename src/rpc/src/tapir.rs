@@ -1,27 +1,18 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ReadStruct {
-    #[prost(int64, tag = "1")]
-    pub key: i64,
-    #[prost(string, optional, tag = "2")]
-    pub value: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(int64, optional, tag = "3")]
+pub struct TapirReadStruct {
+    #[prost(message, optional, tag = "1")]
+    pub read: ::core::option::Option<super::common::ReadStruct>,
+    #[prost(int64, optional, tag = "2")]
     pub timestamp: ::core::option::Option<i64>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WriteStruct {
-    #[prost(int64, tag = "1")]
-    pub key: i64,
-    #[prost(string, tag = "2")]
-    pub value: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TapirMsg {
     #[prost(int64, tag = "1")]
     pub txn_id: i64,
     #[prost(message, repeated, tag = "2")]
-    pub read_set: ::prost::alloc::vec::Vec<ReadStruct>,
+    pub read_set: ::prost::alloc::vec::Vec<TapirReadStruct>,
     #[prost(message, repeated, tag = "3")]
-    pub write_set: ::prost::alloc::vec::Vec<WriteStruct>,
+    pub write_set: ::prost::alloc::vec::Vec<super::common::WriteStruct>,
     #[prost(int32, tag = "4")]
     pub executor_id: i32,
     #[prost(enumeration = "TxnOp", tag = "5")]

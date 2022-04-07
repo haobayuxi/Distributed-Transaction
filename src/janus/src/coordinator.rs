@@ -1,7 +1,10 @@
 use std::{collections::HashMap, time::Duration};
 
 use common::{config::Config, SHARD_NUM};
-use rpc::janus::{janus_client::JanusClient, JanusMsg, ReadStruct, TxnOp, WriteStruct};
+use rpc::{
+    common::{ReadStruct, WriteStruct},
+    janus::{janus_client::JanusClient, JanusMsg, TxnOp},
+};
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
 

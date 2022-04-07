@@ -1,10 +1,10 @@
 use std::{collections::HashMap, time::Duration};
 
-use common::{
-    config::{self, Config},
-    get_local_time, SHARD_NUM, tatp::GetSubscriberDataQuery,
+use common::{config::Config, get_local_time, SHARD_NUM};
+use rpc::{
+    common::{ReadStruct, WriteStruct},
+    tapir::{tapir_client::TapirClient, TapirMsg, TapirReadStruct, TxnOp, TxnType},
 };
-use rpc::tapir::{tapir_client::TapirClient, ReadStruct, TapirMsg, TxnOp, WriteStruct, TxnType};
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
 
@@ -51,9 +51,11 @@ impl TapirCoordinator {
         // group read write into multi shards, try to read from one of the server
         for read in read_set {
             let shard = (read as i32) % SHARD_NUM;
-            let read_struct = ReadStruct {
-                key: read,
-                value: None,
+            let read_struct = TapirReadStruct {
+                read: Some(ReadStruct {
+                    key: read,
+                    value: None,
+                }),
                 timestamp: None,
             };
             if self.txn.contains_key(&shard) {
@@ -69,7 +71,7 @@ impl TapirCoordinator {
                     op: TxnOp::TPrepare.into(),
                     from: self.id,
                     timestamp: 0,
-                    txn_type: TxnType::YCSB.into(),
+                    txn_type: Some(TxnType::Ycsb.into()),
                 };
                 self.txn.insert(shard, msg);
             }
@@ -91,6 +93,7 @@ impl TapirCoordinator {
                     op: TxnOp::TPrepare.into(),
                     from: self.id,
                     timestamp: 0,
+                    txn_type: Some(TxnType::Ycsb.into()),
                 };
                 self.txn.insert(shard, msg);
             }
@@ -99,9 +102,8 @@ impl TapirCoordinator {
 
     fn init_workload(&mut self) {
         let readstruct = ReadStruct {
-            key: 100,
+            key: 1,
             value: None,
-            timestamp: None,
         };
         let read_vec = vec![readstruct];
         self.workload = vec![(read_vec, Vec::new()); 100];
@@ -133,6 +135,7 @@ impl TapirCoordinator {
                     op: TxnOp::TRead.into(),
                     from: self.id,
                     timestamp,
+                    txn_type: Some(TxnType::Ycsb.into()),
                 };
                 tokio::spawn(async move {
                     let result = client.txn_msg(read_request).await.unwrap().into_inner();
@@ -166,6 +169,7 @@ impl TapirCoordinator {
                     op: TxnOp::TPrepare.into(),
                     from: self.id,
                     timestamp,
+                    txn_type: Some(TxnType::Ycsb.into()),
                 };
                 tokio::spawn(async move {
                     let result = client.txn_msg(read_request).await.unwrap().into_inner();
@@ -201,9 +205,8 @@ impl TapirCoordinator {
         }
     }
 
-
     ///////////////////////
-    /// tpcc txns
+    // tpcc txns
     // async fn get_subscriber_data(&mut self,  query: GetSubscriberDataQuery) -> bool {
     //     let s_id = query.s_id;
     //     let timestamp = get_local_time(self.id);

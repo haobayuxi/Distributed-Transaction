@@ -2,7 +2,11 @@ use std::error::Error;
 use std::process::exit;
 
 fn run() -> Result<(), Box<dyn Error>> {
-    let proto_files = &["proto/janus.proto", "proto/tapir.proto"];
+    let proto_files = &[
+        "proto/common.proto",
+        "proto/janus.proto",
+        "proto/tapir.proto",
+    ];
 
     tonic_build::configure()
         .out_dir("src")

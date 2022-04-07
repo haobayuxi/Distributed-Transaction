@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package common;
+
+
+
+message Read_Struct{
+    int64 key = 1;
+    optional string value = 2;
+}
+
+message Write_Struct {
+    int64 key = 1;
+    string value = 2;
+}
+
+

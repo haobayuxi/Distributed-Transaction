@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
-use rpc::janus::{JanusMsg, ReadStruct, TxnOp};
+use rpc::{
+    common::ReadStruct,
+    janus::{JanusMsg, TxnOp},
+};
 use tokio::sync::{mpsc::UnboundedReceiver, RwLock};
 
 use crate::{JanusMeta, Msg};

@@ -29,10 +29,18 @@ pub struct Server {
 
 impl Server {
     pub fn new(server_id: i32) -> Self {
-        //
+        // init data
+
+        let mut mem = HashMap::new();
+        // self.mem = Arc::new(mem);
+        let data = init_data();
+        for (key, value) in data {
+            mem.insert(key, RwLock::new((TapirMeta::default(), value)));
+        }
+
         Self {
             server_id,
-            mem: Arc::new(HashMap::new()),
+            mem: Arc::new(mem),
             executor_senders: HashMap::new(),
         }
     }
@@ -45,19 +53,7 @@ impl Server {
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    fn init_data(&mut self) {
-        let mut mem = HashMap::new();
-        mem.insert(
-            "test".to_string(),
-            Arc::new(RwLock::new((0, "testvalue".to_string()))),
-        );
-        // self.mem = Arc::new(mem);
-        let data = init_data();
-        for (key, value) in data {
-            self.mem
-                .insert(key, RwLock::new((TapirMeta::default(), value)));
-        }
-    }
+    fn init_data(&mut self) {}
 
     async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
         // start server for client to connect
@@ -74,7 +70,7 @@ impl Server {
         for i in 0..config.executor_num {
             let (sender, receiver) = unbounded_channel::<Msg>();
             self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new(i, self.server_id, self.mem.clone(), receiver);
+            let mut exec = Executor::new_ycsb(i, self.server_id, self.mem.clone(), receiver);
             tokio::spawn(async move {
                 exec.run().await;
             });

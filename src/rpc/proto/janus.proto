@@ -2,22 +2,13 @@ syntax = "proto3";
 
 package janus;
 
+import "common.proto";
 
-
-message Read_Struct{
-    int64 key = 1;
-    optional string value = 2;
-}
-
-message Write_Struct {
-    int64 key = 1;
-    string value = 2;
-}
 
 message JanusMsg {
     int64 txn_id = 1;
-    repeated Read_Struct read_set = 2;
-    repeated Write_Struct write_set = 3;
+    repeated common.Read_Struct read_set = 2;
+    repeated common.Write_Struct write_set = 3;
     repeated int32 executor_ids = 4;
     TxnOP op = 5;
     int32 from = 6;

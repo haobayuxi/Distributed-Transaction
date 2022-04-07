@@ -1,7 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use common::tatp::{AccessInfo, CallForwarding, Subscriber};
-use rpc::tapir::{ReadStruct, TapirMsg, TxnOp, WriteStruct};
+use rpc::{
+    common::ReadStruct,
+    tapir::{TapirMsg, TapirReadStruct, TxnOp},
+};
 use tokio::sync::{mpsc::UnboundedReceiver, OwnedRwLockWriteGuard, RwLock};
 
 use crate::{Msg, TapirMeta};
@@ -64,11 +67,13 @@ impl Executor {
         tokio::spawn(async move {
             let mut result_read_set = Vec::new();
             for read in msg.tmsg.read_set.iter() {
-                // let read_guard = mem.get(&read.key).unwrap().read().await;
-                let read_guard = mem.get(&read.key).unwrap().read().await;
-                let result = ReadStruct {
-                    key: read.key.clone(),
-                    value: Some(read_guard.1.clone()),
+                let key = read.read.as_ref().unwrap().key;
+                let read_guard = mem.get(&key).unwrap().read().await;
+                let result = TapirReadStruct {
+                    read: Some(ReadStruct {
+                        key,
+                        value: Some(read_guard.1.clone()),
+                    }),
                     timestamp: Some(read_guard.0.version),
                 };
                 result_read_set.push(result);
@@ -109,7 +114,8 @@ impl Executor {
             //         return;
             //     }
             // }
-            let mut guard = self.mem.get(&read.key).unwrap().write().await;
+            let key = read.read.as_ref().unwrap().key;
+            let mut guard = self.mem.get(&key).unwrap().write().await;
             if read.timestamp.unwrap() < guard.0.version
                 || (guard.0.prepared_write.len() > 0
                     && read.timestamp.unwrap() < *guard.0.prepared_write.first().unwrap())
@@ -194,7 +200,8 @@ impl Executor {
         // update
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {
-            let mut guard = self.mem.get(&read.key).unwrap().write().await;
+            let key = read.read.as_ref().unwrap().key;
+            let mut guard = self.mem.get(&key).unwrap().write().await;
             guard.0.prepared_read.remove(&msg.tmsg.timestamp);
         }
 
@@ -212,7 +219,8 @@ impl Executor {
     async fn handle_abort(&mut self, msg: Msg) {
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {
-            let mut guard = self.mem.get(&read.key).unwrap().write().await;
+            let key = read.read.as_ref().unwrap().key;
+            let mut guard = self.mem.get(&key).unwrap().write().await;
             guard.0.prepared_read.remove(&msg.tmsg.timestamp);
         }
 

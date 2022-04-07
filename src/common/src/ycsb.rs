@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use rand::*;
+use rpc::common::{ReadStruct, WriteStruct};
 
 use crate::config::Config;
 
@@ -27,25 +28,45 @@ pub struct YCSBWorkload {
 }
 
 pub struct YcsbQuery {
-    // pub read_set: Vec<ReadStr>,
+    pub read_set: Vec<ReadStruct>,
+    pub write_set: Vec<WriteStruct>,
     zeta_2_theta: f64,
     denom: f64,
+    write_value: String,
 }
 
 impl YcsbQuery {
-    pub fn new() {}
+    pub fn new(theta: f64, table_size: i32) -> Self {
+        let zeta_2_theta = zeta(2, theta);
+        let value: Vec<char> = vec!['a'; 100];
+        let mut write_value = String::from("");
+        write_value.extend(value.iter());
+        Self {
+            read_set: Vec::new(),
+            write_set: Vec::new(),
+            zeta_2_theta,
+            denom: zeta(table_size as u64, theta),
+            write_value,
+        }
+    }
 
     fn generate(&mut self, config: Config, read_perc: i32, write_perc: i32) {
         for i in 0..config.req_per_query {
             let op = f64_rand(0.0, 1.0, 0.01);
 
-            let mut key = self.zipf(config.table_size, config.zipf_theta);
+            let key = self.zipf(config.table_size, config.zipf_theta);
 
             if op <= read_perc as f64 {
-                self.requests[i] = YcsbRequest::new(Operation::Read, key, "0".to_string(), column);
+                self.read_set.push(ReadStruct {
+                    key: key as i64,
+                    value: None,
+                });
             } else {
-                self.requests[i] =
-                    YcsbRequest::new(Operation::Update, key, "0".to_string(), column);
+                self.write_set.push(WriteStruct {
+                    key: key as i64,
+                    value: self.write_value.clone(),
+                    // value: self.write_value.clone(),
+                });
             }
         }
     }
@@ -71,6 +92,14 @@ impl YcsbQuery {
         }
         v
     }
+}
+
+pub fn zeta(n: u64, theta: f64) -> f64 {
+    let mut sum: f64 = 0.0;
+    for i in 1..(n + 1) {
+        sum += f64::powf(1.0 / (i as f64), theta);
+    }
+    return sum;
 }
 
 pub fn init_data() -> HashMap<i64, String> {
