@@ -31,10 +31,7 @@ pub async fn run_rpc_server(rpc_server: RpcServer) {
 
     let server = TapirServer::new(rpc_server);
 
-    match Server::builder().add_service(server).serve(addr).await {
-        Ok(_) => panic!("rpc server start done"),
-        Err(e) => panic!("rpc server start fail {}", e),
-    }
+    Server::builder().add_service(server).serve(addr).await;
 }
 
 #[tonic::async_trait]

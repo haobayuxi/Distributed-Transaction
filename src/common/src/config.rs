@@ -22,9 +22,9 @@ impl Default for Config {
         server_ids.insert(1, 1);
         server_ids.insert(2, 1);
 
-        let addr0 = String::from("http://192.168.50.10:20011");
-        let addr1 = String::from("http://192.168.50.11:20011");
-        let addr2 = String::from("http://192.168.50.12:20011");
+        let addr0 = String::from("http://192.168.50.10:50051");
+        let addr1 = String::from("http://192.168.50.11:50051");
+        let addr2 = String::from("http://192.168.50.12:50051");
         let mut server_addrs = HashMap::new();
         server_addrs.insert(0, addr0);
         server_addrs.insert(1, addr1);
