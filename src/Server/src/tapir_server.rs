@@ -55,8 +55,10 @@ impl Server {
     pub async fn init(&mut self) {
         let (dispatcher_sender, dispatcher_receiver) = unbounded_channel::<Msg>();
         self.init_data();
+        println!("init data done");
         self.init_executors(self.config.clone());
         self.init_rpc(self.config.clone(), dispatcher_sender).await;
+        println!("init rpc done");
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
@@ -104,6 +106,7 @@ impl Server {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let f = std::fs::File::open("config.yml").unwrap();
     let server_config: ConfigPerServer = serde_yaml::from_reader(f).unwrap();
+    println!("server id = {}", server_config.id);
     let mut server = Server::new(server_config.id, Config::default());
     // server.run_dispatcher(recv)
     server.init().await;
