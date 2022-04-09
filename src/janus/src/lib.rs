@@ -4,9 +4,9 @@ use common::EXECUTOR_NUM;
 use rpc::janus::JanusMsg;
 use tokio::sync::mpsc::UnboundedSender;
 
-mod coordinator;
+pub mod coordinator;
 mod dep_graph;
-mod executor;
+pub mod executor;
 mod peer_communication;
 
 #[derive(Clone)]

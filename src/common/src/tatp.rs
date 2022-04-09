@@ -110,3 +110,5 @@ pub enum TatpQuery {
     UpdateLocation(UpdateLocationQuery),
     InsertCallForwarding(InsertCallForwardingQuery),
 }
+
+// pub fn init_data()

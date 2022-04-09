@@ -10,6 +10,10 @@ edition = "2018"
 name = "tapir_server"
 path = "src/tapir_server.rs"
 
+[[bin]]
+name = "tapir_client"
+path = "src/tapir_client.rs"
+
 [dependencies]
 rpc = { path = "../rpc" }
 common = { path = "../common" }

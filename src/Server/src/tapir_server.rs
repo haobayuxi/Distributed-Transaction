@@ -25,15 +25,20 @@ pub struct Server {
     mem: Arc<HashMap<i64, RwLock<(TapirMeta, String)>>>,
     // dispatcher
     executor_senders: HashMap<i32, UnboundedSender<Msg>>,
+    executor_num: i32,
+    config: Config,
 }
 
 impl Server {
-    pub fn new(server_id: i32) -> Self {
+    pub fn new(server_id: i32, config: Config) -> Self {
         // init data
 
         let mut mem = HashMap::new();
         // self.mem = Arc::new(mem);
-        let data = init_data();
+        let data = init_data(
+            config.clone(),
+            config.server_ids.get(&server_id).unwrap().clone(),
+        );
         for (key, value) in data {
             mem.insert(key, RwLock::new((TapirMeta::default(), value)));
         }
@@ -42,14 +47,16 @@ impl Server {
             server_id,
             mem: Arc::new(mem),
             executor_senders: HashMap::new(),
+            executor_num: 0,
+            config,
         }
     }
 
-    pub async fn init(&mut self, config: Config) {
+    pub async fn init(&mut self) {
         let (dispatcher_sender, dispatcher_receiver) = unbounded_channel::<Msg>();
         self.init_data();
-        self.init_executors(config.clone());
-        self.init_rpc(config.clone(), dispatcher_sender).await;
+        self.init_executors(self.config.clone());
+        self.init_rpc(self.config.clone(), dispatcher_sender).await;
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
@@ -67,6 +74,7 @@ impl Server {
     }
 
     fn init_executors(&mut self, config: Config) {
+        self.executor_num = config.executor_num;
         for i in 0..config.executor_num {
             let (sender, receiver) = unbounded_channel::<Msg>();
             self.executor_senders.insert(i, sender);
@@ -82,7 +90,9 @@ impl Server {
         loop {
             match recv.recv().await {
                 Some(msg) => {
-                    let x = msg.tmsg.txn_id;
+                    let executor_id = (msg.tmsg.txn_id as i32) % self.executor_num;
+                    // send to executor
+                    self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }
                 None => continue,
             }
@@ -94,6 +104,6 @@ impl Server {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let f = std::fs::File::open("config.yml").unwrap();
     let server_config: ConfigPerServer = serde_yaml::from_reader(f).unwrap();
-    let server = Server::new(0);
+    let server = Server::new(0, Config::default());
     Ok(())
 }

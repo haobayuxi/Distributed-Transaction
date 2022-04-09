@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use common::{config::Config, get_local_time, SHARD_NUM};
+use common::{config::Config, get_local_time, ycsb::YcsbQuery, SHARD_NUM};
 use rpc::{
     common::{ReadStruct, WriteStruct},
     tapir::{tapir_client::TapirClient, TapirMsg, TapirReadStruct, TxnOp, TxnType},
@@ -19,27 +19,39 @@ pub struct TapirCoordinator {
     txn: HashMap<i32, TapirMsg>,
     // send to servers
     servers: HashMap<i32, TapirClient<Channel>>,
-    workload: Vec<(Vec<ReadStruct>, Vec<WriteStruct>)>,
+    workload: YcsbQuery,
 }
 
 impl TapirCoordinator {
-    pub fn new(id: i32, read_optimize: bool, config: Config) -> Self {
+    pub fn new(id: i32, read_optimize: bool, config: Config, read_perc: i32) -> Self {
         Self {
             read_optimize,
             id,
             txn_id: 0,
             txn: HashMap::new(),
             servers: HashMap::new(),
-            workload: Vec::new(),
+            workload: YcsbQuery::new(
+                config.zipf_theta,
+                config.table_size,
+                config.req_per_query as i32,
+                read_perc,
+            ),
             config,
         }
     }
 
     pub async fn init_run(&mut self) {
-        self.init_workload();
+        // self.init_workload();
         self.init_rpc().await;
         // run transactions
-        for txn in self.workload.iter() {}
+        for _ in 0..100 {
+            self.workload.generate();
+            if self.run_transaction().await {
+                println!("success ");
+            } else {
+                println!("fail");
+            }
+        }
     }
 
     fn get_servers_by_shardid(&mut self, shard: i32) -> Vec<i32> {
@@ -98,15 +110,6 @@ impl TapirCoordinator {
                 self.txn.insert(shard, msg);
             }
         }
-    }
-
-    fn init_workload(&mut self) {
-        let readstruct = ReadStruct {
-            key: 1,
-            value: None,
-        };
-        let read_vec = vec![readstruct];
-        self.workload = vec![(read_vec, Vec::new()); 100];
     }
 
     async fn run_transaction(&mut self) -> bool {
