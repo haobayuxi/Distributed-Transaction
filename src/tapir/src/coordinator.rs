@@ -202,8 +202,9 @@ impl TapirCoordinator {
                     Ok(client) => {
                         self.servers.insert(*id, client);
                     }
-                    Err(_) => {
-                        sleep(Duration::from_millis(100)).await;
+                    Err(e) => {
+                        println!("{}", e);
+                        sleep(Duration::from_millis(1000)).await;
                     }
                 }
             }
