@@ -22,7 +22,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config,
         client_config.read_perc,
     );
-    client.init_rpc().await;
     client.init_run().await;
     Ok(())
 }

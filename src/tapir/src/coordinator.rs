@@ -43,13 +43,14 @@ impl TapirCoordinator {
     pub async fn init_run(&mut self) {
         // self.init_workload();
         self.init_rpc().await;
+        println!("init rpc done");
         // run transactions
-        for _ in 0..100 {
+        for i in 0..100 {
             self.workload.generate();
             if self.run_transaction().await {
-                println!("success ");
+                println!("success {}", i);
             } else {
-                println!("fail");
+                println!("fail {}", i);
             }
         }
     }
@@ -195,6 +196,7 @@ impl TapirCoordinator {
     pub async fn init_rpc(&mut self) {
         // hold the clients to all the server
         for (id, server_addr) in self.config.server_addrs.iter() {
+            println!("connect to {}", server_addr);
             loop {
                 match TapirClient::connect(server_addr.clone()).await {
                     Ok(client) => {
