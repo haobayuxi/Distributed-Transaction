@@ -68,7 +68,7 @@ impl Server {
         // start server for client to connect
         let mut listen_ip = config.server_addrs.get(&self.server_id).unwrap().clone();
         listen_ip = convert_ip_addr(listen_ip, false);
-        info!("server listen ip {}", listen_ip);
+        println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(listen_ip, sender);
         tokio::spawn(async move {
             run_rpc_server(server).await;

@@ -27,12 +27,12 @@ impl RpcServer {
 pub async fn run_rpc_server(rpc_server: RpcServer) {
     let addr = rpc_server.addr_to_listen.parse().unwrap();
 
-    tracing::info!("rpc server listening on: {:?}", addr);
+    println!("rpc server listening on: {:?}", addr);
 
     let server = TapirServer::new(rpc_server);
 
     match Server::builder().add_service(server).serve(addr).await {
-        Ok(_) => tracing::info!("rpc server start done"),
+        Ok(_) => println!("rpc server start done"),
         Err(e) => panic!("rpc server start fail {}", e),
     }
 }

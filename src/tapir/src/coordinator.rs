@@ -196,7 +196,7 @@ impl TapirCoordinator {
     pub async fn init_rpc(&mut self) {
         // hold the clients to all the server
         for (id, server_addr) in self.config.server_addrs.iter() {
-            println!("connect to {}", server_addr);
+            println!("connect to {}-{}", id, server_addr);
             loop {
                 match TapirClient::connect(server_addr.clone()).await {
                     Ok(client) => {
