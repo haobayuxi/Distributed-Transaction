@@ -1,7 +1,8 @@
 use common::config::Config;
+use serde::Deserialize;
 use tapir::coordinator::TapirCoordinator;
 
-#[derive(Default)]
+#[derive(Default, Deserialize)]
 struct ConfigPerClient {
     id: i32,
     read_optimize: bool,
@@ -10,11 +11,11 @@ struct ConfigPerClient {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let f = std::fs::File::open("config.yml").unwrap();
-    // let server_config: ConfigPerServer = serde_yaml::from_reader(f).unwrap();
-    // let server = Server::new(0);
+    let f = std::fs::File::open("config.yml").unwrap();
+    let client_config: ConfigPerClient = serde_yaml::from_reader(f).unwrap();
+
     let config = Config::default();
-    let client_config = ConfigPerClient::default();
+    // let client_config = ConfigPerClient::default();
     let mut client = TapirCoordinator::new(
         client_config.id,
         client_config.read_optimize,
