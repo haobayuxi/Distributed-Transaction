@@ -118,7 +118,7 @@ impl Executor {
             let mut guard = self.mem.get(&key).unwrap().write().await;
             if read.timestamp.unwrap() < guard.0.version
                 || (guard.0.prepared_write.len() > 0
-                    && read.timestamp.unwrap() < *guard.0.prepared_write.first().unwrap())
+                    && read.timestamp.unwrap() < *guard.0.prepared_write.iter().min().unwrap())
             {
                 // abort the txn
                 let abort_msg = TapirMsg {
@@ -163,7 +163,7 @@ impl Executor {
             let mut guard = self.mem.get(&write.key).unwrap().write().await;
             if msg.tmsg.timestamp < guard.0.version
                 || (guard.0.prepared_read.len() > 0
-                    && msg.tmsg.timestamp < *guard.0.prepared_read.last().unwrap())
+                    && msg.tmsg.timestamp < *guard.0.prepared_read.iter().last().unwrap())
             {
                 // abort the txn
                 let abort_msg = TapirMsg {
