@@ -18,7 +18,7 @@ def run_clients():
         cmd = ["./tapir_client"]
         logger.info("running client %d", client_id)
         p = subprocess.Popen(
-            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
+            cmd, shell=True, stdout=subprocess.PIPE)
         process.append(p)
         client_id += 1
     for p in process:
