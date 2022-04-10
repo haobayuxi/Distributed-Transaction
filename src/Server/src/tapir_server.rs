@@ -59,7 +59,7 @@ impl Server {
         self.init_executors(self.config.clone());
         self.init_rpc(self.config.clone(), dispatcher_sender).await;
         println!("init rpc done");
-        // self.run_dispatcher(dispatcher_receiver).await;
+        self.run_dispatcher(dispatcher_receiver).await;
     }
 
     fn init_data(&mut self) {}
@@ -70,9 +70,9 @@ impl Server {
         listen_ip = convert_ip_addr(listen_ip, false);
         println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(listen_ip, sender);
-        // tokio::spawn(async move {
-        run_rpc_server(server).await;
-        // });
+        tokio::spawn(async move {
+            run_rpc_server(server).await;
+        });
     }
 
     fn init_executors(&mut self, config: Config) {

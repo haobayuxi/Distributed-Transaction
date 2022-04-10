@@ -201,6 +201,7 @@ impl TapirCoordinator {
                 match TapirClient::connect(server_addr.clone()).await {
                     Ok(client) => {
                         self.servers.insert(*id, client);
+                        break;
                     }
                     Err(e) => {
                         println!("{}", e);
