@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 
-from http import client
 import subprocess
 import sys
 import logging
@@ -13,11 +12,16 @@ logger = logging.getLogger('')
 
 def run_clients():
     client_id = 0
+    process = []
     while client_id < 2:
         cmd = ["./tapir_client"]
-        Logger.info("running client %d", client_id)
-        res = subprocess.call(cmd)
+        logger.info("running client %d", client_id)
+        p = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
+        process.append(p)
         client_id += 1
+    for p in process:
+        p.wait()
 
 
 def main():
