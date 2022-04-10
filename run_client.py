@@ -13,7 +13,7 @@ logger = logging.getLogger('')
 
 def run_clients():
     client_id = 0
-    while client_id < 100:
+    while client_id < 2:
         cmd = ["./tapir_client"]
         Logger.info("running client %d", client_id)
         res = subprocess.call(cmd)
