@@ -7,6 +7,7 @@ from logging import Logger
 
 TMP_DIR = '~/'
 
+logging.basicConfig()
 logger = logging.getLogger('')
 
 
