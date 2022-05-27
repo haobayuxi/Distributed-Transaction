@@ -1,16 +1,12 @@
-use common::config::Config;
-use serde::Deserialize;
-use tapir::coordinator::TapirCoordinator;
+use std::env;
 
-#[derive(Default, Deserialize)]
-struct ConfigPerClient {
-    id: i32,
-    read_optimize: bool,
-    read_perc: i32,
-}
+use common::{config::Config, ConfigPerClient};
+use tapir::coordinator::TapirCoordinator;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
+    let id = args[1].parse::<i32>().unwrap();
     let f = std::fs::File::open("config.yml").unwrap();
     let client_config: ConfigPerClient = serde_yaml::from_reader(f).unwrap();
 

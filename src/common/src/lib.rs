@@ -1,4 +1,5 @@
 use chrono::Local;
+use serde::Deserialize;
 
 pub mod config;
 pub mod tatp;
@@ -7,6 +8,13 @@ pub mod ycsb;
 pub static CID_LEN: i32 = 12;
 pub static SHARD_NUM: i32 = 1;
 pub static EXECUTOR_NUM: i32 = 16;
+
+#[derive(Default, Deserialize)]
+pub struct ConfigPerClient {
+    pub id: i32,
+    pub read_optimize: bool,
+    pub read_perc: i32,
+}
 
 // remove or add http:// prefix
 pub fn convert_ip_addr(ip: String, add_http: bool) -> String {

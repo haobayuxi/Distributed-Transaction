@@ -59,7 +59,7 @@ impl YcsbQuery {
 
             let key = self.zipf(self.table_size as u64, self.theta);
 
-            if op <= self.read_perc as f64 {
+            if op * 100.0 <= self.read_perc as f64 {
                 self.read_set.push(ReadStruct {
                     key: key as i64,
                     value: None,

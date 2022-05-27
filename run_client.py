@@ -11,10 +11,10 @@ logging.basicConfig()
 logger = logging.getLogger('')
 
 
-def run_clients():
-    client_id = 0
+def run_clients(start_client_id, client_num):
+    client_id = start_client_id
     process = []
-    while client_id < 2:
+    while client_id < start_client_id + client_num:
         cmd = ["./tapir_client"]
         logger.info("running client %d", client_id)
         p = subprocess.Popen(
@@ -28,7 +28,7 @@ def run_clients():
 def main():
     logger.setLevel(logging.DEBUG)
     logger.info("start")
-    run_clients()
+    run_clients(0, 2)
 
 
 if __name__ == "__main__":

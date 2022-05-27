@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::ycsb::{f64_rand, u64_rand};
+
 #[derive(Serialize, Deserialize)]
 pub struct Subscriber {
     pub s_id: u64,
@@ -68,6 +70,7 @@ pub struct CallForwarding {
     pub numberx: String,
 }
 
+#[derive(Default)]
 pub struct GetSubscriberDataQuery {
     pub s_id: u64,
 }
@@ -111,4 +114,29 @@ pub enum TatpQuery {
     InsertCallForwarding(InsertCallForwardingQuery),
 }
 
-// pub fn init_data()
+pub fn init_tatp_data() {}
+
+fn tatp_random(x: u64, y: u64) -> u64 {
+    return ((u64_rand(0, 65535)) | (u64_rand(x, y))) % (y - x + 1) + x;
+}
+pub struct TatpWorkload {
+    subscriber_rows: u64,
+}
+
+impl TatpWorkload {
+    pub fn generate(&mut self) -> TatpQuery {
+        let sid = tatp_random(1, self.subscriber_rows);
+        let op = f64_rand(0.0, 1.0, 0.01);
+        if op * 100.0 < 35 as f64 {
+            //
+        } else if op * 100.0 < 45 as f64 {
+            //
+        } else if op * 100.0 < 80 as f64 {
+            //
+        }
+        return TatpQuery::GetAccessData(GetAccessDataQuery {
+            s_id: 0,
+            ai_type: todo!(),
+        });
+    }
+}

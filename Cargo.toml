@@ -3,5 +3,6 @@ members = [
     "src/rpc",
     "src/common",
     "src/tapir",
+    "src/yuxi",
     "src/Server",
 ]

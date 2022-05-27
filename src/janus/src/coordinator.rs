@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use common::{config::Config, SHARD_NUM};
+use common::{config::Config, ycsb::YcsbQuery, SHARD_NUM};
 use rpc::{
     common::{ReadStruct, WriteStruct},
     janus::{janus_client::JanusClient, JanusMsg, TxnOp},
@@ -14,19 +14,26 @@ pub struct JanusCoordinator {
     id: i32,
     txn_id: i64,
     txn: HashMap<i32, JanusMsg>,
+    workload: YcsbQuery,
     // send to servers
     servers: HashMap<i32, JanusClient<Channel>>,
     config: Config,
 }
 
 impl JanusCoordinator {
-    pub fn new(id: i32, read_optimize: bool, config: Config) -> Self {
+    pub fn new(id: i32, read_optimize: bool, config: Config, read_perc: i32) -> Self {
         Self {
             read_optimize,
             id,
             txn_id: 0,
             txn: HashMap::new(),
             servers: HashMap::new(),
+            workload: YcsbQuery::new(
+                config.zipf_theta,
+                config.table_size,
+                config.req_per_query as i32,
+                read_perc,
+            ),
             config,
         }
     }
@@ -66,7 +73,23 @@ impl JanusCoordinator {
         // txn success
         return true;
     }
-    pub async fn init_rpc(&mut self) {
+
+    pub async fn init_run(&mut self) {
+        // self.init_workload();
+        self.init_rpc().await;
+        println!("init rpc done");
+        // run transactions
+        for i in 0..100 {
+            self.workload.generate();
+            if self.run_transaction().await {
+                println!("success {}", i);
+            } else {
+                println!("fail {}", i);
+            }
+        }
+    }
+
+    async fn init_rpc(&mut self) {
         // hold the clients to all the server
         for (id, server_addr) in self.config.server_addrs.iter() {
             loop {

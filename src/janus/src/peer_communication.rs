@@ -1,26 +1,42 @@
 use std::collections::HashMap;
 
-use rpc::janus::{janus_server::Janus, JanusMsg, TxnOp};
+use rpc::janus::{
+    janus_server::{Janus, JanusServer},
+    JanusMsg, TxnOp,
+};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use tonic::{Request, Response, Status};
+use tonic::{transport::Server, Request, Response, Status};
 
 use crate::{shard_txn_to_executors, Msg};
 
 pub struct RpcServer {
+    addr_to_listen: String,
     senders: HashMap<i32, UnboundedSender<Msg>>,
     send_to_dep_graph: UnboundedSender<Msg>,
 }
 
 impl RpcServer {
     pub fn new(
+        addr_to_listen: String,
         senders: HashMap<i32, UnboundedSender<Msg>>,
         send_to_dep_graph: UnboundedSender<Msg>,
     ) -> Self {
         Self {
             senders,
             send_to_dep_graph,
+            addr_to_listen,
         }
     }
+}
+
+pub async fn run_rpc_server(rpc_server: RpcServer) {
+    let addr = rpc_server.addr_to_listen.parse().unwrap();
+
+    println!("rpc server listening on: {:?}", addr);
+
+    let server = JanusServer::new(rpc_server);
+
+    Server::builder().add_service(server).serve(addr).await;
 }
 
 #[tonic::async_trait]

@@ -1,21 +1,23 @@
+use std::env;
+
 use common::config::Config;
 use janus::coordinator::JanusCoordinator;
 
-#[derive(Default)]
-struct ConfigPerClient {
-    id: i32,
-    read_optimize: bool,
-}
+use crate::ConfigPerClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let f = std::fs::File::open("config.yml").unwrap();
-    // let server_config: ConfigPerServer = serde_yaml::from_reader(f).unwrap();
-    // let server = Server::new(0);
+    let args: Vec<String> = env::args().collect();
+    let id = args[1].parse::<i32>().unwrap();
     let config = Config::default();
     let client_config = ConfigPerClient::default();
-    let mut client = JanusCoordinator::new(client_config.id, client_config.read_optimize, config);
-    client.init_rpc().await;
+    let mut client = JanusCoordinator::new(
+        client_config.id,
+        client_config.read_optimize,
+        config,
+        client_config.read_perc,
+    );
+    client.init_run().await;
     // client.init_run().await;
 
     Ok(())

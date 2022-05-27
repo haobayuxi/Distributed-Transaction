@@ -5,14 +5,14 @@ use rpc::janus::JanusMsg;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub mod coordinator;
-mod dep_graph;
+pub mod dep_graph;
 pub mod executor;
-mod peer_communication;
+pub mod peer_communication;
 
 #[derive(Clone)]
 pub struct Msg {
-    txn: JanusMsg,
-    callback: UnboundedSender<JanusMsg>,
+    pub txn: JanusMsg,
+    pub callback: UnboundedSender<JanusMsg>,
 }
 
 #[derive(Default, Clone)]
