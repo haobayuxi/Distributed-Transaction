@@ -22,7 +22,7 @@ pub struct Executor {
 }
 
 impl Executor {
-    pub fn new() {}
+    pub fn new_ycsb() {}
 
     pub async fn run(&mut self) {
         loop {
@@ -44,7 +44,7 @@ impl Executor {
     }
 
     async fn handle_read_only(&mut self, msg: Msg) {
-        //
+        // just wait for the earlier txn to be executed
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -87,11 +87,20 @@ impl Executor {
                 }
             }
         }
+
+        // send back result
+        msg.callback.send(prepare_response).await;
     }
 
-    async fn handle_accept(&mut self, msg: Msg) {}
+    async fn handle_accept(&mut self, msg: Msg) {
+        // update final version
+    }
 
-    async fn handle_commit(&mut self, msg: Msg) {}
+    async fn handle_commit(&mut self, msg: Msg) {
+        // commit final version and execute
+    }
 
-    async fn handle_abort(&mut self, msg: Msg) {}
+    async fn handle_abort(&mut self, msg: Msg) {
+        // abort the transaction
+    }
 }

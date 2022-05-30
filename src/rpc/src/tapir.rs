@@ -12,8 +12,8 @@ pub struct TapirMsg {
     pub op: i32,
     #[prost(int32, tag = "6")]
     pub from: i32,
-    #[prost(int64, tag = "7")]
-    pub timestamp: i64,
+    #[prost(uint64, tag = "7")]
+    pub timestamp: u64,
     #[prost(enumeration = "super::common::TxnType", optional, tag = "8")]
     pub txn_type: ::core::option::Option<i32>,
 }

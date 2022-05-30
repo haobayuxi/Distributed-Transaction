@@ -3,14 +3,15 @@ use std::{collections::HashMap, sync::Arc};
 use common::{config::Config, convert_ip_addr, ycsb::init_data};
 use log::info;
 use serde::{Deserialize, Serialize};
-use tapir::{
-    executor::Executor,
-    peer_communication::{run_rpc_server, RpcServer},
-    Msg, TapirMeta,
-};
 use tokio::sync::{
     mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
     RwLock,
+};
+
+use crate::{
+    executor::Executor,
+    peer_communication::{run_rpc_server, RpcServer},
+    Msg, TapirMeta,
 };
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -187,7 +187,7 @@ impl TapirCoordinator {
         while result_num > 0 {
             result_num -= 1;
             let prepare_res = receiver.recv().await.unwrap();
-            if prepare_res.op == TxnOp::Abort.into() {
+            if prepare_res.op() == TxnOp::Abort.into() {
                 // abort all the txn
                 return false;
             }

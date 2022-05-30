@@ -92,7 +92,7 @@ impl YuxiCoordinator {
             let write_struct = WriteStruct {
                 key,
                 value,
-                timestamp: Some(0),
+                // timestamp: Some(0),
             };
             if self.txn.contains_key(&shard) {
                 let msg = self.txn.get_mut(&shard).unwrap();
