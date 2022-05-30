@@ -15,7 +15,7 @@ message TapirMsg {
     int32 executor_id = 4;
     common.TxnOP op = 5;
     int32 from = 6;
-    int64 timestamp = 7;
+    uint64 timestamp = 7;
     optional common.TxnType txn_type = 8;
 }
 

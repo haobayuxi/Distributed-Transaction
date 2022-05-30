@@ -4,8 +4,8 @@ pub struct ReadStruct {
     pub key: i64,
     #[prost(string, optional, tag = "2")]
     pub value: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(int64, optional, tag = "3")]
-    pub timestamp: ::core::option::Option<i64>,
+    #[prost(uint64, optional, tag = "3")]
+    pub timestamp: ::core::option::Option<u64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteStruct {
@@ -13,8 +13,6 @@ pub struct WriteStruct {
     pub key: i64,
     #[prost(string, tag = "2")]
     pub value: ::prost::alloc::string::String,
-    #[prost(int64, optional, tag = "3")]
-    pub timestamp: ::core::option::Option<i64>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

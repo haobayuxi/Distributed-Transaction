@@ -7,13 +7,12 @@ package common;
 message Read_Struct{
     int64 key = 1;
     optional string value = 2;
-    optional int64 timestamp = 3;
+    optional uint64 timestamp = 3;
 }
 
 message Write_Struct {
     int64 key = 1;
     string value = 2;
-    optional int64 timestamp = 3;
 }
 
 enum TxnType {
@@ -24,6 +23,7 @@ enum TxnType {
     TATP_UPDATE_LOCATION = 4;
     TATP_INSERT_CALL_FORWARDING = 5;
     YCSB = 6;
+
 }
 
 enum TxnOP {

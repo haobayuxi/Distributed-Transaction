@@ -69,7 +69,7 @@ impl YcsbQuery {
                 self.write_set.push(WriteStruct {
                     key: key as i64,
                     value: self.write_value.clone(),
-                    timestamp: None,
+                    // timestamp: None,
                 });
             }
         }

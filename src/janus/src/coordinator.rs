@@ -140,7 +140,7 @@ impl JanusCoordinator {
             let write_struct = WriteStruct {
                 key,
                 value,
-                timestamp: None,
+                // timestamp: None,
             };
             if self.txn.contains_key(&shard) {
                 let msg = self.txn.get_mut(&shard).unwrap();

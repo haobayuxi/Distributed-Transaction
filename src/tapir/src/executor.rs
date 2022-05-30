@@ -20,7 +20,6 @@ pub struct Executor {
     special_facility: Arc<HashMap<u64, AccessInfo>>,
     call_forwarding: Arc<HashMap<u64, CallForwarding>>,
     // write lock guard
-    // guards: HashMap<String, OwnedRwLockWriteGuard<(i64, String)>>,
     recv: UnboundedReceiver<Msg>,
 }
 

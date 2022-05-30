@@ -11,7 +11,7 @@ message YuxiMsg {
     repeated common.Write_Struct write_set = 3;
     common.TxnOP op = 4;
     int32 from = 5;
-    int64 timestamp = 6;
+    uint64 timestamp = 6;
     optional common.TxnType txn_type = 7;
 }
 
