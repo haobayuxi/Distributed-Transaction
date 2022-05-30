@@ -5,41 +5,18 @@ package tapir;
 import "common.proto";
 
 
-message Tapir_Read_Struct{
-    common.Read_Struct read = 1;
-    optional int64 timestamp = 2;
-}
+
 
 
 message TapirMsg {
     int64 txn_id = 1;
-    repeated Tapir_Read_Struct read_set = 2;
+    repeated common.Read_Struct read_set = 2;
     repeated common.Write_Struct write_set = 3;
     int32 executor_id = 4;
-    TxnOP op = 5;
+    common.TxnOP op = 5;
     int32 from = 6;
     int64 timestamp = 7;
-    optional TxnType txn_type = 8;
-}
-
-enum TxnType {
-    TATP_GET_SUBSCRIBER_DATA = 0;
-    TATP_GET_NEW_DESTINATION = 1;
-    TATP_GET_ACCESS_DATA = 2;
-    TATP_UPDATE_SUBSCRIBER_DATA = 3;
-    TATP_UPDATE_LOCATION = 4;
-    TATP_INSERT_CALL_FORWARDING = 5;
-    YCSB = 6;
-}
-
-
-enum TxnOP {
-    T_Abort = 0;
-    T_Read = 1;
-    T_Commit = 2;
-    T_Prepare = 3;
-    T_Prepare_Ok = 4;
-    T_Read_Res = 5;
+    optional common.TxnType txn_type = 8;
 }
 
 

@@ -7,11 +7,33 @@ package common;
 message Read_Struct{
     int64 key = 1;
     optional string value = 2;
+    optional int64 timestamp = 3;
 }
 
 message Write_Struct {
     int64 key = 1;
     string value = 2;
+    optional int64 timestamp = 3;
 }
 
+enum TxnType {
+    TATP_GET_SUBSCRIBER_DATA = 0;
+    TATP_GET_NEW_DESTINATION = 1;
+    TATP_GET_ACCESS_DATA = 2;
+    TATP_UPDATE_SUBSCRIBER_DATA = 3;
+    TATP_UPDATE_LOCATION = 4;
+    TATP_INSERT_CALL_FORWARDING = 5;
+    YCSB = 6;
+}
 
+enum TxnOP {
+    ReadOnly = 0;
+    Prepare = 1;
+    Accept = 2;
+    Commit = 3;
+    ReadOnlyRes = 4;
+    PrepareRes = 5;
+    AcceptRes = 6;
+    CommitRes = 7;
+    Abort = 8;
+}

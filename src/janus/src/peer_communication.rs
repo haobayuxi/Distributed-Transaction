@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
-use rpc::janus::{
-    janus_server::{Janus, JanusServer},
-    JanusMsg, TxnOp,
+use rpc::{
+    common::TxnOp,
+    janus::{
+        janus_server::{Janus, JanusServer},
+        JanusMsg,
+    },
 };
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tonic::{transport::Server, Request, Response, Status};
@@ -58,6 +61,7 @@ impl Janus for RpcServer {
             op: txn.op,
             from: 0,
             deps: Vec::new(),
+            txn_type: None,
         };
         match txn.op() {
             TxnOp::Commit => {

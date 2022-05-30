@@ -11,4 +11,16 @@ pub struct Executor {
 
 impl Executor {
     pub fn new() {}
+
+    pub fn run(&mut self) {
+        
+    }
+
+    async fn handle_prepare(&mut self, msg : Msg) {
+        
+    }
+
+    async fn handle_accept(&mut self, msg: Msg) {
+
+    }
 }

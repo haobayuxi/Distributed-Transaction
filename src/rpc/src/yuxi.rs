@@ -6,24 +6,14 @@ pub struct YuxiMsg {
     pub read_set: ::prost::alloc::vec::Vec<super::common::ReadStruct>,
     #[prost(message, repeated, tag = "3")]
     pub write_set: ::prost::alloc::vec::Vec<super::common::WriteStruct>,
-    #[prost(int32, repeated, tag = "4")]
-    pub executor_ids: ::prost::alloc::vec::Vec<i32>,
-    #[prost(enumeration = "YuxiOp", tag = "5")]
+    #[prost(enumeration = "super::common::TxnOp", tag = "4")]
     pub op: i32,
-    #[prost(int32, tag = "6")]
+    #[prost(int32, tag = "5")]
     pub from: i32,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum YuxiOp {
-    ReadOnly = 0,
-    Prepare = 1,
-    Accept = 2,
-    Commit = 3,
-    ReadOnlyRes = 4,
-    PrepareRes = 5,
-    AcceptRes = 6,
-    CommitRes = 7,
+    #[prost(int64, tag = "6")]
+    pub timestamp: i64,
+    #[prost(enumeration = "super::common::TxnType", optional, tag = "7")]
+    pub txn_type: ::core::option::Option<i32>,
 }
 #[doc = r" Generated client implementations."]
 pub mod yuxi_client {

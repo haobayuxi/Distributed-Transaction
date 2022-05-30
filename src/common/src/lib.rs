@@ -2,6 +2,7 @@ use chrono::Local;
 use serde::Deserialize;
 
 pub mod config;
+pub mod mem;
 pub mod tatp;
 pub mod ycsb;
 

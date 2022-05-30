@@ -1,9 +1,7 @@
 use std::env;
 
-use common::config::Config;
+use common::{config::Config, ConfigPerClient};
 use janus::coordinator::JanusCoordinator;
-
-use crate::ConfigPerClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

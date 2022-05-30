@@ -1,8 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use rpc::{
-    common::ReadStruct,
-    janus::{JanusMsg, TxnOp},
+    common::{ReadStruct, TxnOp},
+    janus::JanusMsg,
 };
 use tokio::sync::{mpsc::UnboundedReceiver, RwLock};
 
@@ -47,6 +47,7 @@ impl Executor {
                     TxnOp::PrepareRes => todo!(),
                     TxnOp::AcceptRes => todo!(),
                     TxnOp::CommitRes => todo!(),
+                    TxnOp::Abort => todo!(),
                 },
                 None => continue,
             }
@@ -65,12 +66,14 @@ impl Executor {
             op: TxnOp::CommitRes.into(),
             from: self.server_id,
             deps: Vec::new(),
+            txn_type: None,
         };
 
         for read in txn.read_set {
             let read_result = ReadStruct {
                 key: read.key.clone(),
                 value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
+                timestamp: None,
             };
             result.read_set.push(read_result);
         }
@@ -91,12 +94,14 @@ impl Executor {
             op: TxnOp::CommitRes.into(),
             from: self.server_id,
             deps: Vec::new(),
+            txn_type: None,
         };
 
         for read in txn.read_set {
             let read_result = ReadStruct {
                 key: read.key.clone(),
                 value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
+                timestamp: None,
             };
             result.read_set.push(read_result);
         }
@@ -118,6 +123,7 @@ impl Executor {
             op: TxnOp::PrepareRes.into(),
             from: self.server_id,
             deps: Vec::new(),
+            txn_type: None,
         };
         // get the dep
         for read in msg.txn.read_set.iter() {
@@ -149,6 +155,7 @@ impl Executor {
             op: TxnOp::AcceptRes.into(),
             from: self.server_id,
             deps: Vec::new(),
+            txn_type: None,
         };
         // self.txns.insert(txnid, msg.txn);
         // reply accept ok to coordinator

@@ -2,8 +2,8 @@ use std::{collections::HashMap, time::Duration};
 
 use common::{config::Config, get_local_time, ycsb::YcsbQuery, SHARD_NUM};
 use rpc::{
-    common::{ReadStruct, WriteStruct},
-    tapir::{tapir_client::TapirClient, TapirMsg, TapirReadStruct, TxnOp, TxnType},
+    common::{ReadStruct, TxnOp, TxnType, WriteStruct},
+    tapir::{tapir_client::TapirClient, TapirMsg},
 };
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
@@ -64,11 +64,9 @@ impl TapirCoordinator {
         // group read write into multi shards, try to read from one of the server
         for read in read_set {
             let shard = (read as i32) % SHARD_NUM;
-            let read_struct = TapirReadStruct {
-                read: Some(ReadStruct {
-                    key: read,
-                    value: None,
-                }),
+            let read_struct = ReadStruct {
+                key: read,
+                value: None,
                 timestamp: None,
             };
             if self.txn.contains_key(&shard) {
@@ -81,7 +79,7 @@ impl TapirCoordinator {
                     read_set: vec![read_struct],
                     write_set: Vec::new(),
                     executor_id: 0,
-                    op: TxnOp::TPrepare.into(),
+                    op: TxnOp::Prepare.into(),
                     from: self.id,
                     timestamp: 0,
                     txn_type: Some(TxnType::Ycsb.into()),
@@ -92,7 +90,11 @@ impl TapirCoordinator {
 
         for (key, value) in write_set {
             let shard = (key as i32) % SHARD_NUM;
-            let write_struct = WriteStruct { key, value };
+            let write_struct = WriteStruct {
+                key,
+                value,
+                timestamp: None,
+            };
             if self.txn.contains_key(&shard) {
                 let msg = self.txn.get_mut(&shard).unwrap();
 
@@ -103,7 +105,7 @@ impl TapirCoordinator {
                     read_set: Vec::new(),
                     write_set: vec![write_struct],
                     executor_id: 0,
-                    op: TxnOp::TPrepare.into(),
+                    op: TxnOp::Prepare.into(),
                     from: self.id,
                     timestamp: 0,
                     txn_type: Some(TxnType::Ycsb.into()),
@@ -136,7 +138,7 @@ impl TapirCoordinator {
                     read_set: per_server.read_set.clone(),
                     write_set: Vec::new(),
                     executor_id: 0,
-                    op: TxnOp::TRead.into(),
+                    op: TxnOp::ReadOnly.into(),
                     from: self.id,
                     timestamp,
                     txn_type: Some(TxnType::Ycsb.into()),
@@ -170,7 +172,7 @@ impl TapirCoordinator {
                     read_set: per_server.read_set.clone(),
                     write_set: per_server.write_set.clone(),
                     executor_id: 0,
-                    op: TxnOp::TPrepare.into(),
+                    op: TxnOp::Prepare.into(),
                     from: self.id,
                     timestamp,
                     txn_type: Some(TxnType::Ycsb.into()),
@@ -185,7 +187,7 @@ impl TapirCoordinator {
         while result_num > 0 {
             result_num -= 1;
             let prepare_res = receiver.recv().await.unwrap();
-            if prepare_res.op == TxnOp::TAbort.into() {
+            if prepare_res.op == TxnOp::Abort.into() {
                 // abort all the txn
                 return false;
             }

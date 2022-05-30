@@ -2,8 +2,8 @@ use std::{collections::HashMap, time::Duration};
 
 use common::{config::Config, ycsb::YcsbQuery, SHARD_NUM};
 use rpc::{
-    common::{ReadStruct, WriteStruct},
-    janus::{janus_client::JanusClient, JanusMsg, TxnOp},
+    common::{ReadStruct, TxnOp, TxnType, WriteStruct},
+    janus::{janus_client::JanusClient, JanusMsg},
 };
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
@@ -55,6 +55,7 @@ impl JanusCoordinator {
                 op: TxnOp::Prepare.into(),
                 from: self.id,
                 deps: Vec::new(),
+                txn_type: Some(TxnType::Ycsb.into()),
             };
             tokio::spawn(async move {
                 let result = client.janus_txn(read_request).await.unwrap().into_inner();
@@ -113,6 +114,7 @@ impl JanusCoordinator {
             let read_struct = ReadStruct {
                 key: read,
                 value: None,
+                timestamp: None,
             };
             if self.txn.contains_key(&shard) {
                 let msg = self.txn.get_mut(&shard).unwrap();
@@ -127,6 +129,7 @@ impl JanusCoordinator {
                     from: self.id,
                     executor_ids: Vec::new(),
                     deps: Vec::new(),
+                    txn_type: None,
                 };
                 self.txn.insert(shard, msg);
             }
@@ -134,7 +137,11 @@ impl JanusCoordinator {
 
         for (key, value) in write_set {
             let shard = (key as i32) % SHARD_NUM;
-            let write_struct = WriteStruct { key, value };
+            let write_struct = WriteStruct {
+                key,
+                value,
+                timestamp: None,
+            };
             if self.txn.contains_key(&shard) {
                 let msg = self.txn.get_mut(&shard).unwrap();
 
@@ -148,6 +155,7 @@ impl JanusCoordinator {
                     op: TxnOp::Prepare.into(),
                     from: self.id,
                     deps: Vec::new(),
+                    txn_type: None,
                 };
                 self.txn.insert(shard, msg);
             }

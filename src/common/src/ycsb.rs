@@ -63,12 +63,13 @@ impl YcsbQuery {
                 self.read_set.push(ReadStruct {
                     key: key as i64,
                     value: None,
+                    timestamp: None,
                 });
             } else {
                 self.write_set.push(WriteStruct {
                     key: key as i64,
                     value: self.write_value.clone(),
-                    // value: self.write_value.clone(),
+                    timestamp: None,
                 });
             }
         }

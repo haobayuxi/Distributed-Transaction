@@ -8,24 +8,14 @@ pub struct JanusMsg {
     pub write_set: ::prost::alloc::vec::Vec<super::common::WriteStruct>,
     #[prost(int32, repeated, tag = "4")]
     pub executor_ids: ::prost::alloc::vec::Vec<i32>,
-    #[prost(enumeration = "TxnOp", tag = "5")]
+    #[prost(enumeration = "super::common::TxnOp", tag = "5")]
     pub op: i32,
     #[prost(int32, tag = "6")]
     pub from: i32,
     #[prost(int64, repeated, tag = "7")]
     pub deps: ::prost::alloc::vec::Vec<i64>,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum TxnOp {
-    ReadOnly = 0,
-    Prepare = 1,
-    Accept = 2,
-    Commit = 3,
-    ReadOnlyRes = 4,
-    PrepareRes = 5,
-    AcceptRes = 6,
-    CommitRes = 7,
+    #[prost(enumeration = "super::common::TxnType", optional, tag = "8")]
+    pub txn_type: ::core::option::Option<i32>,
 }
 #[doc = r" Generated client implementations."]
 pub mod janus_client {

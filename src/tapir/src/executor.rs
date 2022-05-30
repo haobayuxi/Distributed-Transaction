@@ -2,8 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use common::tatp::{AccessInfo, CallForwarding, Subscriber};
 use rpc::{
-    common::ReadStruct,
-    tapir::{TapirMsg, TapirReadStruct, TxnOp},
+    common::{ReadStruct, TxnOp},
+    tapir::TapirMsg,
 };
 use tokio::sync::{mpsc::UnboundedReceiver, OwnedRwLockWriteGuard, RwLock};
 
@@ -48,12 +48,15 @@ impl Executor {
         loop {
             match self.recv.recv().await {
                 Some(msg) => match msg.tmsg.op() {
-                    TxnOp::TAbort => self.handle_abort(msg).await,
-                    TxnOp::TRead => self.handle_read(msg).await,
-                    TxnOp::TCommit => self.handle_commit(msg).await,
-                    TxnOp::TPrepare => self.handle_prepare(msg).await,
-                    TxnOp::TPrepareOk => {}
-                    TxnOp::TReadRes => todo!(),
+                    TxnOp::Abort => self.handle_abort(msg).await,
+                    TxnOp::ReadOnly => self.handle_read(msg).await,
+                    TxnOp::Commit => self.handle_commit(msg).await,
+                    TxnOp::Prepare => self.handle_prepare(msg).await,
+                    TxnOp::PrepareRes => {}
+                    TxnOp::ReadOnlyRes => todo!(),
+                    TxnOp::Accept => todo!(),
+                    TxnOp::AcceptRes => todo!(),
+                    TxnOp::CommitRes => todo!(),
                 },
                 None => todo!(),
             }
@@ -67,13 +70,11 @@ impl Executor {
         tokio::spawn(async move {
             let mut result_read_set = Vec::new();
             for read in msg.tmsg.read_set.iter() {
-                let key = read.read.as_ref().unwrap().key;
+                let key = read.key;
                 let read_guard = mem.get(&key).unwrap().read().await;
-                let result = TapirReadStruct {
-                    read: Some(ReadStruct {
-                        key,
-                        value: Some(read_guard.1.clone()),
-                    }),
+                let result = ReadStruct {
+                    key,
+                    value: Some(read_guard.1.clone()),
                     timestamp: Some(read_guard.0.version),
                 };
                 result_read_set.push(result);
@@ -84,7 +85,7 @@ impl Executor {
                 read_set: result_read_set,
                 write_set: Vec::new(),
                 executor_id: 0,
-                op: TxnOp::TReadRes.into(),
+                op: TxnOp::ReadOnlyRes.into(),
                 from: server_id,
                 timestamp: 0,
                 txn_type: None,
@@ -114,7 +115,7 @@ impl Executor {
             //         return;
             //     }
             // }
-            let key = read.read.as_ref().unwrap().key;
+            let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write().await;
             if read.timestamp.unwrap() < guard.0.version
                 || (guard.0.prepared_write.len() > 0
@@ -126,7 +127,7 @@ impl Executor {
                     read_set: Vec::new(),
                     write_set: Vec::new(),
                     executor_id: self.id,
-                    op: TxnOp::TAbort.into(),
+                    op: TxnOp::Abort.into(),
                     from: self.server_id,
                     timestamp: 0,
                     txn_type: None,
@@ -171,7 +172,7 @@ impl Executor {
                     read_set: Vec::new(),
                     write_set: Vec::new(),
                     executor_id: self.id,
-                    op: TxnOp::TAbort.into(),
+                    op: TxnOp::Abort.into(),
                     from: self.server_id,
                     timestamp: 0,
                     txn_type: None,
@@ -188,7 +189,7 @@ impl Executor {
             read_set: Vec::new(),
             write_set: Vec::new(),
             executor_id: self.id,
-            op: TxnOp::TPrepareOk.into(),
+            op: TxnOp::PrepareRes.into(),
             from: self.server_id,
             timestamp: 0,
             txn_type: None,
@@ -200,7 +201,7 @@ impl Executor {
         // update
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {
-            let key = read.read.as_ref().unwrap().key;
+            let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write().await;
             guard.0.prepared_read.remove(&msg.tmsg.timestamp);
         }
@@ -219,7 +220,7 @@ impl Executor {
     async fn handle_abort(&mut self, msg: Msg) {
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {
-            let key = read.read.as_ref().unwrap().key;
+            let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write().await;
             guard.0.prepared_read.remove(&msg.tmsg.timestamp);
         }

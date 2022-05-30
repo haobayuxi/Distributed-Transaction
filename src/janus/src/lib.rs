@@ -7,6 +7,7 @@ use tokio::sync::mpsc::UnboundedSender;
 pub mod coordinator;
 pub mod dep_graph;
 pub mod executor;
+pub mod peer;
 pub mod peer_communication;
 
 #[derive(Clone)]
@@ -36,6 +37,7 @@ pub fn shard_txn_to_executors(txn: JanusMsg) -> HashMap<i32, JanusMsg> {
                 op: txn.op,
                 from: txn.from,
                 deps: txn.deps.clone(),
+                txn_type: None,
             };
             result.insert(executor_id, msg);
         }
@@ -55,6 +57,7 @@ pub fn shard_txn_to_executors(txn: JanusMsg) -> HashMap<i32, JanusMsg> {
                 op: txn.op,
                 from: txn.from,
                 deps: txn.deps.clone(),
+                txn_type: None,
             };
             result.insert(executor_id, msg);
         }

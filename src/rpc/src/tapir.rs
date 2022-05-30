@@ -1,49 +1,21 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TapirReadStruct {
-    #[prost(message, optional, tag = "1")]
-    pub read: ::core::option::Option<super::common::ReadStruct>,
-    #[prost(int64, optional, tag = "2")]
-    pub timestamp: ::core::option::Option<i64>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TapirMsg {
     #[prost(int64, tag = "1")]
     pub txn_id: i64,
     #[prost(message, repeated, tag = "2")]
-    pub read_set: ::prost::alloc::vec::Vec<TapirReadStruct>,
+    pub read_set: ::prost::alloc::vec::Vec<super::common::ReadStruct>,
     #[prost(message, repeated, tag = "3")]
     pub write_set: ::prost::alloc::vec::Vec<super::common::WriteStruct>,
     #[prost(int32, tag = "4")]
     pub executor_id: i32,
-    #[prost(enumeration = "TxnOp", tag = "5")]
+    #[prost(enumeration = "super::common::TxnOp", tag = "5")]
     pub op: i32,
     #[prost(int32, tag = "6")]
     pub from: i32,
     #[prost(int64, tag = "7")]
     pub timestamp: i64,
-    #[prost(enumeration = "TxnType", optional, tag = "8")]
+    #[prost(enumeration = "super::common::TxnType", optional, tag = "8")]
     pub txn_type: ::core::option::Option<i32>,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum TxnType {
-    TatpGetSubscriberData = 0,
-    TatpGetNewDestination = 1,
-    TatpGetAccessData = 2,
-    TatpUpdateSubscriberData = 3,
-    TatpUpdateLocation = 4,
-    TatpInsertCallForwarding = 5,
-    Ycsb = 6,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum TxnOp {
-    TAbort = 0,
-    TRead = 1,
-    TCommit = 2,
-    TPrepare = 3,
-    TPrepareOk = 4,
-    TReadRes = 5,
 }
 #[doc = r" Generated client implementations."]
 pub mod tapir_client {
