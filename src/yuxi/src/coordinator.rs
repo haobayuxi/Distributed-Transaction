@@ -12,7 +12,7 @@ static RETRY: i32 = 20;
 
 pub struct YuxiCoordinator {
     config: Config,
-    read_optimize: bool,
+    read_only: bool,
     id: i32,
     txn_id: i64,
     // sharded txn
@@ -23,9 +23,9 @@ pub struct YuxiCoordinator {
 }
 
 impl YuxiCoordinator {
-    pub fn new(id: i32, read_optimize: bool, config: Config, read_perc: i32) -> Self {
+    pub fn new(id: i32, config: Config, read_perc: i32) -> Self {
         Self {
-            read_optimize,
+            read_only: false,
             id,
             txn_id: 0,
             txn: HashMap::new(),
@@ -118,46 +118,7 @@ impl YuxiCoordinator {
         let timestamp = get_local_time(0);
         let mut result_num: i32 = 0;
         let (sender, mut receiver) = unbounded_channel::<YuxiMsg>();
-        // get the read set from server
-        let read_server_index = self.id % 3;
-        for (shard, per_server) in self.txn.iter() {
-            if per_server.read_set.len() > 0 {
-                result_num += 1;
-                let server_id = self
-                    .config
-                    .shards
-                    .get(shard)
-                    .unwrap()
-                    .get(read_server_index as usize)
-                    .unwrap();
-                let mut client = self.servers.get(server_id).unwrap().clone();
-                let result_sender = sender.clone();
-                let read_request = YuxiMsg {
-                    txn_id: self.txn_id,
-                    read_set: per_server.read_set.clone(),
-                    write_set: Vec::new(),
-                    op: TxnOp::ReadOnly.into(),
-                    from: self.id,
-                    timestamp,
-                    txn_type: Some(TxnType::Ycsb.into()),
-                };
-                tokio::spawn(async move {
-                    let result = client.yuxi_txn(read_request).await.unwrap().into_inner();
-                    result_sender.send(result);
-                });
-            }
-        }
-        // while result_num
-        while result_num > 0 {
-            result_num -= 1;
-            let read = receiver.recv().await.unwrap();
-            match self.txn.get_mut(&read.from) {
-                Some(msg) => {
-                    msg.read_set = read.read_set;
-                }
-                None => todo!(),
-            }
-        }
+
         // prepare, prepare will send to all the server in the shard
         result_num = (self.txn.len() * 3) as i32;
         for (shard, per_server) in self.txn.iter() {
@@ -184,14 +145,22 @@ impl YuxiCoordinator {
         while result_num > 0 {
             result_num -= 1;
             let prepare_res = receiver.recv().await.unwrap();
-            if prepare_res.op == TxnOp::Abort.into() {
+            if prepare_res.op() == TxnOp::Abort {
                 // abort all the txn
                 return false;
             }
         }
+        let commit = false;
+        if !commit {
+            // accept
+        }
+
+        // broadcast commit
+
         // txn success
         return true;
     }
+
     pub async fn init_rpc(&mut self) {
         // hold the clients to all the server
         for (id, server_addr) in self.config.server_addrs.iter() {

@@ -1,5 +1,6 @@
 use chrono::Local;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use tatp::Subscriber;
 
 pub mod config;
 pub mod mem;
@@ -15,6 +16,21 @@ pub struct ConfigPerClient {
     pub id: i32,
     pub read_optimize: bool,
     pub read_perc: i32,
+}
+
+#[derive(Clone)]
+pub enum Data {
+    Ycsb(String),
+    Subscriber(Subscriber),
+}
+
+impl Data {
+    pub fn read(&self) -> String {
+        match self {
+            Data::Ycsb(data) => data.clone(),
+            Data::Subscriber(data) => serde_json::to_string(data).unwrap(),
+        }
+    }
 }
 
 // remove or add http:// prefix

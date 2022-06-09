@@ -5,13 +5,13 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
     mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-    RwLock,
+    Mutex, RwLock,
 };
 
 use crate::{
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
-    Msg,
+    Msg, VersionData, WaitList, TS,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -19,11 +19,12 @@ struct ConfigPerServer {
     id: i32,
 }
 
+// (maxts, wait list, waiting ts, versiondata)
+pub static mut IN_MEMORY_DATA: Vec<(RwLock<TS>, RwLock<WaitList>, Vec<VersionData>)> = Vec::new();
+
 pub struct Peer {
     server_id: i32,
 
-    // memory
-    mem: Arc<HashMap<i64, RwLock<(u64, String)>>>,
     // dispatcher
     executor_senders: HashMap<i32, UnboundedSender<Msg>>,
     executor_num: i32,
@@ -34,19 +35,14 @@ impl Peer {
     pub fn new(server_id: i32, config: Config) -> Self {
         // init data
 
-        let mut mem = HashMap::new();
         // self.mem = Arc::new(mem);
         let data = init_data(
             config.clone(),
             config.server_ids.get(&server_id).unwrap().clone(),
         );
-        for (key, value) in data {
-            mem.insert(key, RwLock::new((0, value)));
-        }
 
         Self {
             server_id,
-            mem: Arc::new(mem),
             executor_senders: HashMap::new(),
             executor_num: 0,
             config,
@@ -77,15 +73,15 @@ impl Peer {
     }
 
     fn init_executors(&mut self, config: Config) {
-        self.executor_num = config.executor_num;
-        for i in 0..config.executor_num {
-            let (sender, receiver) = unbounded_channel::<Msg>();
-            self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new_ycsb(i, self.server_id, self.mem.clone(), receiver);
-            tokio::spawn(async move {
-                exec.run().await;
-            });
-        }
+        // self.executor_num = config.executor_num;
+        // for i in 0..config.executor_num {
+        //     let (sender, receiver) = unbounded_channel::<Msg>();
+        //     self.executor_senders.insert(i, sender);
+        //     let mut exec = Executor::new_ycsb(i, self.server_id, self.mem.clone(), receiver);
+        //     tokio::spawn(async move {
+        //         exec.run().await;
+        //     });
+        // }
     }
 
     async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {
@@ -99,6 +95,13 @@ impl Peer {
                 }
                 None => continue,
             }
+        }
+    }
+
+    fn populate_data(&mut self) {
+        //
+        unsafe {
+            //
         }
     }
 }

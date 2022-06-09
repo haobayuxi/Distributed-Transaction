@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ycsb::{f64_rand, u64_rand};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Subscriber {
     pub s_id: u64,
     pub sub_nbr: String,
@@ -44,6 +44,7 @@ pub struct Subscriber {
     pub vlr_location: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AccessInfo {
     pub s_id: u64,
     pub ai_type: u8,
@@ -53,6 +54,7 @@ pub struct AccessInfo {
     data4: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct SpecialFacility {
     pub s_id: u64,
     pub sf_type: u8,
@@ -62,6 +64,7 @@ pub struct SpecialFacility {
     data_b: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CallForwarding {
     pub s_id: u64,
     pub sf_type: u8,
