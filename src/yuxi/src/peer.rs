@@ -20,7 +20,8 @@ struct ConfigPerServer {
 }
 
 // (maxts, wait list, waiting ts, versiondata)
-pub static mut IN_MEMORY_DATA: Vec<(RwLock<TS>, RwLock<WaitList>, Vec<VersionData>)> = Vec::new();
+pub static mut IN_MEMORY_DATA: Vec<(RwLock<TS>, RwLock<WaitList>, RwLock<TS>, Vec<VersionData>)> =
+    Vec::new();
 
 pub struct Peer {
     server_id: i32,
@@ -59,7 +60,9 @@ impl Peer {
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    fn init_data(&mut self) {}
+    fn init_data(&mut self) {
+        // init
+    }
 
     async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
         // start server for client to connect

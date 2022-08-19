@@ -1,6 +1,6 @@
 // use rpc::{
 //     common::{ReadStruct, WriteStruct},
-//     tapir::TxnType,
+//     Meerkat::TxnType,
 // };
 
 // pub struct TatpMem {}

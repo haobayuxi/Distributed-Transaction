@@ -3,26 +3,26 @@ use std::{collections::HashMap, time::Duration};
 use common::{config::Config, get_local_time, ycsb::YcsbQuery, SHARD_NUM};
 use rpc::{
     common::{ReadStruct, TxnOp, TxnType, WriteStruct},
-    tapir::{tapir_client::TapirClient, TapirMsg},
+    meerkat::{meerkat_client::MeerkatClient, MeerkatMsg},
 };
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::transport::Channel;
 
 static RETRY: i32 = 20;
 
-pub struct TapirCoordinator {
+pub struct MeerkatCoordinator {
     config: Config,
     read_optimize: bool,
     id: i32,
     txn_id: i64,
     // sharded txn
-    txn: HashMap<i32, TapirMsg>,
+    txn: HashMap<i32, MeerkatMsg>,
     // send to servers
-    servers: HashMap<i32, TapirClient<Channel>>,
+    servers: HashMap<i32, MeerkatClient<Channel>>,
     workload: YcsbQuery,
 }
 
-impl TapirCoordinator {
+impl MeerkatCoordinator {
     pub fn new(id: i32, read_optimize: bool, config: Config, read_perc: i32) -> Self {
         Self {
             read_optimize,
@@ -74,7 +74,7 @@ impl TapirCoordinator {
 
                 msg.read_set.push(read_struct);
             } else {
-                let msg = TapirMsg {
+                let msg = MeerkatMsg {
                     txn_id: self.txn_id,
                     read_set: vec![read_struct],
                     write_set: Vec::new(),
@@ -100,7 +100,7 @@ impl TapirCoordinator {
 
                 msg.write_set.push(write_struct);
             } else {
-                let msg = TapirMsg {
+                let msg = MeerkatMsg {
                     txn_id: self.txn_id,
                     read_set: Vec::new(),
                     write_set: vec![write_struct],
@@ -118,7 +118,7 @@ impl TapirCoordinator {
     async fn run_transaction(&mut self) -> bool {
         let timestamp = get_local_time(self.id);
         let mut result_num: i32 = 0;
-        let (sender, mut receiver) = unbounded_channel::<TapirMsg>();
+        let (sender, mut receiver) = unbounded_channel::<MeerkatMsg>();
         // get the read set from server
         let read_server_index = self.id % 3;
         for (shard, per_server) in self.txn.iter() {
@@ -133,7 +133,7 @@ impl TapirCoordinator {
                     .unwrap();
                 let mut client = self.servers.get(server_id).unwrap().clone();
                 let result_sender = sender.clone();
-                let read_request = TapirMsg {
+                let read_request = MeerkatMsg {
                     txn_id: self.txn_id,
                     read_set: per_server.read_set.clone(),
                     write_set: Vec::new(),
@@ -167,7 +167,7 @@ impl TapirCoordinator {
             for server_id in server_ids.iter() {
                 let mut client = self.servers.get(server_id).unwrap().clone();
                 let result_sender = sender.clone();
-                let read_request = TapirMsg {
+                let read_request = MeerkatMsg {
                     txn_id: self.txn_id,
                     read_set: per_server.read_set.clone(),
                     write_set: per_server.write_set.clone(),
@@ -200,7 +200,7 @@ impl TapirCoordinator {
         for (id, server_addr) in self.config.server_addrs.iter() {
             println!("connect to {}-{}", id, server_addr);
             loop {
-                match TapirClient::connect(server_addr.clone()).await {
+                match MeerkatClient::connect(server_addr.clone()).await {
                     Ok(client) => {
                         self.servers.insert(*id, client);
                         break;
@@ -220,7 +220,7 @@ impl TapirCoordinator {
     //     let s_id = query.s_id;
     //     let timestamp = get_local_time(self.id);
     //     let mut result_num: i32 = 0;
-    //     let (sender, mut receiver) = unbounded_channel::<TapirMsg>();
+    //     let (sender, mut receiver) = unbounded_channel::<MeerkatMsg>();
     //     // get the read set from server
     //     let read_server_index = self.id % 3;
     //     let shard = self.shard_the_transaction(read_set, write_set)
@@ -236,7 +236,7 @@ impl TapirCoordinator {
     //                 .unwrap();
     //             let mut client = self.servers.get(server_id).unwrap().clone();
     //             let result_sender = sender.clone();
-    //             let read_request = TapirMsg {
+    //             let read_request = MeerkatMsg {
     //                 txn_id: self.txn_id,
     //                 read_set: per_server.read_set.clone(),
     //                 write_set: Vec::new(),
@@ -269,7 +269,7 @@ impl TapirCoordinator {
     //         for server_id in server_ids.iter() {
     //             let mut client = self.servers.get(server_id).unwrap().clone();
     //             let result_sender = sender.clone();
-    //             let read_request = TapirMsg {
+    //             let read_request = MeerkatMsg {
     //                 txn_id: self.txn_id,
     //                 read_set: per_server.read_set.clone(),
     //                 write_set: per_server.write_set.clone(),

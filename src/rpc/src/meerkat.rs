@@ -1,5 +1,5 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TapirMsg {
+pub struct MeerkatMsg {
     #[prost(int64, tag = "1")]
     pub txn_id: i64,
     #[prost(message, repeated, tag = "2")]
@@ -18,13 +18,13 @@ pub struct TapirMsg {
     pub txn_type: ::core::option::Option<i32>,
 }
 #[doc = r" Generated client implementations."]
-pub mod tapir_client {
+pub mod meerkat_client {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
-    pub struct TapirClient<T> {
+    pub struct MeerkatClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl TapirClient<tonic::transport::Channel> {
+    impl MeerkatClient<tonic::transport::Channel> {
         #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -35,7 +35,7 @@ pub mod tapir_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> TapirClient<T>
+    impl<T> MeerkatClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::ResponseBody: Body + HttpBody + Send + 'static,
@@ -52,8 +52,8 @@ pub mod tapir_client {
         }
         pub async fn txn_msg(
             &mut self,
-            request: impl tonic::IntoRequest<super::TapirMsg>,
-        ) -> Result<tonic::Response<super::TapirMsg>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::MeerkatMsg>,
+        ) -> Result<tonic::Response<super::MeerkatMsg>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -61,41 +61,41 @@ pub mod tapir_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/tapir.Tapir/TxnMsg");
+            let path = http::uri::PathAndQuery::from_static("/meerkat.Meerkat/TxnMsg");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
-    impl<T: Clone> Clone for TapirClient<T> {
+    impl<T: Clone> Clone for MeerkatClient<T> {
         fn clone(&self) -> Self {
             Self {
                 inner: self.inner.clone(),
             }
         }
     }
-    impl<T> std::fmt::Debug for TapirClient<T> {
+    impl<T> std::fmt::Debug for MeerkatClient<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "TapirClient {{ ... }}")
+            write!(f, "MeerkatClient {{ ... }}")
         }
     }
 }
 #[doc = r" Generated server implementations."]
-pub mod tapir_server {
+pub mod meerkat_server {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
-    #[doc = "Generated trait containing gRPC methods that should be implemented for use with TapirServer."]
+    #[doc = "Generated trait containing gRPC methods that should be implemented for use with MeerkatServer."]
     #[async_trait]
-    pub trait Tapir: Send + Sync + 'static {
+    pub trait Meerkat: Send + Sync + 'static {
         async fn txn_msg(
             &self,
-            request: tonic::Request<super::TapirMsg>,
-        ) -> Result<tonic::Response<super::TapirMsg>, tonic::Status>;
+            request: tonic::Request<super::MeerkatMsg>,
+        ) -> Result<tonic::Response<super::MeerkatMsg>, tonic::Status>;
     }
     #[derive(Debug)]
-    pub struct TapirServer<T: Tapir> {
+    pub struct MeerkatServer<T: Meerkat> {
         inner: _Inner<T>,
     }
     struct _Inner<T>(Arc<T>, Option<tonic::Interceptor>);
-    impl<T: Tapir> TapirServer<T> {
+    impl<T: Meerkat> MeerkatServer<T> {
         pub fn new(inner: T) -> Self {
             let inner = Arc::new(inner);
             let inner = _Inner(inner, None);
@@ -107,9 +107,9 @@ pub mod tapir_server {
             Self { inner }
         }
     }
-    impl<T, B> Service<http::Request<B>> for TapirServer<T>
+    impl<T, B> Service<http::Request<B>> for MeerkatServer<T>
     where
-        T: Tapir,
+        T: Meerkat,
         B: HttpBody + Send + Sync + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -122,15 +122,15 @@ pub mod tapir_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/tapir.Tapir/TxnMsg" => {
+                "/meerkat.Meerkat/TxnMsg" => {
                     #[allow(non_camel_case_types)]
-                    struct TxnMsgSvc<T: Tapir>(pub Arc<T>);
-                    impl<T: Tapir> tonic::server::UnaryService<super::TapirMsg> for TxnMsgSvc<T> {
-                        type Response = super::TapirMsg;
+                    struct TxnMsgSvc<T: Meerkat>(pub Arc<T>);
+                    impl<T: Meerkat> tonic::server::UnaryService<super::MeerkatMsg> for TxnMsgSvc<T> {
+                        type Response = super::MeerkatMsg;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::TapirMsg>,
+                            request: tonic::Request<super::MeerkatMsg>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).txn_msg(request).await };
@@ -164,13 +164,13 @@ pub mod tapir_server {
             }
         }
     }
-    impl<T: Tapir> Clone for TapirServer<T> {
+    impl<T: Meerkat> Clone for MeerkatServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self { inner }
         }
     }
-    impl<T: Tapir> Clone for _Inner<T> {
+    impl<T: Meerkat> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(self.0.clone(), self.1.clone())
         }
@@ -180,7 +180,7 @@ pub mod tapir_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: Tapir> tonic::transport::NamedService for TapirServer<T> {
-        const NAME: &'static str = "tapir.Tapir";
+    impl<T: Meerkat> tonic::transport::NamedService for MeerkatServer<T> {
+        const NAME: &'static str = "meerkat.Meerkat";
     }
 }

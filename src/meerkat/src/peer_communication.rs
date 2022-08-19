@@ -1,7 +1,7 @@
 use log::info;
-use rpc::tapir::tapir_server::Tapir;
-use rpc::tapir::tapir_server::TapirServer;
-use rpc::tapir::TapirMsg;
+use rpc::meerkat::meerkat_server::Meerkat;
+use rpc::meerkat::meerkat_server::MeerkatServer;
+use rpc::meerkat::MeerkatMsg;
 use tokio::sync::mpsc::channel;
 use tokio::sync::mpsc::UnboundedSender;
 use tonic::transport::Server;
@@ -29,15 +29,15 @@ pub async fn run_rpc_server(rpc_server: RpcServer) {
 
     println!("rpc server listening on: {:?}", addr);
 
-    let server = TapirServer::new(rpc_server);
+    let server = MeerkatServer::new(rpc_server);
 
     Server::builder().add_service(server).serve(addr).await;
 }
 
 #[tonic::async_trait]
-impl Tapir for RpcServer {
-    async fn txn_msg(&self, request: Request<TapirMsg>) -> Result<Response<TapirMsg>, Status> {
-        let (sender, mut receiver) = channel::<TapirMsg>(1);
+impl Meerkat for RpcServer {
+    async fn txn_msg(&self, request: Request<MeerkatMsg>) -> Result<Response<MeerkatMsg>, Status> {
+        let (sender, mut receiver) = channel::<MeerkatMsg>(1);
         let msg = Msg {
             tmsg: request.into_inner(),
             callback: sender,

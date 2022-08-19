@@ -15,7 +15,7 @@ def run_clients(start_client_id, client_num):
     client_id = start_client_id
     process = []
     while client_id < start_client_id + client_num:
-        cmd = ["./tapir_client"]
+        cmd = ["./Meerkat_client"]
         logger.info("running client %d", client_id)
         p = subprocess.Popen(
             cmd, shell=True, stdout=subprocess.PIPE)

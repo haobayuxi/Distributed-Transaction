@@ -11,7 +11,7 @@ use tokio::sync::{
 use crate::{
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
-    Msg, TapirMeta,
+    MeerkatMeta, Msg,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -23,7 +23,7 @@ pub struct Peer {
     server_id: i32,
 
     // memory
-    mem: Arc<HashMap<i64, RwLock<(TapirMeta, String)>>>,
+    mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
     // dispatcher
     executor_senders: HashMap<i32, UnboundedSender<Msg>>,
     executor_num: i32,
@@ -41,7 +41,7 @@ impl Peer {
             config.server_ids.get(&server_id).unwrap().clone(),
         );
         for (key, value) in data {
-            mem.insert(key, RwLock::new((TapirMeta::default(), value)));
+            mem.insert(key, RwLock::new((MeerkatMeta::default(), value)));
         }
 
         Self {

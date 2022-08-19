@@ -1,7 +1,7 @@
 use std::env;
 
 use common::{config::Config, ConfigPerClient};
-use tapir::coordinator::TapirCoordinator;
+use Meerkat::coordinator::MeerkatCoordinator;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::default();
     // let client_config = ConfigPerClient::default();
-    let mut client = TapirCoordinator::new(
+    let mut client = MeerkatCoordinator::new(
         client_config.id,
         client_config.read_optimize,
         config,

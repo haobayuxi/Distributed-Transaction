@@ -2,7 +2,7 @@
 members = [
     "src/rpc",
     "src/common",
-    "src/tapir",
+    "src/meerkat",
     "src/yuxi",
     "src/Server",
 ]

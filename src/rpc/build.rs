@@ -5,7 +5,7 @@ fn run() -> Result<(), Box<dyn Error>> {
     let proto_files = &[
         "proto/common.proto",
         "proto/janus.proto",
-        "proto/tapir.proto",
+        "proto/meerkat.proto",
         "proto/yuxi.proto",
     ];
 

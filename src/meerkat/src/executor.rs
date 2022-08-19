@@ -3,17 +3,17 @@ use std::{collections::HashMap, sync::Arc};
 use common::tatp::{AccessInfo, CallForwarding, Subscriber};
 use rpc::{
     common::{ReadStruct, TxnOp},
-    tapir::TapirMsg,
+    meerkat::MeerkatMsg,
 };
 use tokio::sync::{mpsc::UnboundedReceiver, OwnedRwLockWriteGuard, RwLock};
 
-use crate::{Msg, TapirMeta};
+use crate::{MeerkatMeta, Msg};
 
 pub struct Executor {
     id: i32,
     server_id: i32,
     // ycsb
-    mem: Arc<HashMap<i64, RwLock<(TapirMeta, String)>>>,
+    mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
     // tatp
     subscriber: Arc<HashMap<u64, Subscriber>>,
     access_info: Arc<HashMap<u64, AccessInfo>>,
@@ -27,7 +27,7 @@ impl Executor {
     pub fn new_ycsb(
         id: i32,
         server_id: i32,
-        mem: Arc<HashMap<i64, RwLock<(TapirMeta, String)>>>,
+        mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
         recv: UnboundedReceiver<Msg>,
     ) -> Self {
         Self {
@@ -79,7 +79,7 @@ impl Executor {
                 result_read_set.push(result);
             }
             // send result back
-            let read_back = TapirMsg {
+            let read_back = MeerkatMsg {
                 txn_id: msg.tmsg.txn_id,
                 read_set: result_read_set,
                 write_set: Vec::new(),
@@ -100,7 +100,7 @@ impl Executor {
             //     Ok(read_guard) => {}
             //     Err(_) => {
             //         // abort the txn
-            //         let abort_msg = TapirMsg {
+            //         let abort_msg = MeerkatMsg {
             //             txn_id: msg.tmsg.txn_id,
             //             read_set: Vec::new(),
             //             write_set: Vec::new(),
@@ -121,7 +121,7 @@ impl Executor {
                     && read.timestamp.unwrap() < *guard.0.prepared_write.iter().min().unwrap())
             {
                 // abort the txn
-                let abort_msg = TapirMsg {
+                let abort_msg = MeerkatMsg {
                     txn_id: msg.tmsg.txn_id,
                     read_set: Vec::new(),
                     write_set: Vec::new(),
@@ -146,7 +146,7 @@ impl Executor {
             //     }
             //     Err(_) => {
             //         // abort
-            //         let abort_msg = TapirMsg {
+            //         let abort_msg = MeerkatMsg {
             //             txn_id: msg.tmsg.txn_id,
             //             read_set: Vec::new(),
             //             write_set: Vec::new(),
@@ -166,7 +166,7 @@ impl Executor {
                     && msg.tmsg.timestamp < *guard.0.prepared_read.iter().last().unwrap())
             {
                 // abort the txn
-                let abort_msg = TapirMsg {
+                let abort_msg = MeerkatMsg {
                     txn_id: msg.tmsg.txn_id,
                     read_set: Vec::new(),
                     write_set: Vec::new(),
@@ -183,7 +183,7 @@ impl Executor {
             guard.0.prepared_write.insert(msg.tmsg.timestamp);
         }
         // return prepare ok
-        let prepare_ok = TapirMsg {
+        let prepare_ok = MeerkatMsg {
             txn_id: msg.tmsg.txn_id,
             read_set: Vec::new(),
             write_set: Vec::new(),
