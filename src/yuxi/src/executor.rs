@@ -96,11 +96,13 @@ impl Executor {
                     }
                 }
                 // insert into wait list
-                // let execute_context = ExecuteContext {
-                //     committed: false,
-                //     value: write.value.clone(),
-                // };
-                // waitlist_guard.insert(*guard, execute_context);
+                let execute_context = ExecuteContext {
+                    committed: false,
+                    read: false,
+                    value: Some(write.value.clone()),
+                    call_back: None,
+                };
+                waitlist_guard.insert(*guard, execute_context);
             }
         }
 
@@ -149,7 +151,7 @@ impl Executor {
         // commit final version and execute
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;
-        let (txn, write_ts) = self.txns.remove(&tid).unwrap();
+        let (mut txn, write_ts) = self.txns.remove(&tid).unwrap();
         unsafe {
             for write in txn.write_set.iter() {
                 let key = write.key;
@@ -164,6 +166,7 @@ impl Executor {
                 // modify the wait list
                 let mut wait_list = IN_MEMORY_DATA[*index].1.write().await;
 
+                // if the txn ts is the smallest, just execute, else set commit to true
                 // check pending txns execute the context if the write is committed
             }
 
@@ -184,27 +187,27 @@ impl Executor {
                 }
 
                 let version_data = &tuple.2;
-                let mut index = version_data.len() - 1;
-                while final_ts < version_data[index].start_ts {
-                    index -= 1;
-                }
-                if version_data[index].end_ts > final_ts {
-                    // safe to read
-                    read.value = Some(version_data[index].data.read());
-                    txn.read_set.push(read.clone());
-                } else {
-                    // wait for the write
-                    // let read_context = ExecuteContext {
-                    //     read: true,
-                    //     value: None,
-                    //     call_back: Some(sender.clone()),
-                    // };
-                    let mut wait_list = tuple.1.write().await;
-                    // if wait_list
-                    // insert into
-                    wait_list.insert(final_ts, read_context);
-                    waiting_for_read_result += 1;
-                }
+                // let mut index = version_data.len() - 1;
+                // while final_ts < version_data[index].start_ts {
+                //     index -= 1;
+                // }
+                // if version_data[index].end_ts > final_ts {
+                //     // safe to read
+                //     read.value = Some(version_data[index].data.read());
+                //     txn.read_set.push(read.clone());
+                // } else {
+                //     // wait for the write
+                //     // let read_context = ExecuteContext {
+                //     //     read: true,
+                //     //     value: None,
+                //     //     call_back: Some(sender.clone()),
+                //     // };
+                //     let mut wait_list = tuple.1.write().await;
+                //     // if wait_list
+                //     // insert into
+                //     wait_list.insert(final_ts, read_context);
+                //     waiting_for_read_result += 1;
+                // }
             }
             if waiting_for_read_result == 0 {
                 // reply to coordinator

@@ -4,5 +4,6 @@ members = [
     "src/common",
     "src/meerkat",
     "src/yuxi",
+    "src/dast",
     "src/Server",
 ]

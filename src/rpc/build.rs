@@ -7,6 +7,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         "proto/janus.proto",
         "proto/meerkat.proto",
         "proto/yuxi.proto",
+        "proto/dast.proto",
     ];
 
     tonic_build::configure()
