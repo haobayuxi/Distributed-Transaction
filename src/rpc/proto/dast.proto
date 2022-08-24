@@ -12,14 +12,23 @@ message DastMsg {
     int64 txn_id = 1;
     repeated common.Read_Struct read_set = 2;
     repeated common.Write_Struct write_set = 3;
+    repeated uint64 notified_txn_ts = 4;
     common.TxnOP op = 5;
     int32 from = 6;
     uint64 timestamp = 7;
     optional common.TxnType txn_type = 8;
 }
 
+message Reply {
+
+}
 
 service Dast {
-    rpc TxnMsg(DastMsg) returns (DastMsg) {}
+    rpc TxnMsg(stream DastMsg) returns (Reply) {}
+    
+}
+
+service ClientService {
+    rpc Propose(DastMsg) returns (DastMsg) {} 
 }
 

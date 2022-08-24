@@ -10,7 +10,12 @@ pub fn IsLocalNode() -> bool {
     return true;
 }
 
-pub struct Msg {
+pub enum Msg {
+    PeerMsg(DastMsg),
+    ClientMsg(ClientMsg),
+}
+
+pub struct ClientMsg {
     pub tmsg: DastMsg,
     pub callback: Sender<DastMsg>,
 }
