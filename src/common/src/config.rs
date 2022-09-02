@@ -13,6 +13,10 @@ pub struct Config {
     pub req_per_query: usize,
     pub table_size: i32,
     pub zipf_theta: f64,
+    // dast config
+    pub manager_ids: Vec<i32>,
+    pub propose_addrs: HashMap<i32, String>,
+    // pub local_nodes: Vec<Vec<i32>>,
 }
 
 impl Default for Config {
@@ -30,6 +34,14 @@ impl Default for Config {
         server_addrs.insert(1, addr1);
         server_addrs.insert(2, addr2);
 
+        let propose_addr0 = String::from("http://192.168.50.10:50051");
+        let propose_addr1 = String::from("http://192.168.50.11:50051");
+        let propose_addr2 = String::from("http://192.168.50.12:50051");
+        let mut propose_addrs = HashMap::new();
+        propose_addrs.insert(0, propose_addr0);
+        propose_addrs.insert(1, propose_addr1);
+        propose_addrs.insert(2, propose_addr2);
+
         let mut shards = HashMap::new();
         shards.insert(1, vec![0, 1, 2]);
         Self {
@@ -40,6 +52,9 @@ impl Default for Config {
             req_per_query: 10,
             table_size: 1000,
             zipf_theta: 0.0,
+            manager_ids: vec![0, 1, 2],
+            propose_addrs,
+            // local_nodes: todo!(),
         }
     }
 }

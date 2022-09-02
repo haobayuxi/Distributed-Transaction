@@ -12,11 +12,13 @@ message YuxiMsg {
     common.TxnOP op = 4;
     int32 from = 5;
     uint64 timestamp = 6;
-    optional common.TxnType txn_type = 7;
+    common.TxnType txn_type = 7;
 }
 
+message Reply {
 
+}
 service Yuxi {
-    rpc YuxiTxn(YuxiMsg) returns (YuxiMsg) {}
+    rpc YuxiTxn(stream YuxiMsg) returns (stream YuxiMsg) {}
 }
 

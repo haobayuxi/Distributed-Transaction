@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use common::{config::Config, convert_ip_addr, ycsb::init_data};
 use log::info;
+use rpc::yuxi::YuxiMsg;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
     mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
@@ -62,6 +63,8 @@ impl Peer {
 
     fn init_data(&mut self) {
         // init
+
+        // init
     }
 
     async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
@@ -98,13 +101,6 @@ impl Peer {
                 }
                 None => continue,
             }
-        }
-    }
-
-    fn populate_data(&mut self) {
-        //
-        unsafe {
-            //
         }
     }
 }

@@ -16,7 +16,8 @@ message DastMsg {
     common.TxnOP op = 5;
     int32 from = 6;
     uint64 timestamp = 7;
-    optional common.TxnType txn_type = 8;
+    uint64 maxts = 8;
+    optional common.TxnType txn_type = 9;
 }
 
 message Reply {

@@ -24,6 +24,21 @@ pub enum Data {
     Subscriber(Subscriber),
 }
 
+impl Default for Data {
+    fn default() -> Self {
+        Self::Ycsb("".to_string())
+    }
+}
+
+impl Data {
+    pub fn to_string(&self) -> String {
+        match self {
+            Data::Ycsb(s) => return s.clone(),
+            Data::Subscriber(s) => return serde_json::to_string(s).unwrap(),
+        }
+    }
+}
+
 impl Data {
     pub fn read(&self) -> String {
         match self {

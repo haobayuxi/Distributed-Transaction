@@ -12,9 +12,11 @@ pub struct YuxiMsg {
     pub from: i32,
     #[prost(uint64, tag = "6")]
     pub timestamp: u64,
-    #[prost(enumeration = "super::common::TxnType", optional, tag = "7")]
-    pub txn_type: ::core::option::Option<i32>,
+    #[prost(enumeration = "super::common::TxnType", tag = "7")]
+    pub txn_type: i32,
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Reply {}
 #[doc = r" Generated client implementations."]
 pub mod yuxi_client {
     #![allow(unused_variables, dead_code, missing_docs)]
@@ -50,8 +52,9 @@ pub mod yuxi_client {
         }
         pub async fn yuxi_txn(
             &mut self,
-            request: impl tonic::IntoRequest<super::YuxiMsg>,
-        ) -> Result<tonic::Response<super::YuxiMsg>, tonic::Status> {
+            request: impl tonic::IntoStreamingRequest<Message = super::YuxiMsg>,
+        ) -> Result<tonic::Response<tonic::codec::Streaming<super::YuxiMsg>>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -60,7 +63,9 @@ pub mod yuxi_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/yuxi.Yuxi/YuxiTxn");
-            self.inner.unary(request.into_request(), path, codec).await
+            self.inner
+                .streaming(request.into_streaming_request(), path, codec)
+                .await
         }
     }
     impl<T: Clone> Clone for YuxiClient<T> {
@@ -83,10 +88,15 @@ pub mod yuxi_server {
     #[doc = "Generated trait containing gRPC methods that should be implemented for use with YuxiServer."]
     #[async_trait]
     pub trait Yuxi: Send + Sync + 'static {
+        #[doc = "Server streaming response type for the YuxiTxn method."]
+        type YuxiTxnStream: futures_core::Stream<Item = Result<super::YuxiMsg, tonic::Status>>
+            + Send
+            + Sync
+            + 'static;
         async fn yuxi_txn(
             &self,
-            request: tonic::Request<super::YuxiMsg>,
-        ) -> Result<tonic::Response<super::YuxiMsg>, tonic::Status>;
+            request: tonic::Request<tonic::Streaming<super::YuxiMsg>>,
+        ) -> Result<tonic::Response<Self::YuxiTxnStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct YuxiServer<T: Yuxi> {
@@ -123,12 +133,14 @@ pub mod yuxi_server {
                 "/yuxi.Yuxi/YuxiTxn" => {
                     #[allow(non_camel_case_types)]
                     struct YuxiTxnSvc<T: Yuxi>(pub Arc<T>);
-                    impl<T: Yuxi> tonic::server::UnaryService<super::YuxiMsg> for YuxiTxnSvc<T> {
+                    impl<T: Yuxi> tonic::server::StreamingService<super::YuxiMsg> for YuxiTxnSvc<T> {
                         type Response = super::YuxiMsg;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type ResponseStream = T::YuxiTxnStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::YuxiMsg>,
+                            request: tonic::Request<tonic::Streaming<super::YuxiMsg>>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).yuxi_txn(request).await };
@@ -137,7 +149,7 @@ pub mod yuxi_server {
                     }
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let interceptor = inner.1.clone();
+                        let interceptor = inner.1;
                         let inner = inner.0;
                         let method = YuxiTxnSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
@@ -146,7 +158,7 @@ pub mod yuxi_server {
                         } else {
                             tonic::server::Grpc::new(codec)
                         };
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

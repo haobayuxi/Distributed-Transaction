@@ -4,13 +4,16 @@ use log::info;
 use rpc::dast::client_service_client::ClientServiceClient;
 use rpc::dast::client_service_server::ClientService;
 use rpc::dast::client_service_server::ClientServiceServer;
+use rpc::dast::dast_client::DastClient;
 use rpc::dast::dast_server::Dast;
 use rpc::dast::dast_server::DastServer;
 use rpc::dast::DastMsg;
 use rpc::dast::Reply;
 use tokio::sync::mpsc::channel;
+use tokio::sync::mpsc::Receiver;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::sleep;
+use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tonic::transport::Server;
 use tonic::Status;
@@ -20,6 +23,30 @@ use tonic::{transport::Channel, Request, Response};
 use crate::ClientMsg;
 use crate::Msg;
 
+pub struct RpcClient {
+    client: DastClient<Channel>,
+}
+
+impl RpcClient {
+    pub async fn new(addr: String) -> Self {
+        loop {
+            match DastClient::connect(addr.clone()).await {
+                Ok(client) => {
+                    return Self { client };
+                }
+                Err(_) => {
+                    sleep(Duration::from_millis(100)).await;
+                }
+            }
+        }
+    }
+
+    pub async fn run_client(&mut self, receiver: Receiver<DastMsg>) {
+        let receiver = ReceiverStream::new(receiver);
+
+        let _response = self.client.txn_msg(receiver).await;
+    }
+}
 pub struct RpcServer {
     addr_to_listen: String,
     sender: UnboundedSender<Msg>,

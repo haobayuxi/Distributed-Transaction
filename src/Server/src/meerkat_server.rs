@@ -2,15 +2,15 @@ use std::{collections::HashMap, sync::Arc};
 
 use common::{config::Config, convert_ip_addr, ycsb::init_data};
 use log::info;
+use meerkat::{
+    executor::Executor,
+    peer_communication::{run_rpc_server, RpcServer},
+    MeerkatMeta, Msg,
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
     mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
     RwLock,
-};
-use Meerkat::{
-    executor::Executor,
-    peer_communication::{run_rpc_server, RpcServer},
-    MeerkatMeta, Msg,
 };
 
 #[derive(Debug, Serialize, Deserialize)]

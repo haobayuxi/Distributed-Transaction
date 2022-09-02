@@ -1,8 +1,10 @@
+#![feature(map_first_last)]
 use std::collections::BTreeMap;
 
 use common::Data;
 use rpc::yuxi::YuxiMsg;
 use tokio::sync::mpsc::{Sender, UnboundedSender};
+use tonic::Status;
 
 pub mod coordinator;
 pub mod executor;
@@ -29,5 +31,5 @@ pub static MaxTs: TS = 1 << 62;
 
 pub struct Msg {
     pub tmsg: YuxiMsg,
-    pub callback: Sender<YuxiMsg>,
+    pub callback: Sender<Result<YuxiMsg, Status>>,
 }
