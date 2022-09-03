@@ -1,11 +1,15 @@
 use std::pin::Pin;
+use std::time::Duration;
 
+use rpc::yuxi::yuxi_client::YuxiClient;
 use rpc::yuxi::yuxi_server::Yuxi;
 use rpc::yuxi::yuxi_server::YuxiServer;
 use rpc::yuxi::YuxiMsg;
 use tokio::sync::mpsc::channel;
 use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::time::sleep;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::Stream;
 use tokio_stream::StreamExt;
@@ -76,5 +80,34 @@ impl Yuxi for RpcServer {
         let out_stream = ReceiverStream::new(receiver);
         // let result = receiver.recv().await.unwrap();
         Ok(Response::new(out_stream))
+    }
+}
+
+pub struct RpcClient {
+    client: YuxiClient<Channel>,
+    sender: Sender<YuxiMsg>,
+}
+
+impl RpcClient {
+    pub async fn new(addr: String, sender: Sender<YuxiMsg>) -> Self {
+        loop {
+            match YuxiClient::connect(addr.clone()).await {
+                Ok(client) => {
+                    return Self { client, sender };
+                }
+                Err(_) => {
+                    sleep(Duration::from_millis(100)).await;
+                }
+            }
+        }
+    }
+
+    pub async fn run_client(&mut self, receiver: Receiver<YuxiMsg>) {
+        let receiver = ReceiverStream::new(receiver);
+
+        let mut response = self.client.yuxi_txn(receiver).await.unwrap().into_inner();
+        while let Some(msg) = response.message().await.unwrap() {
+            self.sender.send(msg).await;
+        }
     }
 }

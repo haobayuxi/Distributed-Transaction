@@ -18,6 +18,8 @@ path = "src/meerkat_client.rs"
 rpc = { path = "../rpc" }
 common = { path = "../common" }
 meerkat = { path = "../meerkat" }
+yuxi = {path = "../yuxi"}
+dast ={path = "../dast"}
 janus = { path = "../janus" }
 tokio = { version = "1.0", features = ["full"] }
 tonic = "0.4.3"

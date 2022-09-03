@@ -6,16 +6,19 @@ use rpc::{
     yuxi::{yuxi_client::YuxiClient, YuxiMsg},
 };
 use tokio::{
-    sync::mpsc::{unbounded_channel, Receiver, Sender},
-    time::sleep,
+    fs::OpenOptions,
+    io::AsyncWriteExt,
+    sync::mpsc::{channel, unbounded_channel, Receiver, Sender},
+    time::{sleep, Instant},
 };
 use tonic::transport::Channel;
+
+use crate::peer_communication::RpcClient;
 
 static RETRY: i32 = 20;
 
 pub struct YuxiCoordinator {
     config: Config,
-    read_only: bool,
     is_ycsb: bool,
     id: i32,
     txn_id: i64,
@@ -25,12 +28,18 @@ pub struct YuxiCoordinator {
     servers: HashMap<i32, Sender<YuxiMsg>>,
     recv: Receiver<YuxiMsg>,
     workload: YcsbQuery,
+    txns_per_client: i32,
 }
 
 impl YuxiCoordinator {
-    pub fn new(id: i32, config: Config, read_perc: i32, recv: Receiver<YuxiMsg>) -> Self {
+    pub fn new(
+        id: i32,
+        config: Config,
+        read_perc: i32,
+        txns_per_client: i32,
+        recv: Receiver<YuxiMsg>,
+    ) -> Self {
         Self {
-            read_only: false,
             is_ycsb: true,
             id,
             txn_id: 0,
@@ -44,96 +53,66 @@ impl YuxiCoordinator {
                 read_perc,
             ),
             config,
+            txns_per_client,
         }
     }
 
-    pub async fn init_run(&mut self) {
+    pub async fn init_run(&mut self, sender: Sender<YuxiMsg>) {
         // self.init_workload();
-        self.init_rpc().await;
+        self.init_rpc(sender).await;
         println!("init rpc done");
         // run transactions
-        for i in 0..100 {
+        let mut latency_result = Vec::new();
+
+        let total_start = Instant::now();
+        for i in 0..self.txns_per_client {
             self.workload.generate();
-            if self.run_transaction().await {
-                println!("success {}", i);
-            } else {
-                println!("fail {}", i);
-            }
+            self.txn_id += 1;
+            self.txn.txn_id = self.txn_id;
+            self.txn.read_set = self.workload.read_set.clone();
+            self.txn.write_set = self.workload.write_set.clone();
+            let start = Instant::now();
+            self.run_transaction().await;
+            let end_time = start.elapsed().as_micros();
+            println!("latency time = {}", end_time);
+            latency_result.push(end_time);
         }
+
+        let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
+        let throughput_result = self.txns_per_client as f64 / total_end;
+        println!("throughput = {}", throughput_result);
+        // write results to file
+        let latency_file_name = self.id.to_string() + "latency.data";
+        let mut latency_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(latency_file_name)
+            .await
+            .unwrap();
+        for iter in latency_result {
+            latency_file.write(iter.to_string().as_bytes()).await;
+            latency_file.write("\n".as_bytes()).await;
+        }
+        let throughput_file_name = self.id.to_string() + "throughput.data";
+        let mut throughput_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(throughput_file_name)
+            .await
+            .unwrap();
+        throughput_file
+            .write(throughput_result.to_string().as_bytes())
+            .await;
+        throughput_file.write("\n".as_bytes()).await;
     }
-
-    // fn get_servers_by_shardid(&mut self, shard: i32) -> Vec<i32> {
-    //     self.config.shards.get(&shard).unwrap().clone()
-    // }
-
-    // fn shard_the_transaction(&mut self, read_set: Vec<i64>, write_set: Vec<(i64, String)>) {
-    //     self.txn.clear();
-    //     // group read write into multi shards, try to read from one of the server
-    //     for read in read_set {
-    //         let shard = (read as i32) % SHARD_NUM;
-    //         let read_struct = ReadStruct {
-    //             key: read,
-    //             value: None,
-    //             timestamp: None,
-    //         };
-    //         if self.txn.contains_key(&shard) {
-    //             let msg = self.txn.get_mut(&shard).unwrap();
-
-    //             msg.read_set.push(read_struct);
-    //         } else {
-    //             let msg = YuxiMsg {
-    //                 txn_id: self.txn_id,
-    //                 read_set: vec![read_struct],
-    //                 write_set: Vec::new(),
-    //                 op: TxnOp::Prepare.into(),
-    //                 from: self.id,
-    //                 timestamp: 0,
-    //                 txn_type: None,
-    //             };
-    //             self.txn.insert(shard, msg);
-    //         }
-    //     }
-
-    //     for (key, value) in write_set {
-    //         let shard = (key as i32) % SHARD_NUM;
-    //         let write_struct = WriteStruct {
-    //             key,
-    //             value,
-    //             // timestamp: Some(0),
-    //         };
-    //         if self.txn.contains_key(&shard) {
-    //             let msg = self.txn.get_mut(&shard).unwrap();
-
-    //             msg.write_set.push(write_struct);
-    //         } else {
-    //             let msg = YuxiMsg {
-    //                 txn_id: self.txn_id,
-    //                 read_set: Vec::new(),
-    //                 write_set: vec![write_struct],
-    //                 op: TxnOp::Prepare.into(),
-    //                 from: self.id,
-    //                 timestamp: 0,
-    //                 txn_type: Some(TxnType::Ycsb.into()),
-    //             };
-    //             self.txn.insert(shard, msg);
-    //         }
-    //     }
-    // }
 
     async fn run_transaction(&mut self) -> bool {
         // init ts
         let timestamp = get_local_time(0);
 
         // prepare, prepare will send to all the server
-        self.txn = YuxiMsg {
-            txn_id: self.txn_id,
-            read_set: read_set.clone(),
-            write_set: write_set.clone(),
-            op: TxnOp::Prepare.into(),
-            from: self.id,
-            timestamp,
-            txn_type: self.txn.txn_type,
-        };
+        self.txn.timestamp = timestamp;
+
         self.broadcast(self.txn.clone()).await;
 
         // handle prepare response
@@ -188,22 +167,18 @@ impl YuxiCoordinator {
         }
     }
 
-    pub async fn init_rpc(&mut self) {
-        // hold the clients to all the server
-        for (id, server_addr) in self.config.server_addrs.iter() {
-            println!("connect to {}-{}", id, server_addr);
-            loop {
-                match YuxiClient::connect(server_addr.clone()).await {
-                    Ok(client) => {
-                        self.servers.insert(*id, client);
-                        break;
-                    }
-                    Err(e) => {
-                        println!("{}", e);
-                        sleep(Duration::from_millis(100)).await;
-                    }
-                }
-            }
+    pub async fn init_rpc(&mut self, sender: Sender<YuxiMsg>) {
+        // init rpc client to connect to other peers
+        for (id, ip) in self.config.server_addrs.iter() {
+            tracing::info!("init client connect to {}", ip);
+            // let mut client = PeerCommunicationClient::connect(ip).await?;
+            let (send_to_server, server_receiver) = channel::<YuxiMsg>(100);
+            //init client
+            let mut client = RpcClient::new(ip.clone(), sender.clone()).await;
+            tokio::spawn(async move {
+                client.run_client(server_receiver).await;
+            });
+            self.servers.insert(id.clone(), send_to_server);
         }
     }
 }

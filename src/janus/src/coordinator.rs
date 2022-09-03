@@ -5,12 +5,17 @@ use rpc::{
     common::{ReadStruct, TxnOp, TxnType, WriteStruct},
     janus::{janus_client::JanusClient, JanusMsg},
 };
-use tokio::{sync::mpsc::unbounded_channel, time::sleep};
+use tokio::{
+    fs::OpenOptions,
+    io::AsyncWriteExt,
+    sync::mpsc::unbounded_channel,
+    time::{sleep, Instant},
+};
 use tonic::transport::Channel;
 
 pub struct JanusCoordinator {
     // replica_id: i32,
-    read_optimize: bool,
+    // read_optimize: bool,
     id: i32,
     txn_id: i64,
     txn: HashMap<i32, JanusMsg>,
@@ -18,12 +23,13 @@ pub struct JanusCoordinator {
     // send to servers
     servers: HashMap<i32, JanusClient<Channel>>,
     config: Config,
+    txns_per_client: i32,
 }
 
 impl JanusCoordinator {
-    pub fn new(id: i32, read_optimize: bool, config: Config, read_perc: i32) -> Self {
+    pub fn new(id: i32, config: Config, txns_per_client: i32, read_perc: i32) -> Self {
         Self {
-            read_optimize,
+            // read_optimize,
             id,
             txn_id: 0,
             txn: HashMap::new(),
@@ -35,6 +41,7 @@ impl JanusCoordinator {
                 read_perc,
             ),
             config,
+            txns_per_client,
         }
     }
 
@@ -51,7 +58,6 @@ impl JanusCoordinator {
                 txn_id: self.txn_id,
                 read_set: per_server.read_set.clone(),
                 write_set: per_server.write_set.clone(),
-                executor_ids: Vec::new(),
                 op: TxnOp::Prepare.into(),
                 from: self.id,
                 deps: Vec::new(),
@@ -80,14 +86,43 @@ impl JanusCoordinator {
         self.init_rpc().await;
         println!("init rpc done");
         // run transactions
-        for i in 0..100 {
+        let mut latency_result = Vec::new();
+        // send msgs
+        let total_start = Instant::now();
+        for i in 0..self.txns_per_client {
             self.workload.generate();
-            if self.run_transaction().await {
-                println!("success {}", i);
-            } else {
-                println!("fail {}", i);
-            }
+            let start = Instant::now();
+            self.run_transaction().await;
+            let end_time = start.elapsed().as_micros();
+            println!("latency time = {}", end_time);
+            latency_result.push(end_time);
         }
+        let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
+        let throughput_result = self.txns_per_client as f64 / total_end;
+        println!("throughput = {}", throughput_result);
+        // write results to file
+        let latency_file_name = self.id.to_string() + "latency.data";
+        let mut latency_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(latency_file_name)
+            .await
+            .unwrap();
+        for iter in latency_result {
+            latency_file.write(iter.to_string().as_bytes()).await;
+            latency_file.write("\n".as_bytes()).await;
+        }
+        let throughput_file_name = self.id.to_string() + "throughput.data";
+        let mut throughput_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(throughput_file_name)
+            .await
+            .unwrap();
+        throughput_file
+            .write(throughput_result.to_string().as_bytes())
+            .await;
+        throughput_file.write("\n".as_bytes()).await;
     }
 
     async fn init_rpc(&mut self) {
@@ -127,7 +162,6 @@ impl JanusCoordinator {
                     write_set: Vec::new(),
                     op: TxnOp::Prepare.into(),
                     from: self.id,
-                    executor_ids: Vec::new(),
                     deps: Vec::new(),
                     txn_type: None,
                 };
@@ -151,7 +185,6 @@ impl JanusCoordinator {
                     txn_id: self.txn_id,
                     read_set: Vec::new(),
                     write_set: vec![write_struct],
-                    executor_ids: Vec::new(),
                     op: TxnOp::Prepare.into(),
                     from: self.id,
                     deps: Vec::new(),

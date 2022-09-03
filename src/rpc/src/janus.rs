@@ -6,8 +6,6 @@ pub struct JanusMsg {
     pub read_set: ::prost::alloc::vec::Vec<super::common::ReadStruct>,
     #[prost(message, repeated, tag = "3")]
     pub write_set: ::prost::alloc::vec::Vec<super::common::WriteStruct>,
-    #[prost(int32, repeated, tag = "4")]
-    pub executor_ids: ::prost::alloc::vec::Vec<i32>,
     #[prost(enumeration = "super::common::TxnOp", tag = "5")]
     pub op: i32,
     #[prost(int32, tag = "6")]

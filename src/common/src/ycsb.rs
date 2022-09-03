@@ -106,17 +106,17 @@ pub fn zeta(n: u64, theta: f64) -> f64 {
     return sum;
 }
 
-pub fn init_data(config: Config, shard_id: i32) -> HashMap<i64, String> {
-    let shard_num = config.shards.len();
-    let value: Vec<char> = vec!['a'; 1000];
+pub fn init_ycsb() -> HashMap<i64, String> {
+    // let shard_num = config.shards.len();
+    let value: Vec<char> = vec!['a'; 100];
     let mut write_value = String::from("");
     write_value.extend(value.iter());
     let mut data = HashMap::new();
     for key in 0..1000 {
-        if key % shard_num == shard_id as usize {
-            //
-            data.insert(key as i64, write_value.clone());
-        }
+        // if key % shard_num == shard_id as usize {
+        //
+        data.insert(key as i64, write_value.clone());
+        // }
     }
     data
 }

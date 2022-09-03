@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use common::{config::Config, convert_ip_addr, ycsb::init_data};
+use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
@@ -36,10 +36,7 @@ impl Peer {
 
         let mut mem = HashMap::new();
         // self.mem = Arc::new(mem);
-        let data = init_data(
-            config.clone(),
-            config.server_ids.get(&server_id).unwrap().clone(),
-        );
+        let data = init_ycsb();
         for (key, value) in data {
             mem.insert(key, RwLock::new((MeerkatMeta::default(), value)));
         }
@@ -55,15 +52,13 @@ impl Peer {
 
     pub async fn init(&mut self) {
         let (dispatcher_sender, dispatcher_receiver) = unbounded_channel::<Msg>();
-        self.init_data();
+
         println!("init data done");
         self.init_executors(self.config.clone());
         self.init_rpc(self.config.clone(), dispatcher_sender).await;
         println!("init rpc done");
         self.run_dispatcher(dispatcher_receiver).await;
     }
-
-    fn init_data(&mut self) {}
 
     async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
         // start server for client to connect

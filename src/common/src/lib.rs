@@ -12,10 +12,11 @@ pub static SHARD_NUM: i32 = 1;
 pub static EXECUTOR_NUM: i32 = 16;
 
 #[derive(Default, Deserialize)]
-pub struct ConfigPerClient {
+pub struct ConfigInFile {
     pub id: i32,
-    pub read_optimize: bool,
     pub read_perc: i32,
+    pub txns_per_client: i32,
+    pub is_ycsb: bool,
 }
 
 #[derive(Clone)]

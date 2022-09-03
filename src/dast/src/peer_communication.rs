@@ -94,29 +94,6 @@ impl Dast for RpcServer {
     }
 }
 
-pub struct ProposeClient {
-    addr_to_connect: String,
-    client: ClientServiceClient<Channel>,
-}
-
-impl ProposeClient {
-    pub async fn new(addr: String) -> Self {
-        loop {
-            match ClientServiceClient::connect(addr.clone()).await {
-                Ok(client) => {
-                    return Self {
-                        addr_to_connect: addr,
-                        client,
-                    };
-                }
-                Err(_) => {
-                    sleep(Duration::from_millis(100)).await;
-                }
-            }
-        }
-    }
-}
-
 pub struct ProposeServer {
     addr_to_listen: String,
     sender: UnboundedSender<Msg>,

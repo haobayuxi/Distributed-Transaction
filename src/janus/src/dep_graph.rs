@@ -46,7 +46,7 @@ pub struct DepGraph {
     wait_list: UnboundedReceiver<i64>,
     // recv: UnboundedReceiver<Msg>,
     // job senders
-    executors: HashMap<i32, UnboundedSender<Msg>>,
+    executor: UnboundedSender<Msg>,
 
     // stack for tarjan
     stack: Vec<i64>,
@@ -56,7 +56,7 @@ pub struct DepGraph {
 
 impl DepGraph {
     pub fn new(
-        executors: HashMap<i32, UnboundedSender<Msg>>,
+        executor: UnboundedSender<Msg>,
         recv: UnboundedReceiver<Msg>,
         client_num: usize,
     ) -> Self {
@@ -85,7 +85,7 @@ impl DepGraph {
             }
         });
         Self {
-            executors,
+            executor,
             wait_list: waitlist_receiver,
             // recv,
             stack: Vec::new(),
@@ -94,7 +94,7 @@ impl DepGraph {
         }
     }
 
-    async fn run(&mut self) {
+    pub async fn run(&mut self) {
         loop {
             match self.wait_list.recv().await {
                 Some(txnid) => {
@@ -106,9 +106,7 @@ impl DepGraph {
     }
 
     fn apply(&mut self, txn: Msg) {
-        for id in txn.txn.executor_ids.iter() {
-            self.executors.get(id).unwrap().send(txn.clone());
-        }
+        self.executor.send(txn);
     }
 
     async fn execute_txn(&mut self, txnid: i64) {

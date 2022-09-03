@@ -20,7 +20,7 @@ pub struct VersionData {
     end_ts: u64,
     data: Data,
 }
-struct ExecuteContext {
+pub struct ExecuteContext {
     committed: bool,
     read: bool,
     value: Option<String>,

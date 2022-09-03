@@ -5,19 +5,9 @@ use std::{
 };
 
 use chrono::Local;
-use common::{config::Config, convert_ip_addr, Data};
-use rpc::{
-    common::TxnOp,
-    dast::{dast_client::DastClient, DastMsg},
-};
-use tokio::{
-    sync::{
-        mpsc::{channel, Receiver, Sender, UnboundedSender},
-        RwLock,
-    },
-    time::sleep,
-};
-use tonic::{codegen::http::StatusCode, transport::Channel};
+use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
+use rpc::{common::TxnOp, dast::DastMsg};
+use tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedReceiver, UnboundedSender};
 use tracing::info;
 
 use crate::{
@@ -70,11 +60,25 @@ pub struct Peer {
     // rpc
     peer_senders: HashMap<i32, Sender<DastMsg>>,
 
-    recv: Receiver<Msg>,
+    recv: UnboundedReceiver<Msg>,
+
+    // data
+    ycsb: HashMap<i64, String>,
 }
 
 impl Peer {
-    pub fn new(id: i32, replica_nums: usize, config: Config, recv: Receiver<Msg>) -> Self {
+    pub fn new(
+        id: i32,
+        replica_nums: usize,
+        config: Config,
+        recv: UnboundedReceiver<Msg>,
+        is_ycsb: bool,
+    ) -> Self {
+        let mut ycsb = HashMap::new();
+        if is_ycsb {
+            ycsb = init_ycsb();
+        } else {
+        }
         return Self {
             id,
             readyq: BTreeMap::new(),
@@ -91,6 +95,7 @@ impl Peer {
             maxTs: vec![0; replica_nums],
             mytxns: BTreeMap::new(),
             local_node_ids: Vec::new(),
+            ycsb,
         };
     }
 
@@ -153,6 +158,9 @@ impl Peer {
                 self.readyq.insert(*ts, None);
             }
         }
+
+        self.readyq
+            .insert(msg.timestamp, Some(TxnInMemory::new(msg.clone())));
 
         // update notified ts
         let mut notified_txn_ts = Vec::new();
@@ -292,20 +300,32 @@ impl Peer {
         // }
     }
 
-    fn execute_txn(&mut self, txns: Vec<TxnInMemory>) {
+    async fn execute_txn(&mut self, txns: Vec<TxnInMemory>) {
         for txn_in_memory in txns.iter() {
+            let mut reply = txn_in_memory.txn.clone();
             match txn_in_memory.txn.txn_type() {
-                rpc::common::TxnType::TatpGetSubscriberData => todo!(),
-                rpc::common::TxnType::TatpGetNewDestination => todo!(),
-                rpc::common::TxnType::TatpGetAccessData => todo!(),
-                rpc::common::TxnType::TatpUpdateSubscriberData => todo!(),
-                rpc::common::TxnType::TatpUpdateLocation => todo!(),
-                rpc::common::TxnType::TatpInsertCallForwarding => todo!(),
-                rpc::common::TxnType::Ycsb => todo!(),
+                rpc::common::TxnType::TatpGetSubscriberData => {}
+                rpc::common::TxnType::TatpGetNewDestination => (),
+                rpc::common::TxnType::TatpGetAccessData => (),
+                rpc::common::TxnType::TatpUpdateSubscriberData => (),
+                rpc::common::TxnType::TatpUpdateLocation => (),
+                rpc::common::TxnType::TatpInsertCallForwarding => (),
+                rpc::common::TxnType::Ycsb => {
+                    for write in reply.write_set.iter() {
+                        //
+                        self.ycsb.insert(write.key, write.value.clone());
+                    }
+                    reply.write_set.clear();
+                    for read in reply.read_set.iter_mut() {
+                        //
+                        read.value = Some(self.ycsb.get(&read.key).unwrap().clone());
+                    }
+                }
             }
-            match txn_in_memory.callback {
+            match &txn_in_memory.callback {
                 Some(callback) => {
                     //
+                    callback.send(reply).await;
                 }
                 None => continue,
             }
@@ -380,7 +400,8 @@ impl Peer {
         });
     }
 
-    async fn init_run(&mut self) {
+    pub async fn init_run(&mut self, sender: UnboundedSender<Msg>) {
+        self.init_rpc(sender).await;
         loop {
             match self.recv.recv().await {
                 Some(msg) => self.handle_msg(msg).await,

@@ -9,50 +9,51 @@ use tokio::sync::{mpsc::UnboundedReceiver, RwLock};
 use crate::{JanusMeta, Msg};
 
 pub struct Executor {
-    id: i32,
     server_id: i32,
     // memory
-    mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
+    mem: HashMap<i64, RwLock<(JanusMeta, String)>>,
     // txns
     txns: HashMap<i64, JanusMsg>,
     //
-    recv: UnboundedReceiver<Msg>,
+    // recv: UnboundedReceiver<Msg>,
 }
 
 impl Executor {
-    fn new(
-        id: i32,
+    pub fn new(
         server_id: i32,
-        mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
-        recv: UnboundedReceiver<Msg>,
+        mem: HashMap<i64, RwLock<(JanusMeta, String)>>,
+        // recv: UnboundedReceiver<Msg>,
     ) -> Self {
         Self {
-            id,
             server_id,
             mem,
             txns: HashMap::new(),
-            recv,
+            // recv,
         }
     }
 
-    async fn run(&mut self) {
-        loop {
-            match self.recv.recv().await {
-                Some(msg) => match msg.txn.op() {
-                    TxnOp::ReadOnly => self.handle_read_only(msg).await,
-                    TxnOp::Prepare => self.handle_prepare(msg).await,
-                    TxnOp::Accept => self.handle_accept(msg),
-                    TxnOp::Commit => self.handle_execute(msg).await,
-                    TxnOp::ReadOnlyRes => todo!(),
-                    TxnOp::PrepareRes => todo!(),
-                    TxnOp::AcceptRes => todo!(),
-                    TxnOp::CommitRes => todo!(),
-                    TxnOp::Abort => todo!(),
-                },
-                None => continue,
-            }
+    pub async fn handle_msg(&mut self, msg: Msg) {
+        match msg.txn.op() {
+            TxnOp::ReadOnly => self.handle_prepare(msg).await,
+            TxnOp::Prepare => self.handle_prepare(msg).await,
+            TxnOp::Accept => self.handle_accept(msg),
+            TxnOp::Commit => self.handle_execute(msg).await,
+            TxnOp::ReadOnlyRes => {}
+            TxnOp::PrepareRes => {}
+            TxnOp::AcceptRes => {}
+            TxnOp::CommitRes => {}
+            TxnOp::Abort => {}
         }
     }
+
+    // async fn run(&mut self) {
+    //     loop {
+    //         match self.recv.recv().await {
+    //             Some(msg) =>
+    //             None => continue,
+    //         }
+    //     }
+    // }
 
     async fn handle_read_only(&mut self, msg: Msg) {
         let txnid = msg.txn.txn_id;
@@ -62,7 +63,6 @@ impl Executor {
             txn_id: txnid,
             read_set: Vec::new(),
             write_set: Vec::new(),
-            executor_ids: Vec::new(),
             op: TxnOp::CommitRes.into(),
             from: self.server_id,
             deps: Vec::new(),
@@ -90,7 +90,6 @@ impl Executor {
             txn_id: txnid,
             read_set: Vec::new(),
             write_set: Vec::new(),
-            executor_ids: Vec::new(),
             op: TxnOp::CommitRes.into(),
             from: self.server_id,
             deps: Vec::new(),
@@ -119,7 +118,6 @@ impl Executor {
             txn_id: msg.txn.txn_id,
             read_set: Vec::new(),
             write_set: Vec::new(),
-            executor_ids: Vec::new(),
             op: TxnOp::PrepareRes.into(),
             from: self.server_id,
             deps: Vec::new(),
@@ -151,7 +149,6 @@ impl Executor {
             txn_id: txnid,
             read_set: Vec::new(),
             write_set: Vec::new(),
-            executor_ids: Vec::new(),
             op: TxnOp::AcceptRes.into(),
             from: self.server_id,
             deps: Vec::new(),

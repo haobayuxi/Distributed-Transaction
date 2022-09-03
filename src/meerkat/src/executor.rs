@@ -52,12 +52,12 @@ impl Executor {
                     TxnOp::Commit => self.handle_commit(msg).await,
                     TxnOp::Prepare => self.handle_prepare(msg).await,
                     TxnOp::PrepareRes => {}
-                    TxnOp::ReadOnlyRes => todo!(),
-                    TxnOp::Accept => todo!(),
-                    TxnOp::AcceptRes => todo!(),
-                    TxnOp::CommitRes => todo!(),
+                    TxnOp::ReadOnlyRes => {}
+                    TxnOp::Accept => {}
+                    TxnOp::AcceptRes => {}
+                    TxnOp::CommitRes => {}
                 },
-                None => todo!(),
+                None => {}
             }
         }
     }

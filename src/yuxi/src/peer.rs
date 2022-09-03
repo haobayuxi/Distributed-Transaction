@@ -1,6 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
-use common::{config::Config, convert_ip_addr, ycsb::init_data};
+use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
 use rpc::yuxi::YuxiMsg;
 use serde::{Deserialize, Serialize};
@@ -12,7 +15,7 @@ use tokio::sync::{
 use crate::{
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
-    Msg, VersionData, WaitList, TS,
+    MaxTs, Msg, VersionData, WaitList, TS,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,12 +40,6 @@ impl Peer {
     pub fn new(server_id: i32, config: Config) -> Self {
         // init data
 
-        // self.mem = Arc::new(mem);
-        let data = init_data(
-            config.clone(),
-            config.server_ids.get(&server_id).unwrap().clone(),
-        );
-
         Self {
             server_id,
             executor_senders: HashMap::new(),
@@ -53,18 +50,35 @@ impl Peer {
 
     pub async fn init(&mut self) {
         let (dispatcher_sender, dispatcher_receiver) = unbounded_channel::<Msg>();
-        self.init_data();
+        let indexs = self.init_data();
         println!("init data done");
-        self.init_executors(self.config.clone());
+        self.init_executors(self.config.clone(), Arc::new(indexs));
         self.init_rpc(self.config.clone(), dispatcher_sender).await;
         println!("init rpc done");
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    fn init_data(&mut self) {
+    fn init_data(&mut self) -> HashMap<i64, usize> {
         // init
+        unsafe {
+            let mut indexs = HashMap::new();
+            // self.mem = Arc::new(mem);
+            let data = init_ycsb();
+            let mut index = 0;
+            for (key, value) in data {
+                indexs.insert(key, index);
+                // insert to IN_MEMORY_DATA
+                IN_MEMORY_DATA[index] = (
+                    RwLock::new(0),
+                    RwLock::new(BTreeMap::new()),
+                    RwLock::new(MaxTs),
+                    Vec::new(),
+                );
+                index += 1;
+            }
 
-        // init
+            indexs
+        }
     }
 
     async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
@@ -78,16 +92,16 @@ impl Peer {
         });
     }
 
-    fn init_executors(&mut self, config: Config) {
-        // self.executor_num = config.executor_num;
-        // for i in 0..config.executor_num {
-        //     let (sender, receiver) = unbounded_channel::<Msg>();
-        //     self.executor_senders.insert(i, sender);
-        //     let mut exec = Executor::new_ycsb(i, self.server_id, self.mem.clone(), receiver);
-        //     tokio::spawn(async move {
-        //         exec.run().await;
-        //     });
-        // }
+    fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<i64, usize>>) {
+        self.executor_num = config.executor_num;
+        for i in 0..config.executor_num {
+            let (sender, receiver) = unbounded_channel::<Msg>();
+            self.executor_senders.insert(i, sender);
+            let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
+            tokio::spawn(async move {
+                exec.run().await;
+            });
+        }
     }
 
     async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {

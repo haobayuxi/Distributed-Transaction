@@ -9,6 +9,7 @@ pub struct Config {
     pub server_ids: HashMap<i32, i32>,
     pub server_addrs: HashMap<i32, String>,
     pub executor_num: i32,
+    pub client_num: i32,
     pub shards: HashMap<i32, Vec<i32>>,
     pub req_per_query: usize,
     pub table_size: i32,
@@ -49,11 +50,12 @@ impl Default for Config {
             server_addrs,
             executor_num: 16,
             shards,
-            req_per_query: 10,
+            req_per_query: 8,
             table_size: 1000,
             zipf_theta: 0.0,
             manager_ids: vec![0, 1, 2],
             propose_addrs,
+            client_num: 300,
             // local_nodes: todo!(),
         }
     }

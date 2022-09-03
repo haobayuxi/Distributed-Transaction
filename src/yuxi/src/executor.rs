@@ -21,19 +21,38 @@ pub struct Executor {
 
     replica_num: i32,
     recv: UnboundedReceiver<Msg>,
+    // cache the txn in memory
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<i64, (YuxiMsg, Vec<TS>)>,
     // ycsb
     index: Arc<HashMap<i64, usize>>,
     // tatp
-    subscriber: Arc<HashMap<u64, Subscriber>>,
-    access_info: Arc<HashMap<u64, AccessInfo>>,
-    special_facility: Arc<HashMap<u64, AccessInfo>>,
-    call_forwarding: Arc<HashMap<u64, CallForwarding>>,
+    subscriber: Arc<HashMap<u64, usize>>,
+    access_info: Arc<HashMap<u64, usize>>,
+    special_facility: Arc<HashMap<u64, usize>>,
+    call_forwarding: Arc<HashMap<u64, usize>>,
 }
 
 impl Executor {
-    pub fn new_ycsb() {}
+    pub fn new(
+        executor_id: i32,
+        server_id: i32,
+        recv: UnboundedReceiver<Msg>,
+        index: Arc<HashMap<i64, usize>>,
+    ) -> Self {
+        Self {
+            executor_id,
+            server_id,
+            replica_num: 3,
+            recv,
+            txns: HashMap::new(),
+            index,
+            subscriber: Arc::new(HashMap::new()),
+            access_info: Arc::new(HashMap::new()),
+            special_facility: Arc::new(HashMap::new()),
+            call_forwarding: Arc::new(HashMap::new()),
+        }
+    }
 
     pub async fn run(&mut self) {
         loop {
@@ -44,12 +63,12 @@ impl Executor {
                     TxnOp::Commit => self.handle_commit(msg).await,
                     TxnOp::Prepare => self.handle_prepare(msg).await,
                     TxnOp::PrepareRes => {}
-                    TxnOp::ReadOnlyRes => todo!(),
+                    TxnOp::ReadOnlyRes => {}
                     TxnOp::Accept => self.handle_accept(msg).await,
-                    TxnOp::AcceptRes => todo!(),
-                    TxnOp::CommitRes => todo!(),
+                    TxnOp::AcceptRes => {}
+                    TxnOp::CommitRes => {}
                 },
-                None => todo!(),
+                None => {}
             }
         }
     }
@@ -73,20 +92,6 @@ impl Executor {
 
         let ts = msg.tmsg.timestamp;
         unsafe {
-            for read in msg.tmsg.read_set.iter() {
-                let key = read.key;
-                // find and update the ts
-                let index = self.index.get(&key).unwrap();
-                let mut guard = IN_MEMORY_DATA[*index].0.write().await;
-                if ts > *guard {
-                    *guard = ts;
-                } else {
-                    if prepare_response.timestamp < *guard {
-                        prepare_response.timestamp = *guard;
-                    }
-                }
-            }
-
             for write in msg.tmsg.write_set.iter() {
                 let key = write.key;
                 let index = self.index.get(&key).unwrap();
@@ -111,6 +116,19 @@ impl Executor {
                 let mut smallest_uncommitted_write_ts = IN_MEMORY_DATA[*index].2.write().await;
                 if *smallest_uncommitted_write_ts > ts {
                     *smallest_uncommitted_write_ts = ts;
+                }
+            }
+            for read in msg.tmsg.read_set.iter() {
+                let key = read.key;
+                // find and update the ts
+                let index = self.index.get(&key).unwrap();
+                let mut guard = IN_MEMORY_DATA[*index].0.write().await;
+                if ts > *guard {
+                    *guard = ts;
+                } else {
+                    if prepare_response.timestamp < *guard {
+                        prepare_response.timestamp = *guard;
+                    }
                 }
             }
         }
