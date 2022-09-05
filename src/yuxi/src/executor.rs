@@ -174,6 +174,12 @@ impl Executor {
                     meta.smallest_wait_ts = meta.maxts;
                 }
                 let wait_ts = meta.maxts;
+                match meta.waitlist.get(&wait_ts) {
+                    Some(t) => {
+                        panic!("already have");
+                    }
+                    None => {}
+                }
                 meta.waitlist.insert(wait_ts, execute_context);
                 write_ts_in_waitlist.push((write.clone(), wait_ts));
             }
@@ -246,7 +252,7 @@ impl Executor {
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;
         // get write_ts in waitlist to erase
-        let (mut txn, mut write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
+        let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
         let isreply = if self.server_id == (tid as u32) % 3 {
             true
         } else {
