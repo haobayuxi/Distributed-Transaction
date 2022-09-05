@@ -370,11 +370,13 @@ impl Executor {
                 println!("loop problem");
             }
             // execute read
-            println!("read set problem");
+
             let mut waiting_for_read_result = 0;
             let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
             let mut read_set = txn.read_set.clone();
             txn.read_set.clear();
+            println!("read set {:?}, is reply {}", read_set, isreply);
+            let mut i = 0;
             for read in read_set.iter_mut() {
                 let key = read.key;
                 let index = self.index.get(&key).unwrap();
@@ -384,6 +386,8 @@ impl Executor {
                 if meta.maxts < final_ts {
                     meta.maxts = final_ts
                 }
+                println!("read {}", i);
+                i += 1;
                 if isreply {
                     // get data
                     if final_ts > meta.smallest_wait_ts {
