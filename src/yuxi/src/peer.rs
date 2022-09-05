@@ -23,8 +23,14 @@ struct ConfigPerServer {
     id: i32,
 }
 
+pub struct Meta {
+    pub maxts: TS,
+    pub waitlist: WaitList,
+    pub smallest_wait_ts: TS,
+}
+
 // (maxts, wait list, waiting ts, versiondata)
-pub static mut IN_MEMORY_DATA: Vec<(RwLock<TS, WaitList, TS>, Vec<VersionData>)> = Vec::new();
+pub static mut IN_MEMORY_DATA: Vec<(RwLock<Meta>, Vec<VersionData>)> = Vec::new();
 
 pub struct Peer {
     server_id: u32,
@@ -75,9 +81,11 @@ impl Peer {
                     data: common::Data::Ycsb(value),
                 };
                 IN_MEMORY_DATA.push((
-                    RwLock::new(0),
-                    RwLock::new(BTreeMap::new()),
-                    RwLock::new(MaxTs),
+                    RwLock::new(Meta {
+                        maxts: 0,
+                        waitlist: BTreeMap::new(),
+                        smallest_wait_ts: MaxTs,
+                    }),
                     vec![version_data],
                 ));
                 index += 1;

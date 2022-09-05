@@ -84,14 +84,13 @@ impl Executor {
                 let index = self.index.get(&key).unwrap();
 
                 let tuple = &IN_MEMORY_DATA[*index];
-                {
-                    let mut ts = tuple.0.write().await;
-                    if *ts < final_ts {
-                        *ts = final_ts
-                    }
+
+                let mut meta = tuple.0.write().await;
+                if meta.maxts < final_ts {
+                    meta.maxts = final_ts
                 }
 
-                if final_ts > *tuple.2.read().await {
+                if final_ts > meta.smallest_wait_ts {
                     waiting_for_read_result += 1;
                     // insert a read task
                     let execution_context = ExecuteContext {
@@ -100,11 +99,11 @@ impl Executor {
                         value: None,
                         call_back: Some(sender.clone()),
                     };
-                    let mut wait_list = tuple.1.write().await;
-                    wait_list.insert(final_ts, execution_context);
+                    // let mut wait_list = tuple.1.write().await;
+                    meta.waitlist.insert(final_ts, execution_context);
                     continue;
                 }
-                let version_data = &tuple.3;
+                let version_data = &tuple.1;
                 let mut index = version_data.len() - 1;
                 while final_ts < version_data[index].start_ts {
                     index -= 1;
@@ -155,15 +154,13 @@ impl Executor {
             for write in msg.tmsg.write_set.iter() {
                 let key = write.key;
                 let index = self.index.get(&key).unwrap();
-                let mut smallest_uncommitted_write_ts = IN_MEMORY_DATA[*index].2.write().await;
-                let mut waitlist_guard = IN_MEMORY_DATA[*index].1.write().await;
-                let mut guard = IN_MEMORY_DATA[*index].0.write().await;
-                if ts > *guard {
-                    *guard = ts;
+                let mut meta = IN_MEMORY_DATA[*index].0.write().await;
+                if ts > meta.maxts {
+                    meta.maxts = ts;
                 } else {
-                    *guard += 1;
-                    if prepare_response.timestamp < *guard {
-                        prepare_response.timestamp = *guard;
+                    meta.maxts += 1;
+                    if prepare_response.timestamp < meta.maxts {
+                        prepare_response.timestamp = meta.maxts;
                     }
                 }
                 // insert into wait list
@@ -173,11 +170,12 @@ impl Executor {
                     value: Some(write.value.clone()),
                     call_back: None,
                 };
-                if *smallest_uncommitted_write_ts > *guard {
-                    *smallest_uncommitted_write_ts = *guard;
+                if meta.smallest_wait_ts > meta.maxts {
+                    meta.smallest_wait_ts = meta.maxts;
                 }
-                waitlist_guard.insert(*guard, execute_context);
-                write_ts_in_waitlist.push((write.clone(), *guard));
+                let wait_ts = meta.maxts;
+                meta.waitlist.insert(wait_ts, execute_context);
+                write_ts_in_waitlist.push((write.clone(), wait_ts));
             }
             self.txns
                 .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
@@ -185,12 +183,12 @@ impl Executor {
                 let key = read.key;
                 // find and update the ts
                 let index = self.index.get(&key).unwrap();
-                let mut guard = IN_MEMORY_DATA[*index].0.write().await;
-                if ts > *guard {
-                    *guard = ts;
+                let mut meta = IN_MEMORY_DATA[*index].0.write().await;
+                if ts > meta.maxts {
+                    meta.maxts = ts;
                 } else {
-                    if prepare_response.timestamp < *guard {
-                        prepare_response.timestamp = *guard;
+                    if prepare_response.timestamp < meta.maxts {
+                        prepare_response.timestamp = meta.maxts;
                     }
                 }
             }
@@ -254,29 +252,27 @@ impl Executor {
                 let key = write.key;
                 let index = self.index.get(&key).unwrap();
                 let tuple = &IN_MEMORY_DATA[*index];
-                {
-                    let mut ts = tuple.0.write().await;
-                    if *ts < final_ts {
-                        *ts = final_ts
-                    }
-                }
-                // modify the wait list
-                let mut smallest_uncommitted_write_ts = IN_MEMORY_DATA[*index].2.write().await;
 
-                let mut wait_list = IN_MEMORY_DATA[*index].1.write().await;
+                let mut meta = tuple.0.write().await;
+                if meta.maxts < final_ts {
+                    meta.maxts = final_ts
+                }
+
+                // modify the wait list
+
                 // let write_ts = write_ts_in_waitlist.pop().unwrap();
-                let mut execution_context = wait_list.remove(write_ts).unwrap();
+                let mut execution_context = meta.waitlist.remove(write_ts).unwrap();
                 execution_context.committed = true;
-                wait_list.insert(final_ts, execution_context);
+                meta.waitlist.insert(final_ts, execution_context);
                 // check pending txns execute the context if the write is committed
                 loop {
-                    match wait_list.pop_first() {
+                    match meta.waitlist.pop_first() {
                         Some((ts, context)) => {
                             if context.committed {
                                 if context.read {
                                     // execute the read
                                     // get data
-                                    let version_data = &IN_MEMORY_DATA[*index].3;
+                                    let version_data = &IN_MEMORY_DATA[*index].1;
                                     let mut index = version_data.len() - 1;
                                     while final_ts < version_data[index].start_ts {
                                         index -= 1;
@@ -285,7 +281,7 @@ impl Executor {
                                     context.call_back.unwrap().send((ts as i64, data));
                                 } else {
                                     // execute the write
-                                    let mut datas = &mut IN_MEMORY_DATA[*index].3;
+                                    let mut datas = &mut IN_MEMORY_DATA[*index].1;
                                     match datas.last_mut() {
                                         Some(last_data) => {
                                             last_data.end_ts = ts;
@@ -311,15 +307,15 @@ impl Executor {
                                     datas.push(version_data);
                                 }
                             } else {
-                                wait_list.insert(ts, context);
-                                if *smallest_uncommitted_write_ts < ts {
-                                    *smallest_uncommitted_write_ts = ts;
+                                meta.waitlist.insert(ts, context);
+                                if meta.smallest_wait_ts < ts {
+                                    meta.smallest_wait_ts = ts;
                                 }
                                 break;
                             }
                         }
                         None => {
-                            *smallest_uncommitted_write_ts = MaxTs;
+                            meta.smallest_wait_ts = MaxTs;
                             break;
                         }
                     }
@@ -335,13 +331,13 @@ impl Executor {
                 let index = self.index.get(&key).unwrap();
 
                 let tuple = &IN_MEMORY_DATA[*index];
-                let mut ts = tuple.0.write().await;
-                if *ts < final_ts {
-                    *ts = final_ts
+                let mut meta = tuple.0.write().await;
+                if meta.maxts < final_ts {
+                    meta.maxts = final_ts
                 }
                 if isreply {
                     // get data
-                    if final_ts > *tuple.2.read().await {
+                    if final_ts > meta.smallest_wait_ts {
                         waiting_for_read_result += 1;
                         // insert a read task
                         let execution_context = ExecuteContext {
@@ -350,11 +346,11 @@ impl Executor {
                             value: None,
                             call_back: Some(sender.clone()),
                         };
-                        let mut wait_list = tuple.1.write().await;
-                        wait_list.insert(final_ts, execution_context);
+                        // let mut wait_list = tuple.1.write().await;
+                        meta.waitlist.insert(final_ts, execution_context);
                         continue;
                     }
-                    let version_data = &tuple.3;
+                    let version_data = &tuple.1;
                     let mut index = version_data.len() - 1;
                     while final_ts < version_data[index].start_ts {
                         index -= 1;
