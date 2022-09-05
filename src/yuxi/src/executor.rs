@@ -221,7 +221,7 @@ impl Executor {
 
                 let index = self.index.get(&key).unwrap();
                 {
-                    println!("i = {}", i);
+                    println!("i = {},{}", i, index);
                     let mut meta = IN_MEMORY_DATA[*index].0.write().await;
                     println!("i = {}", i);
                     i += 1;
@@ -395,7 +395,7 @@ impl Executor {
 
                 let tuple = &IN_MEMORY_DATA[*index];
                 {
-                    println!("read {}", i);
+                    println!("read {} {}", i, index);
                     let mut meta = tuple.0.write().await;
                     if meta.maxts < final_ts {
                         meta.maxts = final_ts
