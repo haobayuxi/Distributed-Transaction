@@ -4,14 +4,12 @@ use common::{
     tatp::{AccessInfo, CallForwarding, Subscriber},
     Data,
 };
+use parking_lot::RwLock;
 use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use tokio::sync::{
-    mpsc::{unbounded_channel, UnboundedReceiver},
-    RwLock,
-};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 use crate::{
     peer::{Meta, IN_MEMORY_DATA},
@@ -96,7 +94,7 @@ impl Executor {
             txn.read_set.clear();
             for read in read_set.iter_mut() {
                 let key = read.key;
-                let mut tuple = self.index.get(&key).unwrap().write().await;
+                let mut tuple = self.index.get(&key).unwrap().write();
 
                 // let tuple = &IN_MEMORY_DATA[*index];
                 {
@@ -183,7 +181,7 @@ impl Executor {
         unsafe {
             for write in msg.tmsg.write_set.iter() {
                 let key = write.key;
-                let mut tuple = self.index.get(&key).unwrap().write().await;
+                let mut tuple = self.index.get(&key).unwrap().write();
                 {
                     let meta = &mut tuple.0;
                     if ts > meta.maxts {
@@ -229,7 +227,7 @@ impl Executor {
 
                 {
                     println!("i = {}", i);
-                    let mut tuple = self.index.get(&key).unwrap().write().await;
+                    let mut tuple = self.index.get(&key).unwrap().write();
                     let meta = &mut tuple.0;
                     println!("i = {}", i);
                     i += 1;
@@ -321,7 +319,7 @@ impl Executor {
 
                 // let tuple = &IN_MEMORY_DATA[*index];
                 {
-                    let mut tuple = self.index.get(&key).unwrap().write().await;
+                    let mut tuple = self.index.get(&key).unwrap().write();
                     // let meta = &mut tuple.0;
                     if tuple.0.maxts < final_ts {
                         tuple.0.maxts = final_ts
@@ -403,7 +401,7 @@ impl Executor {
 
                 // let tuple = &IN_MEMORY_DATA[*index];
                 {
-                    let mut tuple = self.index.get(&key).unwrap().write().await;
+                    let mut tuple = self.index.get(&key).unwrap().write();
                     println!("read {} ", i);
                     let meta = &mut tuple.0;
                     if meta.maxts < final_ts {
