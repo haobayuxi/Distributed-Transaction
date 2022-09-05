@@ -107,7 +107,8 @@ impl Peer {
     }
 
     fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<i64, usize>>) {
-        self.executor_num = config.executor_num;
+        // self.executor_num = config.executor_num;
+        self.executor_num = 2;
         for i in 0..config.executor_num {
             // println!("init executor {}", i);
             let (sender, receiver) = unbounded_channel::<Msg>();
