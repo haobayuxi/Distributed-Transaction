@@ -59,6 +59,8 @@ impl YcsbQuery {
 
     pub fn generate(&mut self) {
         self.read_only = true;
+        self.read_set.clear();
+        self.write_set.clear();
         for _ in 0..self.req_per_query {
             let op = f64_rand(0.0, 1.0, 0.01);
 

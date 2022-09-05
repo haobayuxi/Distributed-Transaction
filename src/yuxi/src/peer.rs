@@ -109,7 +109,7 @@ impl Peer {
     fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<i64, usize>>) {
         self.executor_num = config.executor_num;
         for i in 0..config.executor_num {
-            println!("init executor {}", i);
+            // println!("init executor {}", i);
             let (sender, receiver) = unbounded_channel::<Msg>();
             self.executor_senders.insert(i, sender);
             let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
