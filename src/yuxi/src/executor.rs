@@ -72,6 +72,12 @@ impl Executor {
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // just wait for the earlier txn to be executed
+        println!(
+            "readonly ts tid {},{},{},",
+            self.executor_id,
+            msg.tmsg.from,
+            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+        );
         unsafe {
             let mut txn = msg.tmsg.clone();
             let final_ts = txn.timestamp;
@@ -138,6 +144,12 @@ impl Executor {
 
     async fn handle_prepare(&mut self, msg: Msg) {
         //
+        println!(
+            " prepare {},{},{}",
+            self.executor_id,
+            msg.tmsg.from,
+            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
+        );
         let mut prepare_response = YuxiMsg {
             txn_id: msg.tmsg.txn_id,
             read_set: Vec::new(),
@@ -206,12 +218,6 @@ impl Executor {
 
         // send back result
         msg.callback.send(Ok(prepare_response)).await;
-        println!(
-            "send back prepare {},{},{}",
-            self.executor_id,
-            msg.tmsg.from,
-            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
-        );
     }
 
     async fn handle_accept(&mut self, msg: Msg) {
