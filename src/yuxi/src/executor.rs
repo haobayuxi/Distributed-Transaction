@@ -91,25 +91,27 @@ impl Executor {
                 let index = self.index.get(&key).unwrap();
 
                 let tuple = &IN_MEMORY_DATA[*index];
+                {
+                    let mut meta = tuple.0.write().await;
+                    if meta.maxts < final_ts {
+                        meta.maxts = final_ts
+                    }
 
-                let mut meta = tuple.0.write().await;
-                if meta.maxts < final_ts {
-                    meta.maxts = final_ts
+                    if final_ts > meta.smallest_wait_ts {
+                        waiting_for_read_result += 1;
+                        // insert a read task
+                        let execution_context = ExecuteContext {
+                            committed: true,
+                            read: true,
+                            value: None,
+                            call_back: Some(sender.clone()),
+                        };
+                        // let mut wait_list = tuple.1.write().await;
+                        meta.waitlist.insert(final_ts, execution_context);
+                        continue;
+                    }
                 }
 
-                if final_ts > meta.smallest_wait_ts {
-                    waiting_for_read_result += 1;
-                    // insert a read task
-                    let execution_context = ExecuteContext {
-                        committed: true,
-                        read: true,
-                        value: None,
-                        call_back: Some(sender.clone()),
-                    };
-                    // let mut wait_list = tuple.1.write().await;
-                    meta.waitlist.insert(final_ts, execution_context);
-                    continue;
-                }
                 let version_data = &tuple.1;
                 let mut index = version_data.len() - 1;
                 while final_ts < version_data[index].start_ts {
@@ -208,7 +210,7 @@ impl Executor {
             //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
             //     pr
             // );
-            println!("prepare write check done");
+            println!("prepare write check done{:?}", pr);
             self.txns
                 .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
             println!("read set {:?}", msg.tmsg.read_set);
