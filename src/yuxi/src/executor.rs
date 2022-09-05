@@ -214,8 +214,9 @@ impl Executor {
             for read in msg.tmsg.read_set.iter() {
                 let key = read.key;
                 // find and update the ts
-                println!("i = {}", i);
+
                 let index = self.index.get(&key).unwrap();
+                println!("i = {}", i);
                 let mut meta = IN_MEMORY_DATA[*index].0.write().await;
                 println!("i = {}", i);
                 i += 1;
@@ -316,7 +317,6 @@ impl Executor {
                 let mut execution_context = meta.waitlist.remove(write_ts).unwrap();
                 execution_context.committed = true;
                 meta.waitlist.insert(final_ts, execution_context);
-                println!("not contain");
                 // check pending txns execute the context if the write is committed
                 loop {
                     match meta.waitlist.pop_first() {
@@ -373,7 +373,6 @@ impl Executor {
                         }
                     }
                 }
-                println!("loop problem");
             }
             // execute read
 
@@ -388,6 +387,7 @@ impl Executor {
                 let index = self.index.get(&key).unwrap();
 
                 let tuple = &IN_MEMORY_DATA[*index];
+                println!("read {}", i);
                 let mut meta = tuple.0.write().await;
                 if meta.maxts < final_ts {
                     meta.maxts = final_ts
