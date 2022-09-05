@@ -78,6 +78,7 @@ impl Executor {
             msg.tmsg.from,
             msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
         );
+        let reply = msg.tmsg.clone();
         unsafe {
             let mut txn = msg.tmsg.clone();
             let final_ts = txn.timestamp;
@@ -140,6 +141,12 @@ impl Executor {
                 });
             }
         }
+        println!(
+            "readonly done ts tid {},{},{},",
+            self.executor_id,
+            reply.from,
+            reply.txn_id - ((reply.from as u64) << 50),
+        );
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -218,6 +225,12 @@ impl Executor {
 
         // send back result
         msg.callback.send(Ok(prepare_response)).await;
+        println!(
+            " prepare done {},{},{}",
+            self.executor_id,
+            msg.tmsg.from,
+            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
+        );
     }
 
     async fn handle_accept(&mut self, msg: Msg) {
@@ -260,6 +273,7 @@ impl Executor {
     async fn handle_commit(&mut self, msg: Msg) {
         // commit final version and execute
         let tid = msg.tmsg.txn_id;
+        let reply = msg.tmsg.clone();
         let final_ts = msg.tmsg.timestamp;
         // get write_ts in waitlist to erase
         let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
@@ -455,5 +469,12 @@ impl Executor {
             //     waiting_for_read_result += 1;
             // }
         }
+        println!(
+            "commit done txid {},{},{}",
+            self.executor_id,
+            reply.from,
+            reply.txn_id - ((reply.from as u64) << 50),
+            // pr
+        );
     }
 }
