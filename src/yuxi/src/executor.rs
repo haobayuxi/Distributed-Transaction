@@ -185,7 +185,13 @@ impl Executor {
                 write_ts_in_waitlist.push((write.clone(), wait_ts));
                 pr.push(wait_ts);
             }
-            println!("prepare wait ts tid {},{:?},", msg.tmsg.txn_id, pr);
+            println!(
+                "prepare wait ts tid {},{},{},{:?},",
+                self.executor_id,
+                msg.tmsg.from,
+                msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+                pr
+            );
             self.txns
                 .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
             for read in msg.tmsg.read_set.iter() {
@@ -205,12 +211,12 @@ impl Executor {
 
         // send back result
         msg.callback.send(Ok(prepare_response)).await;
-        println!(
-            "send back prepare {},{},{}",
-            self.executor_id,
-            msg.tmsg.from,
-            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
-        );
+        // println!(
+        //     "send back prepare {},{},{}",
+        //     self.executor_id,
+        //     msg.tmsg.from,
+        //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
+        // );
     }
 
     async fn handle_accept(&mut self, msg: Msg) {
@@ -265,7 +271,13 @@ impl Executor {
         for (write, ts) in write_ts_in_waitlist.iter() {
             pr.push(ts);
         }
-        println!("commit txid {}, {:?}", tid, pr);
+        println!(
+            "commit txid {},{},{}, {:?}",
+            self.executor_id,
+            msg.tmsg.from,
+            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+            pr
+        );
         unsafe {
             for (write, write_ts) in write_ts_in_waitlist.iter() {
                 let key = write.key;
