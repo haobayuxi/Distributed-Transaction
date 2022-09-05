@@ -183,6 +183,10 @@ impl Executor {
                 meta.waitlist.insert(wait_ts, execute_context);
                 write_ts_in_waitlist.push((write.clone(), wait_ts));
             }
+            println!(
+                "prepare wait ts tid {},{:?}",
+                msg.tmsg.txn_id, write_ts_in_waitlist
+            );
             self.txns
                 .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
             for read in msg.tmsg.read_set.iter() {
@@ -258,7 +262,7 @@ impl Executor {
         } else {
             false
         };
-
+        println!("commit txid {}, {:?}", tid, write_ts_in_waitlist);
         unsafe {
             for (write, write_ts) in write_ts_in_waitlist.iter() {
                 let key = write.key;
