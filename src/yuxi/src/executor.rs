@@ -271,13 +271,7 @@ impl Executor {
         for (write, ts) in write_ts_in_waitlist.iter() {
             pr.push(ts);
         }
-        println!(
-            "commit txid {},{},{}, {:?}",
-            self.executor_id,
-            msg.tmsg.from,
-            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-            pr
-        );
+
         unsafe {
             for (write, write_ts) in write_ts_in_waitlist.iter() {
                 let key = write.key;
@@ -292,9 +286,23 @@ impl Executor {
                 // modify the wait list
 
                 // let write_ts = write_ts_in_waitlist.pop().unwrap();
-                let mut execution_context = meta.waitlist.remove(write_ts).unwrap();
-                execution_context.committed = true;
-                meta.waitlist.insert(final_ts, execution_context);
+                match meta.waitlist.remove(write_ts) {
+                    Some(mut execution_context) => {
+                        execution_context.committed = true;
+                        meta.waitlist.insert(final_ts, execution_context);
+                    }
+                    None => {
+                        println!(
+                            "commit txid {},{},{}, {:?}",
+                            self.executor_id,
+                            msg.tmsg.from,
+                            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+                            pr
+                        );
+                    }
+                }
+                // let mut execution_context = meta.waitlist.remove(write_ts).unwrap();
+
                 // check pending txns execute the context if the write is committed
                 loop {
                     match meta.waitlist.pop_first() {
