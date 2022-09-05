@@ -196,6 +196,12 @@ impl Executor {
 
         // send back result
         msg.callback.send(Ok(prepare_response)).await;
+        println!(
+            "send back prepare {},{},{}",
+            self.executor_id,
+            msg.tmsg.from,
+            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
+        );
     }
 
     async fn handle_accept(&mut self, msg: Msg) {
