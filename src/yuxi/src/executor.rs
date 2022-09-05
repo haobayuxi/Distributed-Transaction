@@ -206,6 +206,7 @@ impl Executor {
             //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
             //     pr
             // );
+            println!("prepare write check done");
             self.txns
                 .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
             for read in msg.tmsg.read_set.iter() {
