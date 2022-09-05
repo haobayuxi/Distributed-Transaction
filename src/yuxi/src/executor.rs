@@ -9,7 +9,7 @@ use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tokio::sync::mpsc::{unbounded_channel, Receiver, UnboundedReceiver};
 
 use crate::{
     peer::{Meta, IN_MEMORY_DATA},
@@ -21,7 +21,7 @@ pub struct Executor {
     server_id: u32,
 
     replica_num: u32,
-    recv: UnboundedReceiver<Msg>,
+    recv: Receiver<Msg>,
     // cache the txn in memory
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
@@ -38,7 +38,7 @@ impl Executor {
     pub fn new(
         executor_id: u32,
         server_id: u32,
-        recv: UnboundedReceiver<Msg>,
+        recv: Receiver<Msg>,
         index: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
     ) -> Self {
         Self {

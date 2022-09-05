@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 use rpc::yuxi::YuxiMsg;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
-    mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
     Mutex,
 };
 
@@ -37,7 +37,7 @@ pub struct Peer {
     server_id: u32,
 
     // dispatcher
-    executor_senders: HashMap<u32, UnboundedSender<Msg>>,
+    executor_senders: HashMap<u32, Sender<Msg>>,
     executor_num: u32,
     config: Config,
 }
@@ -118,7 +118,7 @@ impl Peer {
         self.executor_num = 1;
         for i in 0..config.executor_num {
             // println!("init executor {}", i);
-            let (sender, receiver) = unbounded_channel::<Msg>();
+            let (sender, receiver) = channel::<Msg>(1000);
             self.executor_senders.insert(i, sender);
             let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
             tokio::spawn(async move {
@@ -143,7 +143,11 @@ impl Peer {
                         msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
                         msg.tmsg.op()
                     );
-                    self.executor_senders.get(&executor_id).unwrap().send(msg);
+                    self.executor_senders
+                        .get(&executor_id)
+                        .unwrap()
+                        .send(msg)
+                        .await;
                 }
                 None => continue,
             }
