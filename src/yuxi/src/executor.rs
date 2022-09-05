@@ -209,11 +209,16 @@ impl Executor {
             println!("prepare write check done");
             self.txns
                 .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
+            println!("read set {:?}", msg.tmsg.read_set);
+            let mut i = 0;
             for read in msg.tmsg.read_set.iter() {
                 let key = read.key;
                 // find and update the ts
+                println!("i = {}", i);
                 let index = self.index.get(&key).unwrap();
                 let mut meta = IN_MEMORY_DATA[*index].0.write().await;
+                println!("i = {}", i);
+                i += 1;
                 if ts > meta.maxts {
                     meta.maxts = ts;
                 } else {
