@@ -291,14 +291,14 @@ impl Executor {
         };
         let mut pr = Vec::new();
         for (write, ts) in write_ts_in_waitlist.iter() {
-            pr.push(ts);
+            pr.push(write.key);
         }
         println!(
-            "commit txid {},{},{}",
+            "commit txid {},{},{},{:?}",
             self.executor_id,
             msg.tmsg.from,
             msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-            // pr
+            pr
         );
 
         unsafe {
