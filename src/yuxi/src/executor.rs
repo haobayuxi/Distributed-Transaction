@@ -216,20 +216,20 @@ impl Executor {
             //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
             //     pr
             // );
-            println!("prepare write check done{:?}", pr);
+            // println!("prepare write check done{:?}", pr);
             self.txns
                 .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
-            println!("read set {:?}", msg.tmsg.read_set);
+            // println!("read set {:?}", msg.tmsg.read_set);
             let mut i = 0;
             for read in msg.tmsg.read_set.iter() {
                 let key = read.key;
                 // find and update the ts
 
                 {
-                    println!("i = {}", i);
+                    // println!("i = {}", i);
                     let mut tuple = self.index.get(&key).unwrap().write();
                     let meta = &mut tuple.0;
-                    println!("i = {}", i);
+                    // println!("i = {}", i);
                     i += 1;
                     if ts > meta.maxts {
                         meta.maxts = ts;
@@ -394,7 +394,7 @@ impl Executor {
             let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
             let mut read_set = txn.read_set.clone();
             txn.read_set.clear();
-            println!("read set {:?}, is reply {}", read_set, isreply);
+            // println!("read set {:?}, is reply {}", read_set, isreply);
             let mut i = 0;
             for read in read_set.iter_mut() {
                 let key = read.key;
@@ -402,12 +402,12 @@ impl Executor {
                 // let tuple = &IN_MEMORY_DATA[*index];
                 {
                     let mut tuple = self.index.get(&key).unwrap().write();
-                    println!("read {} ", i);
+                    // println!("read {} ", i);
                     let meta = &mut tuple.0;
                     if meta.maxts < final_ts {
                         meta.maxts = final_ts
                     }
-                    println!("read {}", i);
+                    // println!("read {}", i);
                     i += 1;
                     if isreply {
                         // get data
@@ -438,7 +438,7 @@ impl Executor {
                     }
                 }
             }
-            println!("is reply {}, need wait?", isreply);
+            // println!("is reply {}, need wait?", isreply);
             if isreply {
                 // do we need to wait
                 if waiting_for_read_result == 0 {
