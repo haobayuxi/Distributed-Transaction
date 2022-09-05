@@ -57,7 +57,7 @@ impl Yuxi for RpcServer {
         &self,
         request: Request<Streaming<YuxiMsg>>,
     ) -> Result<Response<Self::YuxiTxnStream>, Status> {
-        let (callback_sender, mut receiver) = channel::<Result<YuxiMsg, Status>>(10000);
+        let (callback_sender, mut receiver) = channel::<Result<YuxiMsg, Status>>(100);
         let mut in_stream = request.into_inner();
         let sender = self.sender.clone();
         tokio::spawn(async move {
