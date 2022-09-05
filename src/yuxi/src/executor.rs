@@ -175,12 +175,7 @@ impl Executor {
                     meta.smallest_wait_ts = meta.maxts;
                 }
                 let wait_ts = meta.maxts;
-                match meta.waitlist.get(&wait_ts) {
-                    Some(t) => {
-                        panic!("already have");
-                    }
-                    None => {}
-                }
+
                 meta.waitlist.insert(wait_ts, execute_context);
                 write_ts_in_waitlist.push((write.clone(), wait_ts));
                 pr.push(wait_ts);
@@ -211,12 +206,12 @@ impl Executor {
 
         // send back result
         msg.callback.send(Ok(prepare_response)).await;
-        // println!(
-        //     "send back prepare {},{},{}",
-        //     self.executor_id,
-        //     msg.tmsg.from,
-        //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
-        // );
+        println!(
+            "send back prepare {},{},{}",
+            self.executor_id,
+            msg.tmsg.from,
+            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
+        );
     }
 
     async fn handle_accept(&mut self, msg: Msg) {
@@ -271,6 +266,13 @@ impl Executor {
         for (write, ts) in write_ts_in_waitlist.iter() {
             pr.push(ts);
         }
+        println!(
+            "commit txid {},{},{}",
+            self.executor_id,
+            msg.tmsg.from,
+            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+            // pr
+        );
 
         unsafe {
             for (write, write_ts) in write_ts_in_waitlist.iter() {
