@@ -307,25 +307,10 @@ impl Executor {
 
                 // modify the wait list
 
-                // let write_ts = write_ts_in_waitlist.pop().unwrap();
-                // match meta.waitlist.remove(write_ts) {
-                //     Some(mut execution_context) => {
-                //         execution_context.committed = true;
-                //         meta.waitlist.insert(final_ts, execution_context);
-                //     }
-                //     None => {
-                //         println!(
-                //             "commit txid {},{},{}, {:?}",
-                //             self.executor_id,
-                //             msg.tmsg.from,
-                //             msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-                //             pr
-                //         );
-                //     }
-                // }
                 let mut execution_context = meta.waitlist.remove(write_ts).unwrap();
                 execution_context.committed = true;
                 meta.waitlist.insert(final_ts, execution_context);
+                println!("not contain");
                 // check pending txns execute the context if the write is committed
                 loop {
                     match meta.waitlist.pop_first() {
@@ -382,6 +367,7 @@ impl Executor {
                         }
                     }
                 }
+                println!("loop problem");
             }
             // execute read
             let mut waiting_for_read_result = 0;
@@ -451,23 +437,6 @@ impl Executor {
                     });
                 }
             }
-            // if version_data[index].end_ts > final_ts {
-            //     // safe to read
-            //     read.value = Some(version_data[index].data.read());
-            //     txn.read_set.push(read.clone());
-            // } else {
-            //     // wait for the write
-            //     // let read_context = ExecuteContext {
-            //     //     read: true,
-            //     //     value: None,
-            //     //     call_back: Some(sender.clone()),
-            //     // };
-            //     let mut wait_list = tuple.1.write().await;
-            //     // if wait_list
-            //     // insert into
-            //     wait_list.insert(final_ts, read_context);
-            //     waiting_for_read_result += 1;
-            // }
         }
         println!(
             "commit done txid {},{},{}",

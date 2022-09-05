@@ -129,13 +129,13 @@ impl Peer {
                     let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
                     // send to executor
                     // match self.executor_num
-                    println!(
-                        "executor id = {}, from {},txnid{}, {:?}",
-                        executor_id,
-                        msg.tmsg.from,
-                        msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-                        msg.tmsg.op()
-                    );
+                    // println!(
+                    //     "executor id = {}, from {},txnid{}, {:?}",
+                    //     executor_id,
+                    //     msg.tmsg.from,
+                    //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+                    //     msg.tmsg.op()
+                    // );
                     self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }
                 None => continue,
