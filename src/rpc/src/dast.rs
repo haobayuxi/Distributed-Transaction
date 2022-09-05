@@ -1,7 +1,7 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DastMsg {
-    #[prost(int64, tag = "1")]
-    pub txn_id: i64,
+    #[prost(uint64, tag = "1")]
+    pub txn_id: u64,
     #[prost(message, repeated, tag = "2")]
     pub read_set: ::prost::alloc::vec::Vec<super::common::ReadStruct>,
     #[prost(message, repeated, tag = "3")]
@@ -10,8 +10,8 @@ pub struct DastMsg {
     pub notified_txn_ts: ::prost::alloc::vec::Vec<u64>,
     #[prost(enumeration = "super::common::TxnOp", tag = "5")]
     pub op: i32,
-    #[prost(int32, tag = "6")]
-    pub from: i32,
+    #[prost(uint32, tag = "6")]
+    pub from: u32,
     #[prost(uint64, tag = "7")]
     pub timestamp: u64,
     #[prost(uint64, tag = "8")]

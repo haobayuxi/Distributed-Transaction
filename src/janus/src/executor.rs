@@ -9,18 +9,18 @@ use tokio::sync::{mpsc::UnboundedReceiver, RwLock};
 use crate::{JanusMeta, Msg};
 
 pub struct Executor {
-    server_id: i32,
+    server_id: u32,
     // memory
     mem: HashMap<i64, RwLock<(JanusMeta, String)>>,
     // txns
-    txns: HashMap<i64, JanusMsg>,
+    txns: HashMap<u64, JanusMsg>,
     //
     // recv: UnboundedReceiver<Msg>,
 }
 
 impl Executor {
     pub fn new(
-        server_id: i32,
+        server_id: u32,
         mem: HashMap<i64, RwLock<(JanusMeta, String)>>,
         // recv: UnboundedReceiver<Msg>,
     ) -> Self {

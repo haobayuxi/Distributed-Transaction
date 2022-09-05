@@ -10,7 +10,7 @@ message YuxiMsg {
     repeated common.Read_Struct read_set = 2;
     repeated common.Write_Struct write_set = 3;
     common.TxnOP op = 4;
-    int32 from = 5;
+    uint32 from = 5;
     uint64 timestamp = 6;
     common.TxnType txn_type = 7;
 }

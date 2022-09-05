@@ -8,22 +8,19 @@ use rpc::{
     common::{ReadStruct, TxnOp},
     yuxi::YuxiMsg,
 };
-use tokio::sync::{
-    mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
-    RwLock,
-};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 use crate::{peer::IN_MEMORY_DATA, ExecuteContext, MaxTs, Msg, VersionData, TS};
 
 pub struct Executor {
-    executor_id: i32,
-    server_id: i32,
+    executor_id: u32,
+    server_id: u32,
 
-    replica_num: i32,
+    replica_num: u32,
     recv: UnboundedReceiver<Msg>,
     // cache the txn in memory
     // Vec<TS> is used to index the write in waitlist
-    txns: HashMap<i64, (YuxiMsg, Vec<TS>)>,
+    txns: HashMap<u64, (YuxiMsg, Vec<TS>)>,
     // ycsb
     index: Arc<HashMap<i64, usize>>,
     // tatp
@@ -35,8 +32,8 @@ pub struct Executor {
 
 impl Executor {
     pub fn new(
-        executor_id: i32,
-        server_id: i32,
+        executor_id: u32,
+        server_id: u32,
         recv: UnboundedReceiver<Msg>,
         index: Arc<HashMap<i64, usize>>,
     ) -> Self {
@@ -243,7 +240,7 @@ impl Executor {
         let final_ts = msg.tmsg.timestamp;
         // get write_ts in waitlist to erase
         let (mut txn, mut write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
-        let isreply = if self.server_id == (tid as i32) % self.replica_num {
+        let isreply = if self.server_id == (tid as u32) % self.replica_num {
             true
         } else {
             false

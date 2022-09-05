@@ -7,13 +7,12 @@ pub mod mem;
 pub mod tatp;
 pub mod ycsb;
 
-pub static CID_LEN: i32 = 12;
-pub static SHARD_NUM: i32 = 1;
-pub static EXECUTOR_NUM: i32 = 16;
+pub static CID_LEN: u32 = 12;
+pub static EXECUTOR_NUM: u32 = 16;
 
 #[derive(Default, Deserialize)]
 pub struct ConfigInFile {
-    pub id: i32,
+    pub id: u32,
     pub read_perc: i32,
     pub txns_per_client: i32,
     pub is_ycsb: bool,
@@ -64,11 +63,11 @@ pub fn convert_ip_addr(ip: String, add_http: bool) -> String {
     }
 }
 
-pub fn get_client_id(txnid: i64) -> i32 {
-    return (txnid >> CID_LEN) as i32;
+pub fn get_client_id(txnid: u64) -> u32 {
+    return (txnid >> CID_LEN) as u32;
 }
 
-pub fn get_local_time(coordinator_id: i32) -> u64 {
+pub fn get_local_time(coordinator_id: u32) -> u64 {
     // use microsecond as ts
     let time = (Local::now().timestamp_nanos() / 1000) as u64;
     return time << CID_LEN + coordinator_id;

@@ -5,28 +5,20 @@ pub static PORT: i32 = 20000;
 
 #[derive(Clone)]
 pub struct Config {
-    // map serverid to shard id
-    pub server_ids: HashMap<i32, i32>,
-    pub server_addrs: HashMap<i32, String>,
+    pub server_addrs: HashMap<u32, String>,
     pub executor_num: u32,
-    pub client_num: i32,
-    pub shards: HashMap<i32, Vec<i32>>,
+    pub client_num: u32,
     pub req_per_query: usize,
-    pub table_size: i32,
+    pub table_size: u32,
     pub zipf_theta: f64,
     // dast config
-    pub manager_ids: Vec<i32>,
-    pub propose_addrs: HashMap<i32, String>,
+    pub manager_ids: Vec<u32>,
+    pub propose_addrs: HashMap<u32, String>,
     // pub local_nodes: Vec<Vec<i32>>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        let mut server_ids = HashMap::new();
-        server_ids.insert(0, 1);
-        server_ids.insert(1, 1);
-        server_ids.insert(2, 1);
-
         let addr0 = String::from("http://192.168.50.11:50051");
         let addr1 = String::from("http://192.168.50.13:50051");
         let addr2 = String::from("http://192.168.50.15:50051");
@@ -46,10 +38,8 @@ impl Default for Config {
         let mut shards = HashMap::new();
         shards.insert(1, vec![0, 1, 2]);
         Self {
-            server_ids,
             server_addrs,
             executor_num: 32,
-            shards,
             req_per_query: 8,
             table_size: 1000,
             zipf_theta: 0.0,

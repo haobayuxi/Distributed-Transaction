@@ -1,6 +1,6 @@
 use std::{env, time::Duration};
 
-use common::{config::Config, ycsb::YcsbQuery, ConfigInFile};
+use common::{config::Config, ycsb::YcsbQuery, ConfigInFile, CID_LEN};
 use rpc::{
     common::{TxnOp, TxnType},
     dast::{client_service_client::ClientServiceClient, dast_client::DastClient, DastMsg},
@@ -13,10 +13,10 @@ use tokio::{
 use tonic::transport::Channel;
 
 pub struct ProposeClient {
-    id: i32,
+    id: u32,
     client: ClientServiceClient<Channel>,
     is_ycsb: bool,
-    txn_id: i64,
+    txn_id: u64,
     txn: DastMsg,
     workload: YcsbQuery,
     txns_per_client: i32,
@@ -26,7 +26,7 @@ impl ProposeClient {
     pub async fn new(
         config: Config,
         read_perc: i32,
-        id: i32,
+        id: u32,
         txns_per_client: i32,
         is_ycsb: bool,
     ) -> Self {
@@ -39,7 +39,7 @@ impl ProposeClient {
                         client,
                         id,
                         is_ycsb,
-                        txn_id: (id as i64) << 45,
+                        txn_id: (id as u64) << CID_LEN,
                         txn: DastMsg::default(),
                         workload: YcsbQuery::new(
                             config.zipf_theta,
@@ -111,7 +111,7 @@ impl ProposeClient {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
-    let id = args[1].parse::<i32>().unwrap();
+    let id = args[1].parse::<u32>().unwrap();
     let f = std::fs::File::open("config.yml").unwrap();
     let config_in_file: ConfigInFile = serde_yaml::from_reader(f).unwrap();
 

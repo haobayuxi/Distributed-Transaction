@@ -6,7 +6,7 @@ use janus::coordinator::JanusCoordinator;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
-    let id = args[1].parse::<i32>().unwrap();
+    let id = args[1].parse::<u32>().unwrap();
     let config = Config::default();
     let f = std::fs::File::open("config.yml").unwrap();
     let client_config: ConfigInFile = serde_yaml::from_reader(f).unwrap();

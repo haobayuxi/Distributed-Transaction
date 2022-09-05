@@ -22,7 +22,7 @@ struct ConfigPerServer {
 }
 
 pub struct Peer {
-    server_id: i32,
+    server_id: u32,
 
     // memory
     // mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
@@ -33,7 +33,7 @@ pub struct Peer {
 }
 
 impl Peer {
-    pub fn new(server_id: i32, config: Config) -> Self {
+    pub fn new(server_id: u32, config: Config) -> Self {
         // init data
 
         let mut mem = HashMap::new();

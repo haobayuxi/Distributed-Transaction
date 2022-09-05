@@ -18,7 +18,7 @@ pub struct Msg {
 
 #[derive(Default, Clone)]
 pub struct JanusMeta {
-    pub last_visited_txnid: i64,
+    pub last_visited_txnid: u64,
 }
 
 // pub fn shard_txn_to_executors(txn: JanusMsg) -> HashMap<i32, JanusMsg> {

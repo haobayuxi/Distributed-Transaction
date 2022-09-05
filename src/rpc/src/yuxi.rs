@@ -1,15 +1,15 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct YuxiMsg {
-    #[prost(int64, tag = "1")]
-    pub txn_id: i64,
+    #[prost(uint64, tag = "1")]
+    pub txn_id: u64,
     #[prost(message, repeated, tag = "2")]
     pub read_set: ::prost::alloc::vec::Vec<super::common::ReadStruct>,
     #[prost(message, repeated, tag = "3")]
     pub write_set: ::prost::alloc::vec::Vec<super::common::WriteStruct>,
     #[prost(enumeration = "super::common::TxnOp", tag = "4")]
     pub op: i32,
-    #[prost(int32, tag = "5")]
-    pub from: i32,
+    #[prost(uint32, tag = "5")]
+    pub from: u32,
     #[prost(uint64, tag = "6")]
     pub timestamp: u64,
     #[prost(enumeration = "super::common::TxnType", tag = "7")]

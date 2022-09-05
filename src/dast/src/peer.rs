@@ -44,7 +44,7 @@ impl TxnInMemory {
 }
 
 pub struct Peer {
-    id: i32,
+    id: u32,
     readyq: BTreeMap<u64, Option<TxnInMemory>>,
     waitq: BTreeMap<u64, DastMsg>,
     notifiedTs: Vec<u64>,
@@ -55,10 +55,10 @@ pub struct Peer {
     executed_up_to: u64,
 
     config: Config,
-    manager_ids: Vec<i32>,
+    manager_ids: Vec<u32>,
     local_node_ids: Vec<i32>,
     // rpc
-    peer_senders: HashMap<i32, Sender<DastMsg>>,
+    peer_senders: HashMap<u32, Sender<DastMsg>>,
 
     recv: UnboundedReceiver<Msg>,
 
@@ -68,7 +68,7 @@ pub struct Peer {
 
 impl Peer {
     pub fn new(
-        id: i32,
+        id: u32,
         replica_nums: usize,
         config: Config,
         recv: UnboundedReceiver<Msg>,
@@ -84,7 +84,7 @@ impl Peer {
             readyq: BTreeMap::new(),
             waitq: BTreeMap::new(),
 
-            majority_size: (config.server_ids.len() / 2) as i32,
+            majority_size: 2,
             notifiedTs: vec![0; replica_nums],
 
             manager_ids: config.manager_ids.clone(),
@@ -346,7 +346,7 @@ impl Peer {
 
     // async fn broadcast_to_local_nodes(&mut self, msg: DastMsg) {}
 
-    async fn send_to_peer(&mut self, msg: DastMsg, to: i32) {
+    async fn send_to_peer(&mut self, msg: DastMsg, to: u32) {
         let client = self.peer_senders.get(&to).unwrap();
         client.send(msg).await;
     }

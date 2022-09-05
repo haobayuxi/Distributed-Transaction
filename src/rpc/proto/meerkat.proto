@@ -12,9 +12,9 @@ message MeerkatMsg {
     uint64 txn_id = 1;
     repeated common.Read_Struct read_set = 2;
     repeated common.Write_Struct write_set = 3;
-    int32 executor_id = 4;
+    uint32 executor_id = 4;
     common.TxnOP op = 5;
-    int32 from = 6;
+    uint32 from = 6;
     uint64 timestamp = 7;
     optional common.TxnType txn_type = 8;
 }

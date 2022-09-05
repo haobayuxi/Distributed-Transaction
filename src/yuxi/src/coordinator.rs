@@ -1,11 +1,8 @@
 use chrono::Local;
 use std::{collections::HashMap, time::Duration};
 
-use common::{config::Config, get_local_time, ycsb::YcsbQuery, SHARD_NUM};
-use rpc::{
-    common::{ReadStruct, TxnOp, TxnType, WriteStruct},
-    yuxi::{yuxi_client::YuxiClient, YuxiMsg},
-};
+use common::{config::Config, ycsb::YcsbQuery};
+use rpc::{common::TxnOp, yuxi::YuxiMsg};
 use tokio::{
     fs::OpenOptions,
     io::AsyncWriteExt,
@@ -21,12 +18,12 @@ static RETRY: i32 = 20;
 pub struct YuxiCoordinator {
     config: Config,
     is_ycsb: bool,
-    id: i32,
-    txn_id: i64,
+    id: u32,
+    txn_id: u64,
     // sharded txn
     txn: YuxiMsg,
     // send to servers
-    servers: HashMap<i32, Sender<YuxiMsg>>,
+    servers: HashMap<u32, Sender<YuxiMsg>>,
     recv: Receiver<YuxiMsg>,
     workload: YcsbQuery,
     txns_per_client: i32,
@@ -34,7 +31,7 @@ pub struct YuxiCoordinator {
 
 impl YuxiCoordinator {
     pub fn new(
-        id: i32,
+        id: u32,
         config: Config,
         read_perc: i32,
         txns_per_client: i32,
@@ -43,7 +40,7 @@ impl YuxiCoordinator {
         Self {
             is_ycsb: true,
             id,
-            txn_id: (id as i64) << 30,
+            txn_id: (id as u64) << 30,
             txn: YuxiMsg::default(),
             servers: HashMap::new(),
             recv,

@@ -28,16 +28,16 @@ pub static mut IN_MEMORY_DATA: Vec<(RwLock<TS>, RwLock<WaitList>, RwLock<TS>, Ve
     Vec::new();
 
 pub struct Peer {
-    server_id: i32,
+    server_id: u32,
 
     // dispatcher
     executor_senders: HashMap<u32, UnboundedSender<Msg>>,
-    executor_num: i32,
+    executor_num: u32,
     config: Config,
 }
 
 impl Peer {
-    pub fn new(server_id: i32, config: Config) -> Self {
+    pub fn new(server_id: u32, config: Config) -> Self {
         // init data
 
         Self {
@@ -117,11 +117,11 @@ impl Peer {
         loop {
             match recv.recv().await {
                 Some(msg) => {
-                    println!("txnid {}", msg.tmsg.txn_id);
-                    let executor_id = (msg.tmsg.txn_id as u) % self.executor_num;
+                    // println!("txnid {}", msg.tmsg.txn_id);
+                    let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
                     // send to executor
                     // match self.executor_num
-                    println!("executor id = {}, self{}", executor_id, self.executor_num);
+                    // println!("executor id = {}, self{}", executor_id, self.executor_num);
                     self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }
                 None => continue,

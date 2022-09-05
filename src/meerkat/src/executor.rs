@@ -11,7 +11,7 @@ use crate::{MeerkatMeta, Msg};
 
 pub struct Executor {
     id: u32,
-    server_id: i32,
+    server_id: u32,
     // ycsb
     mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
     // tatp
@@ -26,7 +26,7 @@ pub struct Executor {
 impl Executor {
     pub fn new_ycsb(
         id: u32,
-        server_id: i32,
+        server_id: u32,
         mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
         recv: UnboundedReceiver<Msg>,
     ) -> Self {

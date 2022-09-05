@@ -14,7 +14,7 @@ message DastMsg {
     repeated common.Write_Struct write_set = 3;
     repeated uint64 notified_txn_ts = 4;
     common.TxnOP op = 5;
-    int32 from = 6;
+    uint32 from = 6;
     uint64 timestamp = 7;
     uint64 maxts = 8;
     optional common.TxnType txn_type = 9;

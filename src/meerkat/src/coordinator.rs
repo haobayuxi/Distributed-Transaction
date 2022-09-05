@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use common::{config::Config, get_local_time, ycsb::YcsbQuery, SHARD_NUM};
+use common::{config::Config, get_local_time, ycsb::YcsbQuery};
 use rpc::{
     common::{ReadStruct, TxnOp, TxnType, WriteStruct},
     meerkat::{meerkat_client::MeerkatClient, MeerkatMsg},
@@ -18,11 +18,11 @@ static RETRY: i32 = 20;
 pub struct MeerkatCoordinator {
     config: Config,
     id: u32,
-    txn_id: i64,
+    txn_id: u64,
     // sharded txn
     txn: MeerkatMsg,
     // send to servers
-    servers: HashMap<i32, MeerkatClient<Channel>>,
+    servers: HashMap<u32, MeerkatClient<Channel>>,
     workload: YcsbQuery,
     txns_per_client: i32,
 }
@@ -31,7 +31,7 @@ impl MeerkatCoordinator {
     pub fn new(id: u32, config: Config, read_perc: i32, txns_per_client: i32) -> Self {
         Self {
             id,
-            txn_id: (id as i64) << 45,
+            txn_id: (id as u64) << 40,
             txn: MeerkatMsg::default(),
             servers: HashMap::new(),
             workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),

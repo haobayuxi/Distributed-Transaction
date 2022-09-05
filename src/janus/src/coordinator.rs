@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use common::{config::Config, ycsb::YcsbQuery, SHARD_NUM};
+use common::{config::Config, ycsb::YcsbQuery, CID_LEN};
 use rpc::{
     common::{ReadStruct, TxnOp, TxnType, WriteStruct},
     janus::{janus_client::JanusClient, JanusMsg},
@@ -16,22 +16,22 @@ use tonic::transport::Channel;
 pub struct JanusCoordinator {
     // replica_id: i32,
     // read_optimize: bool,
-    id: i32,
-    txn_id: i64,
-    txn: HashMap<i32, JanusMsg>,
+    id: u32,
+    txn_id: u64,
+    txn: HashMap<u32, JanusMsg>,
     workload: YcsbQuery,
     // send to servers
-    servers: HashMap<i32, JanusClient<Channel>>,
+    servers: HashMap<u32, JanusClient<Channel>>,
     config: Config,
     txns_per_client: i32,
 }
 
 impl JanusCoordinator {
-    pub fn new(id: i32, config: Config, txns_per_client: i32, read_perc: i32) -> Self {
+    pub fn new(id: u32, config: Config, txns_per_client: i32, read_perc: i32) -> Self {
         Self {
             // read_optimize,
             id,
-            txn_id: 0,
+            txn_id: (id as u64) << CID_LEN,
             txn: HashMap::new(),
             servers: HashMap::new(),
             workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
@@ -132,60 +132,6 @@ impl JanusCoordinator {
                         sleep(Duration::from_millis(100)).await;
                     }
                 }
-            }
-        }
-    }
-
-    fn shard_the_transaction(&mut self, read_set: Vec<i64>, write_set: Vec<(i64, String)>) {
-        self.txn.clear();
-        // group read write into multi shards, try to read from one of the server
-        for read in read_set {
-            let shard = (read as i32) % SHARD_NUM;
-            let read_struct = ReadStruct {
-                key: read,
-                value: None,
-                timestamp: None,
-            };
-            if self.txn.contains_key(&shard) {
-                let msg = self.txn.get_mut(&shard).unwrap();
-
-                msg.read_set.push(read_struct);
-            } else {
-                let msg = JanusMsg {
-                    txn_id: self.txn_id,
-                    read_set: vec![read_struct],
-                    write_set: Vec::new(),
-                    op: TxnOp::Prepare.into(),
-                    from: self.id,
-                    deps: Vec::new(),
-                    txn_type: None,
-                };
-                self.txn.insert(shard, msg);
-            }
-        }
-
-        for (key, value) in write_set {
-            let shard = (key as i32) % SHARD_NUM;
-            let write_struct = WriteStruct {
-                key,
-                value,
-                // timestamp: None,
-            };
-            if self.txn.contains_key(&shard) {
-                let msg = self.txn.get_mut(&shard).unwrap();
-
-                msg.write_set.push(write_struct);
-            } else {
-                let msg = JanusMsg {
-                    txn_id: self.txn_id,
-                    read_set: Vec::new(),
-                    write_set: vec![write_struct],
-                    op: TxnOp::Prepare.into(),
-                    from: self.id,
-                    deps: Vec::new(),
-                    txn_type: None,
-                };
-                self.txn.insert(shard, msg);
             }
         }
     }

@@ -43,13 +43,13 @@ pub struct DepGraph {
     // dep graph
     // graph: Arc<RwLock<HashMap<i64, Node>>>,
     // wait list
-    wait_list: UnboundedReceiver<i64>,
+    wait_list: UnboundedReceiver<u64>,
     // recv: UnboundedReceiver<Msg>,
     // job senders
     executor: UnboundedSender<Msg>,
 
     // stack for tarjan
-    stack: Vec<i64>,
+    stack: Vec<u64>,
     index: i32,
     visit: i32,
 }
@@ -65,7 +65,7 @@ impl DepGraph {
             TXNS.reserve(client_num);
         }
 
-        let (waitlist_sender, waitlist_receiver) = unbounded_channel::<i64>();
+        let (waitlist_sender, waitlist_receiver) = unbounded_channel::<u64>();
         // let graph_clone = graph.clone();
         tokio::spawn(async move {
             unsafe {
@@ -109,7 +109,7 @@ impl DepGraph {
         self.executor.send(txn);
     }
 
-    async fn execute_txn(&mut self, txnid: i64) {
+    async fn execute_txn(&mut self, txnid: u64) {
         unsafe {
             let clientid = get_client_id(txnid);
             let index = txnid >> CID_LEN;
@@ -120,7 +120,7 @@ impl DepGraph {
         }
     }
 
-    async fn find_scc(&mut self, txnid: i64) -> bool {
+    async fn find_scc(&mut self, txnid: u64) -> bool {
         unsafe {
             self.stack.clear();
             self.visit = 0;
@@ -142,7 +142,7 @@ impl DepGraph {
                         }
                         let dep_index = dep >> CID_LEN;
                         let dep_clientid = get_client_id(dep);
-                        while dep_index > TXNS[dep_clientid as usize].len() as i64 {
+                        while dep_index > TXNS[dep_clientid as usize].len() as u64 {
                             // not committed
                             sleep(Duration::from_nanos(10)).await;
                         }
