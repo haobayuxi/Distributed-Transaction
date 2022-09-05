@@ -370,6 +370,7 @@ impl Executor {
                 println!("loop problem");
             }
             // execute read
+            println!("read set problem");
             let mut waiting_for_read_result = 0;
             let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
             let mut read_set = txn.read_set.clone();
@@ -411,6 +412,7 @@ impl Executor {
                     });
                 }
             }
+            println!("is reply {}, need wait?", isreply);
             if isreply {
                 // do we need to wait
                 if waiting_for_read_result == 0 {
