@@ -5,7 +5,7 @@ use common::{
     Data,
 };
 use rpc::{
-    common::{ReadStruct, TxnOp},
+    common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
@@ -20,7 +20,7 @@ pub struct Executor {
     recv: UnboundedReceiver<Msg>,
     // cache the txn in memory
     // Vec<TS> is used to index the write in waitlist
-    txns: HashMap<u64, (YuxiMsg, Vec<TS>)>,
+    txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
     // ycsb
     index: Arc<HashMap<i64, usize>>,
     // tatp
@@ -84,12 +84,15 @@ impl Executor {
                 let index = self.index.get(&key).unwrap();
 
                 let tuple = &IN_MEMORY_DATA[*index];
-                let mut ts = tuple.0.write().await;
-                if *ts < final_ts {
-                    *ts = final_ts
+                {
+                    let mut ts = tuple.0.write().await;
+                    if *ts < final_ts {
+                        *ts = final_ts
+                    }
                 }
 
                 if final_ts > *tuple.2.read().await {
+                    waiting_for_read_result += 1;
                     // insert a read task
                     let execution_context = ExecuteContext {
                         committed: true,
@@ -152,6 +155,7 @@ impl Executor {
             for write in msg.tmsg.write_set.iter() {
                 let key = write.key;
                 let index = self.index.get(&key).unwrap();
+                let mut smallest_uncommitted_write_ts = IN_MEMORY_DATA[*index].2.write().await;
                 let mut waitlist_guard = IN_MEMORY_DATA[*index].1.write().await;
                 let mut guard = IN_MEMORY_DATA[*index].0.write().await;
                 if ts > *guard {
@@ -169,12 +173,11 @@ impl Executor {
                     value: Some(write.value.clone()),
                     call_back: None,
                 };
-                waitlist_guard.insert(*guard, execute_context);
-                write_ts_in_waitlist.push(*guard);
-                let mut smallest_uncommitted_write_ts = IN_MEMORY_DATA[*index].2.write().await;
-                if *smallest_uncommitted_write_ts > ts {
-                    *smallest_uncommitted_write_ts = ts;
+                if *smallest_uncommitted_write_ts > *guard {
+                    *smallest_uncommitted_write_ts = *guard;
                 }
+                waitlist_guard.insert(*guard, execute_context);
+                write_ts_in_waitlist.push((write.clone(), *guard));
             }
             self.txns
                 .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
@@ -240,15 +243,14 @@ impl Executor {
         let final_ts = msg.tmsg.timestamp;
         // get write_ts in waitlist to erase
         let (mut txn, mut write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
-        let isreply = if self.server_id == (tid as u32) % self.replica_num {
+        let isreply = if self.server_id == (tid as u32) % 3 {
             true
         } else {
             false
         };
 
         unsafe {
-            while txn.write_set.len() > 0 {
-                let write = txn.write_set.pop().unwrap();
+            for (write, write_ts) in write_ts_in_waitlist.iter() {
                 let key = write.key;
                 let index = self.index.get(&key).unwrap();
                 let tuple = &IN_MEMORY_DATA[*index];
@@ -259,9 +261,11 @@ impl Executor {
                     }
                 }
                 // modify the wait list
+                let mut smallest_uncommitted_write_ts = IN_MEMORY_DATA[*index].2.write().await;
+
                 let mut wait_list = IN_MEMORY_DATA[*index].1.write().await;
-                let write_ts = write_ts_in_waitlist.pop().unwrap();
-                let mut execution_context = wait_list.remove(&write_ts).unwrap();
+                // let write_ts = write_ts_in_waitlist.pop().unwrap();
+                let mut execution_context = wait_list.remove(write_ts).unwrap();
                 execution_context.committed = true;
                 wait_list.insert(final_ts, execution_context);
                 // check pending txns execute the context if the write is committed
@@ -308,8 +312,6 @@ impl Executor {
                                 }
                             } else {
                                 wait_list.insert(ts, context);
-                                let mut smallest_uncommitted_write_ts =
-                                    IN_MEMORY_DATA[*index].2.write().await;
                                 if *smallest_uncommitted_write_ts < ts {
                                     *smallest_uncommitted_write_ts = ts;
                                 }
@@ -317,8 +319,6 @@ impl Executor {
                             }
                         }
                         None => {
-                            let mut smallest_uncommitted_write_ts =
-                                IN_MEMORY_DATA[*index].2.write().await;
                             *smallest_uncommitted_write_ts = MaxTs;
                             break;
                         }
@@ -339,21 +339,21 @@ impl Executor {
                 if *ts < final_ts {
                     *ts = final_ts
                 }
-
-                if final_ts > *tuple.2.read().await {
-                    // insert a read task
-                    let execution_context = ExecuteContext {
-                        committed: true,
-                        read: true,
-                        value: None,
-                        call_back: Some(sender.clone()),
-                    };
-                    let mut wait_list = tuple.1.write().await;
-                    wait_list.insert(final_ts, execution_context);
-                    continue;
-                }
                 if isreply {
                     // get data
+                    if final_ts > *tuple.2.read().await {
+                        waiting_for_read_result += 1;
+                        // insert a read task
+                        let execution_context = ExecuteContext {
+                            committed: true,
+                            read: true,
+                            value: None,
+                            call_back: Some(sender.clone()),
+                        };
+                        let mut wait_list = tuple.1.write().await;
+                        wait_list.insert(final_ts, execution_context);
+                        continue;
+                    }
                     let version_data = &tuple.3;
                     let mut index = version_data.len() - 1;
                     while final_ts < version_data[index].start_ts {
@@ -376,12 +376,17 @@ impl Executor {
                     // spawn a new task for this
                     tokio::spawn(async move {
                         while waiting_for_read_result > 0 {
-                            let (key, value) = receiver.recv().await.unwrap();
-                            txn.read_set.push(ReadStruct {
-                                key,
-                                value: Some(value),
-                                timestamp: None,
-                            });
+                            match receiver.recv().await {
+                                Some((key, value)) => {
+                                    txn.read_set.push(ReadStruct {
+                                        key,
+                                        value: Some(value),
+                                        timestamp: None,
+                                    });
+                                }
+                                None => {}
+                            }
+
                             waiting_for_read_result -= 1;
                         }
                         msg.callback.send(Ok(txn)).await;

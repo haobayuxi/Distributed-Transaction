@@ -24,8 +24,7 @@ struct ConfigPerServer {
 }
 
 // (maxts, wait list, waiting ts, versiondata)
-pub static mut IN_MEMORY_DATA: Vec<(RwLock<TS>, RwLock<WaitList>, RwLock<TS>, Vec<VersionData>)> =
-    Vec::new();
+pub static mut IN_MEMORY_DATA: Vec<(RwLock<TS, WaitList, TS>, Vec<VersionData>)> = Vec::new();
 
 pub struct Peer {
     server_id: u32,
@@ -121,7 +120,13 @@ impl Peer {
                     let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
                     // send to executor
                     // match self.executor_num
-                    // println!("executor id = {}, self{}", executor_id, self.executor_num);
+                    println!(
+                        "executor id = {}, from {},txnid{}, {:?}",
+                        executor_id,
+                        msg.tmsg.from,
+                        msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+                        msg.tmsg.op()
+                    );
                     self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }
                 None => continue,

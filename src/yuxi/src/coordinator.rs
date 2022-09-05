@@ -40,7 +40,7 @@ impl YuxiCoordinator {
         Self {
             is_ycsb: true,
             id,
-            txn_id: (id as u64) << 30,
+            txn_id: (id as u64) << 50,
             txn: YuxiMsg::default(),
             servers: HashMap::new(),
             recv,
@@ -56,8 +56,9 @@ impl YuxiCoordinator {
         println!("init rpc done");
         // run transactions
         let mut latency_result = Vec::new();
-
+        self.txn.from = self.id;
         let total_start = Instant::now();
+
         for i in 0..self.txns_per_client {
             self.workload.generate();
             self.txn_id += 1;
@@ -114,6 +115,7 @@ impl YuxiCoordinator {
             .unwrap()
             .send(self.txn.clone())
             .await;
+        let _res = self.recv.recv().await.unwrap();
     }
 
     async fn run_transaction(&mut self) -> bool {

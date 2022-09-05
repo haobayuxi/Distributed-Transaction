@@ -7,7 +7,7 @@ pub mod mem;
 pub mod tatp;
 pub mod ycsb;
 
-pub static CID_LEN: u32 = 12;
+pub static CID_LEN: u32 = 50;
 pub static EXECUTOR_NUM: u32 = 16;
 
 #[derive(Default, Deserialize)]
