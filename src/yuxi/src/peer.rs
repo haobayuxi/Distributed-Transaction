@@ -118,7 +118,7 @@ impl Peer {
             match recv.recv().await {
                 Some(msg) => {
                     println!("txnid {}", msg.tmsg.txn_id);
-                    let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
+                    let executor_id = (msg.tmsg.txn_id as u) % self.executor_num;
                     // send to executor
                     // match self.executor_num
                     println!("executor id = {}, self{}", executor_id, self.executor_num);
