@@ -1,3 +1,4 @@
+use chrono::Local;
 use std::{collections::HashMap, time::Duration};
 
 use common::{config::Config, get_local_time, ycsb::YcsbQuery, SHARD_NUM};
@@ -42,16 +43,11 @@ impl YuxiCoordinator {
         Self {
             is_ycsb: true,
             id,
-            txn_id: 0,
+            txn_id: (id as i64) << 30,
             txn: YuxiMsg::default(),
             servers: HashMap::new(),
             recv,
-            workload: YcsbQuery::new(
-                config.zipf_theta,
-                config.table_size,
-                config.req_per_query as i32,
-                read_perc,
-            ),
+            workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
             config,
             txns_per_client,
         }
@@ -72,7 +68,14 @@ impl YuxiCoordinator {
             self.txn.read_set = self.workload.read_set.clone();
             self.txn.write_set = self.workload.write_set.clone();
             let start = Instant::now();
-            self.run_transaction().await;
+            if self.workload.read_only {
+                self.txn.op = TxnOp::ReadOnly.into();
+                self.run_readonly().await;
+            } else {
+                self.txn.op = TxnOp::Prepare.into();
+                self.run_transaction().await;
+            }
+
             let end_time = start.elapsed().as_micros();
             println!("latency time = {}", end_time);
             latency_result.push(end_time);
@@ -106,9 +109,19 @@ impl YuxiCoordinator {
         throughput_file.write("\n".as_bytes()).await;
     }
 
+    async fn run_readonly(&mut self) {
+        let server_id = self.id % 3;
+        let time = (Local::now().timestamp_nanos() / 1000) as u64;
+        self.servers
+            .get(&server_id)
+            .unwrap()
+            .send(self.txn.clone())
+            .await;
+    }
+
     async fn run_transaction(&mut self) -> bool {
         // init ts
-        let timestamp = get_local_time(0);
+        let timestamp = (Local::now().timestamp_nanos() / 1000) as u64;
 
         // prepare, prepare will send to all the server
         self.txn.timestamp = timestamp;
@@ -133,7 +146,7 @@ impl YuxiCoordinator {
                 txn_id: self.txn_id,
                 read_set: Vec::new(),
                 write_set: Vec::new(),
-                op: TxnOp::Commit.into(),
+                op: TxnOp::Accept.into(),
                 from: self.id,
                 timestamp: final_ts_vec[2],
                 txn_type: self.txn.txn_type,

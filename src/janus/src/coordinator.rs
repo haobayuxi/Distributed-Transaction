@@ -34,12 +34,7 @@ impl JanusCoordinator {
             txn_id: 0,
             txn: HashMap::new(),
             servers: HashMap::new(),
-            workload: YcsbQuery::new(
-                config.zipf_theta,
-                config.table_size,
-                config.req_per_query as i32,
-                read_perc,
-            ),
+            workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
             config,
             txns_per_client,
         }

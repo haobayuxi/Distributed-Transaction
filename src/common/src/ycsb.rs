@@ -22,6 +22,8 @@ pub enum Operation {
     Update,
 }
 
+const YCSBTableSize: i32 = 100000;
+
 pub struct YcsbQuery {
     pub read_set: Vec<ReadStruct>,
     pub write_set: Vec<WriteStruct>,
@@ -32,10 +34,11 @@ pub struct YcsbQuery {
     table_size: i32,
     read_perc: i32,
     theta: f64,
+    pub read_only: bool,
 }
 
 impl YcsbQuery {
-    pub fn new(theta: f64, table_size: i32, req_per_query: i32, read_perc: i32) -> Self {
+    pub fn new(theta: f64, req_per_query: i32, read_perc: i32) -> Self {
         let zeta_2_theta = zeta(2, theta);
         let value: Vec<char> = vec!['a'; 100];
         let mut write_value = String::from("");
@@ -44,16 +47,18 @@ impl YcsbQuery {
             read_set: Vec::new(),
             write_set: Vec::new(),
             zeta_2_theta,
-            denom: zeta(table_size as u64, theta),
+            denom: zeta(YCSBTableSize as u64, theta),
             write_value,
             req_per_query,
-            table_size,
+            table_size: YCSBTableSize,
             read_perc,
             theta,
+            read_only: false,
         }
     }
 
     pub fn generate(&mut self) {
+        self.read_only = true;
         for _ in 0..self.req_per_query {
             let op = f64_rand(0.0, 1.0, 0.01);
 
@@ -71,6 +76,7 @@ impl YcsbQuery {
                     value: self.write_value.clone(),
                     // timestamp: None,
                 });
+                self.read_only = false;
             }
         }
     }
@@ -112,7 +118,7 @@ pub fn init_ycsb() -> HashMap<i64, String> {
     let mut write_value = String::from("");
     write_value.extend(value.iter());
     let mut data = HashMap::new();
-    for key in 0..1000 {
+    for key in 0..YCSBTableSize {
         // if key % shard_num == shard_id as usize {
         //
         data.insert(key as i64, write_value.clone());

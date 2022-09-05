@@ -17,7 +17,7 @@ static RETRY: i32 = 20;
 
 pub struct MeerkatCoordinator {
     config: Config,
-    id: i32,
+    id: u32,
     txn_id: i64,
     // sharded txn
     txn: MeerkatMsg,
@@ -28,18 +28,13 @@ pub struct MeerkatCoordinator {
 }
 
 impl MeerkatCoordinator {
-    pub fn new(id: i32, config: Config, read_perc: i32, txns_per_client: i32) -> Self {
+    pub fn new(id: u32, config: Config, read_perc: i32, txns_per_client: i32) -> Self {
         Self {
             id,
             txn_id: (id as i64) << 45,
             txn: MeerkatMsg::default(),
             servers: HashMap::new(),
-            workload: YcsbQuery::new(
-                config.zipf_theta,
-                config.table_size,
-                config.req_per_query as i32,
-                read_perc,
-            ),
+            workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
             config,
             txns_per_client,
         }

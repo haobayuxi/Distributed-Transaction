@@ -31,7 +31,7 @@ pub struct Peer {
     server_id: i32,
 
     // dispatcher
-    executor_senders: HashMap<i32, UnboundedSender<Msg>>,
+    executor_senders: HashMap<u32, UnboundedSender<Msg>>,
     executor_num: i32,
     config: Config,
 }
@@ -43,7 +43,7 @@ impl Peer {
         Self {
             server_id,
             executor_senders: HashMap::new(),
-            executor_num: 0,
+            executor_num: config.executor_num,
             config,
         }
     }
@@ -64,16 +64,23 @@ impl Peer {
             let mut indexs = HashMap::new();
             // self.mem = Arc::new(mem);
             let data = init_ycsb();
+
+            // IN_MEMORY_DATA.reserve(data.len());
             let mut index = 0;
             for (key, value) in data {
                 indexs.insert(key, index);
                 // insert to IN_MEMORY_DATA
-                IN_MEMORY_DATA[index] = (
+                let version_data = VersionData {
+                    start_ts: 0,
+                    end_ts: MaxTs,
+                    data: common::Data::Ycsb(value),
+                };
+                IN_MEMORY_DATA.push((
                     RwLock::new(0),
                     RwLock::new(BTreeMap::new()),
                     RwLock::new(MaxTs),
-                    Vec::new(),
-                );
+                    vec![version_data],
+                ));
                 index += 1;
             }
 
@@ -95,6 +102,7 @@ impl Peer {
     fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<i64, usize>>) {
         self.executor_num = config.executor_num;
         for i in 0..config.executor_num {
+            println!("init executor {}", i);
             let (sender, receiver) = unbounded_channel::<Msg>();
             self.executor_senders.insert(i, sender);
             let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
@@ -109,8 +117,11 @@ impl Peer {
         loop {
             match recv.recv().await {
                 Some(msg) => {
-                    let executor_id = (msg.tmsg.txn_id as i32) % self.executor_num;
+                    println!("txnid {}", msg.tmsg.txn_id);
+                    let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
                     // send to executor
+                    // match self.executor_num
+                    println!("executor id = {}, self{}", executor_id, self.executor_num);
                     self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }
                 None => continue,

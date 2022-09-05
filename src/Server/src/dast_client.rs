@@ -43,7 +43,6 @@ impl ProposeClient {
                         txn: DastMsg::default(),
                         workload: YcsbQuery::new(
                             config.zipf_theta,
-                            config.table_size,
                             config.req_per_query as i32,
                             read_perc,
                         ),

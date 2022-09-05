@@ -8,7 +8,7 @@ pub struct Config {
     // map serverid to shard id
     pub server_ids: HashMap<i32, i32>,
     pub server_addrs: HashMap<i32, String>,
-    pub executor_num: i32,
+    pub executor_num: u32,
     pub client_num: i32,
     pub shards: HashMap<i32, Vec<i32>>,
     pub req_per_query: usize,
@@ -27,17 +27,17 @@ impl Default for Config {
         server_ids.insert(1, 1);
         server_ids.insert(2, 1);
 
-        let addr0 = String::from("http://192.168.50.10:50051");
-        let addr1 = String::from("http://192.168.50.11:50051");
-        let addr2 = String::from("http://192.168.50.12:50051");
+        let addr0 = String::from("http://192.168.50.11:50051");
+        let addr1 = String::from("http://192.168.50.13:50051");
+        let addr2 = String::from("http://192.168.50.15:50051");
         let mut server_addrs = HashMap::new();
         server_addrs.insert(0, addr0);
         server_addrs.insert(1, addr1);
         server_addrs.insert(2, addr2);
 
-        let propose_addr0 = String::from("http://192.168.50.10:50051");
-        let propose_addr1 = String::from("http://192.168.50.11:50051");
-        let propose_addr2 = String::from("http://192.168.50.12:50051");
+        let propose_addr0 = String::from("http://192.168.50.11:50051");
+        let propose_addr1 = String::from("http://192.168.50.13:50051");
+        let propose_addr2 = String::from("http://192.168.50.15:50051");
         let mut propose_addrs = HashMap::new();
         propose_addrs.insert(0, propose_addr0);
         propose_addrs.insert(1, propose_addr1);
@@ -48,7 +48,7 @@ impl Default for Config {
         Self {
             server_ids,
             server_addrs,
-            executor_num: 16,
+            executor_num: 32,
             shards,
             req_per_query: 8,
             table_size: 1000,

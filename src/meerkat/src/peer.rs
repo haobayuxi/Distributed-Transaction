@@ -25,7 +25,7 @@ pub struct Peer {
     // memory
     mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
     // dispatcher
-    executor_senders: HashMap<i32, UnboundedSender<Msg>>,
+    executor_senders: HashMap<u32, UnboundedSender<Msg>>,
     executor_num: i32,
     config: Config,
 }
@@ -88,7 +88,8 @@ impl Peer {
         loop {
             match recv.recv().await {
                 Some(msg) => {
-                    let executor_id = (msg.tmsg.txn_id as i32) % self.executor_num;
+                    // println!("txnid = {}", msg.tmsg.txn_id);
+                    let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
                     // send to executor
                     self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }

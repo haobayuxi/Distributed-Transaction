@@ -10,7 +10,7 @@ use tokio::sync::{mpsc::UnboundedReceiver, OwnedRwLockWriteGuard, RwLock};
 use crate::{MeerkatMeta, Msg};
 
 pub struct Executor {
-    id: i32,
+    id: u32,
     server_id: i32,
     // ycsb
     mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
@@ -25,7 +25,7 @@ pub struct Executor {
 
 impl Executor {
     pub fn new_ycsb(
-        id: i32,
+        id: u32,
         server_id: i32,
         mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
         recv: UnboundedReceiver<Msg>,

@@ -6,7 +6,7 @@ import "common.proto";
 
 
 message YuxiMsg {
-    int64 txn_id = 1;
+    uint64 txn_id = 1;
     repeated common.Read_Struct read_set = 2;
     repeated common.Write_Struct write_set = 3;
     common.TxnOP op = 4;

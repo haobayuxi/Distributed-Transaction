@@ -8,7 +8,7 @@ import os
 import sys
 
 
-def read_throughput_results(type, replication):
+def read_throughput_results(type):
     result = 0.0
     for file_name in os.listdir("."):
         if "throughput" in file_name:
@@ -17,7 +17,7 @@ def read_throughput_results(type, replication):
             result += float(line.strip('\n'))
             f.close()
             os.remove(file_name)
-    file_name = "final/" + str(replication)+"/" + type
+    file_name = "final/" + type
     result_file = open(file_name, 'a')
     result_file.write(str(result)+'\n')
     result_file.close()
@@ -45,7 +45,6 @@ def read_latency_results(RequestPerClient, ClientNum):
 if __name__ == "__main__":
     type = sys.argv[1]
     servertype = sys.argv[2]
-    replication = sys.argv[3]
     if type == "t":
         print("aggregate throughput")
-        read_throughput_results(servertype, replication)
+        read_throughput_results(servertype)

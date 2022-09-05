@@ -75,7 +75,66 @@ impl Executor {
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // just wait for the earlier txn to be executed
-        self.handle_commit(msg).await;
+        unsafe {
+            let mut txn = msg.tmsg.clone();
+            let final_ts = txn.timestamp;
+            let mut waiting_for_read_result = 0;
+            let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
+            let mut read_set = txn.read_set.clone();
+            txn.read_set.clear();
+            for read in read_set.iter_mut() {
+                let key = read.key;
+                let index = self.index.get(&key).unwrap();
+
+                let tuple = &IN_MEMORY_DATA[*index];
+                let mut ts = tuple.0.write().await;
+                if *ts < final_ts {
+                    *ts = final_ts
+                }
+
+                if final_ts > *tuple.2.read().await {
+                    // insert a read task
+                    let execution_context = ExecuteContext {
+                        committed: true,
+                        read: true,
+                        value: None,
+                        call_back: Some(sender.clone()),
+                    };
+                    let mut wait_list = tuple.1.write().await;
+                    wait_list.insert(final_ts, execution_context);
+                    continue;
+                }
+                let version_data = &tuple.3;
+                let mut index = version_data.len() - 1;
+                while final_ts < version_data[index].start_ts {
+                    index -= 1;
+                }
+                let data = version_data[index].data.to_string();
+                txn.read_set.push(ReadStruct {
+                    key,
+                    value: Some(data),
+                    timestamp: None,
+                });
+            }
+            if waiting_for_read_result == 0 {
+                // reply to coordinator
+                msg.callback.send(Ok(txn)).await;
+            } else {
+                // spawn a new task for this
+                tokio::spawn(async move {
+                    while waiting_for_read_result > 0 {
+                        let (key, value) = receiver.recv().await.unwrap();
+                        txn.read_set.push(ReadStruct {
+                            key,
+                            value: Some(value),
+                            timestamp: None,
+                        });
+                        waiting_for_read_result -= 1;
+                    }
+                    msg.callback.send(Ok(txn)).await;
+                });
+            }
+        }
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -91,6 +150,7 @@ impl Executor {
         };
 
         let ts = msg.tmsg.timestamp;
+        let mut write_ts_in_waitlist = Vec::new();
         unsafe {
             for write in msg.tmsg.write_set.iter() {
                 let key = write.key;
@@ -113,11 +173,14 @@ impl Executor {
                     call_back: None,
                 };
                 waitlist_guard.insert(*guard, execute_context);
+                write_ts_in_waitlist.push(*guard);
                 let mut smallest_uncommitted_write_ts = IN_MEMORY_DATA[*index].2.write().await;
                 if *smallest_uncommitted_write_ts > ts {
                     *smallest_uncommitted_write_ts = ts;
                 }
             }
+            self.txns
+                .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
             for read in msg.tmsg.read_set.iter() {
                 let key = read.key;
                 // find and update the ts
@@ -222,7 +285,12 @@ impl Executor {
                                 } else {
                                     // execute the write
                                     let mut datas = &mut IN_MEMORY_DATA[*index].3;
-                                    datas.last_mut().unwrap().end_ts = ts;
+                                    match datas.last_mut() {
+                                        Some(last_data) => {
+                                            last_data.end_ts = ts;
+                                        }
+                                        None => {}
+                                    }
                                     let mut version_data = VersionData {
                                         start_ts: ts,
                                         end_ts: MaxTs,
