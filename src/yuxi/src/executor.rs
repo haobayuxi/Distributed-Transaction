@@ -208,7 +208,7 @@ impl Executor {
 
                     meta.waitlist.insert(wait_ts, execute_context);
                     write_ts_in_waitlist.push((write.clone(), wait_ts));
-                    pr.push(wait_ts);
+                    pr.push(key);
                 }
             }
             // println!(
@@ -227,9 +227,9 @@ impl Executor {
                 let key = read.key;
                 // find and update the ts
 
-                let mut tuple = self.index.get(&key).unwrap().write().await;
                 {
                     println!("i = {}", i);
+                    let mut tuple = self.index.get(&key).unwrap().write().await;
                     let meta = &mut tuple.0;
                     println!("i = {}", i);
                     i += 1;
@@ -318,10 +318,10 @@ impl Executor {
         unsafe {
             for (write, write_ts) in write_ts_in_waitlist.iter() {
                 let key = write.key;
-                let mut tuple = self.index.get(&key).unwrap().write().await;
 
                 // let tuple = &IN_MEMORY_DATA[*index];
                 {
+                    let mut tuple = self.index.get(&key).unwrap().write().await;
                     // let meta = &mut tuple.0;
                     if tuple.0.maxts < final_ts {
                         tuple.0.maxts = final_ts
@@ -400,10 +400,10 @@ impl Executor {
             let mut i = 0;
             for read in read_set.iter_mut() {
                 let key = read.key;
-                let mut tuple = self.index.get(&key).unwrap().write().await;
 
                 // let tuple = &IN_MEMORY_DATA[*index];
                 {
+                    let mut tuple = self.index.get(&key).unwrap().write().await;
                     println!("read {} ", i);
                     let meta = &mut tuple.0;
                     if meta.maxts < final_ts {
