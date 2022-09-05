@@ -63,7 +63,7 @@ impl Peer {
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    fn init_data(&mut self) -> HashMap<i64, usize> {
+    fn init_data(&mut self) -> HashMap<i64, RwLock<(Meta, Vec<VersionData>)>> {
         // init
         unsafe {
             let mut indexs = HashMap::new();
@@ -73,21 +73,23 @@ impl Peer {
             // IN_MEMORY_DATA.reserve(data.len());
             let mut index = 0;
             for (key, value) in data {
-                indexs.insert(key, index);
-                // insert to IN_MEMORY_DATA
                 let version_data = VersionData {
                     start_ts: 0,
                     end_ts: MaxTs,
                     data: common::Data::Ycsb(value),
                 };
-                IN_MEMORY_DATA.push((
-                    RwLock::new(Meta {
-                        maxts: 0,
-                        waitlist: BTreeMap::new(),
-                        smallest_wait_ts: MaxTs,
-                    }),
-                    vec![version_data],
-                ));
+                indexs.insert(
+                    key,
+                    RwLock::new((
+                        Meta {
+                            maxts: 0,
+                            waitlist: BTreeMap::new(),
+                            smallest_wait_ts: MaxTs,
+                        },
+                        vec![version_data],
+                    )),
+                );
+
                 index += 1;
             }
 
@@ -106,7 +108,11 @@ impl Peer {
         });
     }
 
-    fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<i64, usize>>) {
+    fn init_executors(
+        &mut self,
+        config: Config,
+        indexs: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
+    ) {
         // self.executor_num = config.executor_num;
         self.executor_num = 1;
         for i in 0..config.executor_num {

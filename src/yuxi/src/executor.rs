@@ -8,9 +8,15 @@ use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tokio::sync::{
+    mpsc::{unbounded_channel, UnboundedReceiver},
+    RwLock,
+};
 
-use crate::{peer::IN_MEMORY_DATA, ExecuteContext, MaxTs, Msg, VersionData, TS};
+use crate::{
+    peer::{Meta, IN_MEMORY_DATA},
+    ExecuteContext, MaxTs, Msg, VersionData, TS,
+};
 
 pub struct Executor {
     executor_id: u32,
@@ -22,7 +28,7 @@ pub struct Executor {
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
     // ycsb
-    index: Arc<HashMap<i64, usize>>,
+    index: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
     // tatp
     subscriber: Arc<HashMap<u64, usize>>,
     access_info: Arc<HashMap<u64, usize>>,
@@ -35,7 +41,7 @@ impl Executor {
         executor_id: u32,
         server_id: u32,
         recv: UnboundedReceiver<Msg>,
-        index: Arc<HashMap<i64, usize>>,
+        index: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
     ) -> Self {
         Self {
             executor_id,
@@ -72,12 +78,7 @@ impl Executor {
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // just wait for the earlier txn to be executed
-        println!(
-            "readonly ts tid {},{},{},",
-            self.executor_id,
-            msg.tmsg.from,
-            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-        );
+
         let reply = msg.tmsg.clone();
         unsafe {
             let mut txn = msg.tmsg.clone();
@@ -85,14 +86,21 @@ impl Executor {
             let mut waiting_for_read_result = 0;
             let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
             let mut read_set = txn.read_set.clone();
+            println!(
+                "readonly ts tid {},{},{},{:?}",
+                self.executor_id,
+                msg.tmsg.from,
+                msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+                read_set
+            );
             txn.read_set.clear();
             for read in read_set.iter_mut() {
                 let key = read.key;
-                let index = self.index.get(&key).unwrap();
+                let mut tuple = self.index.get(&key).unwrap().write().await;
 
-                let tuple = &IN_MEMORY_DATA[*index];
+                // let tuple = &IN_MEMORY_DATA[*index];
                 {
-                    let mut meta = tuple.0.write().await;
+                    let meta = &mut tuple.0;
                     if meta.maxts < final_ts {
                         meta.maxts = final_ts
                     }
@@ -175,9 +183,9 @@ impl Executor {
         unsafe {
             for write in msg.tmsg.write_set.iter() {
                 let key = write.key;
-                let index = self.index.get(&key).unwrap();
+                let mut tuple = self.index.get(&key).unwrap().write().await;
                 {
-                    let mut meta = IN_MEMORY_DATA[*index].0.write().await;
+                    let meta = &mut tuple.0;
                     if ts > meta.maxts {
                         meta.maxts = ts;
                     } else {
@@ -219,10 +227,10 @@ impl Executor {
                 let key = read.key;
                 // find and update the ts
 
-                let index = self.index.get(&key).unwrap();
+                let mut tuple = self.index.get(&key).unwrap().write().await;
                 {
-                    println!("i = {},{}", i, index);
-                    let mut meta = IN_MEMORY_DATA[*index].0.write().await;
+                    println!("i = {}", i);
+                    let meta = &mut tuple.0;
                     println!("i = {}", i);
                     i += 1;
                     if ts > meta.maxts {
@@ -310,28 +318,29 @@ impl Executor {
         unsafe {
             for (write, write_ts) in write_ts_in_waitlist.iter() {
                 let key = write.key;
-                let index = self.index.get(&key).unwrap();
-                let tuple = &IN_MEMORY_DATA[*index];
+                let mut tuple = self.index.get(&key).unwrap().write().await;
+
+                // let tuple = &IN_MEMORY_DATA[*index];
                 {
-                    let mut meta = tuple.0.write().await;
-                    if meta.maxts < final_ts {
-                        meta.maxts = final_ts
+                    // let meta = &mut tuple.0;
+                    if tuple.0.maxts < final_ts {
+                        tuple.0.maxts = final_ts
                     }
 
                     // modify the wait list
 
-                    let mut execution_context = meta.waitlist.remove(write_ts).unwrap();
+                    let mut execution_context = tuple.0.waitlist.remove(write_ts).unwrap();
                     execution_context.committed = true;
-                    meta.waitlist.insert(final_ts, execution_context);
+                    tuple.0.waitlist.insert(final_ts, execution_context);
                     // check pending txns execute the context if the write is committed
                     loop {
-                        match meta.waitlist.pop_first() {
+                        match tuple.0.waitlist.pop_first() {
                             Some((ts, context)) => {
                                 if context.committed {
                                     if context.read {
                                         // execute the read
                                         // get data
-                                        let version_data = &IN_MEMORY_DATA[*index].1;
+                                        let version_data = &tuple.1;
                                         let mut index = version_data.len() - 1;
                                         while final_ts < version_data[index].start_ts {
                                             index -= 1;
@@ -340,7 +349,7 @@ impl Executor {
                                         context.call_back.unwrap().send((ts as i64, data));
                                     } else {
                                         // execute the write
-                                        let mut datas = &mut IN_MEMORY_DATA[*index].1;
+                                        let datas = &mut tuple.1;
                                         match datas.last_mut() {
                                             Some(last_data) => {
                                                 last_data.end_ts = ts;
@@ -366,15 +375,15 @@ impl Executor {
                                         datas.push(version_data);
                                     }
                                 } else {
-                                    meta.waitlist.insert(ts, context);
-                                    if meta.smallest_wait_ts < ts {
-                                        meta.smallest_wait_ts = ts;
+                                    tuple.0.waitlist.insert(ts, context);
+                                    if tuple.0.smallest_wait_ts < ts {
+                                        tuple.0.smallest_wait_ts = ts;
                                     }
                                     break;
                                 }
                             }
                             None => {
-                                meta.smallest_wait_ts = MaxTs;
+                                tuple.0.smallest_wait_ts = MaxTs;
                                 break;
                             }
                         }
@@ -391,12 +400,12 @@ impl Executor {
             let mut i = 0;
             for read in read_set.iter_mut() {
                 let key = read.key;
-                let index = self.index.get(&key).unwrap();
+                let mut tuple = self.index.get(&key).unwrap().write().await;
 
-                let tuple = &IN_MEMORY_DATA[*index];
+                // let tuple = &IN_MEMORY_DATA[*index];
                 {
-                    println!("read {} {}", i, index);
-                    let mut meta = tuple.0.write().await;
+                    println!("read {} ", i);
+                    let meta = &mut tuple.0;
                     if meta.maxts < final_ts {
                         meta.maxts = final_ts
                     }
