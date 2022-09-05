@@ -7,12 +7,36 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "Meerkat_server"
+name = "meerkat_server"
 path = "src/meerkat_server.rs"
 
 [[bin]]
-name = "Meerkat_client"
+name = "meerkat_client"
 path = "src/meerkat_client.rs"
+
+[[bin]]
+name = "dast_server"
+path = "src/dast_server.rs"
+
+[[bin]]
+name = "dast_client"
+path = "src/dast_client.rs"
+
+[[bin]]
+name = "janus_server"
+path = "src/janus_server.rs"
+
+[[bin]]
+name = "janus_client"
+path = "src/janus_client.rs"
+
+[[bin]]
+name = "yuxi_server"
+path = "src/yuxi_server.rs"
+
+[[bin]]
+name = "yuxi_client"
+path = "src/yuxi_client.rs"
 
 [dependencies]
 rpc = { path = "../rpc" }
