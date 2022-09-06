@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, thread::sleep, time::Duration};
 
 use crate::{
     peer::{Meta, COUNT, IN_MEMORY_MQ},
@@ -13,10 +13,7 @@ use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use tokio::{
-    sync::mpsc::{unbounded_channel, Receiver, Sender},
-    time::sleep,
-};
+use tokio::sync::mpsc::{unbounded_channel, Receiver, Sender};
 // use tokio::time::sleep;
 // use tokio::time::Duration;
 
@@ -98,9 +95,9 @@ impl Executor {
                             self.msg_queue_index, i, COUNT
                         );
                         if i == COUNT {
-                            sleep(Duration::from_millis(500)).await;
+                            sleep(Duration::from_millis(500));
                         }
-                        sleep(Duration::from_millis(20)).await;
+                        sleep(Duration::from_millis(20));
                     }
                 }
             }
