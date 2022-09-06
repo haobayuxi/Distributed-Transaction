@@ -119,7 +119,7 @@ impl Peer {
     ) {
         // self.executor_num = config.executor_num;
         self.executor_num = 1;
-        for i in 0..config.executor_num {
+        for i in 0..self.executor_num {
             unsafe {
                 let mut queue: Vec<Option<Msg>> = Vec::new();
                 for j in 0..1000 {
@@ -148,12 +148,6 @@ impl Peer {
                     // send to executor
                     // match self.executor_num
 
-                    // self.executor_senders
-                    //     .get(&executor_id)
-                    //     .unwrap()
-                    //     .send(msg)
-                    //     .await
-                    //     .unwrap();
                     unsafe {
                         println!(
                             "executor id = {}, from {},txnid{}, index{}, {}",
@@ -165,12 +159,18 @@ impl Peer {
                             COUNT
                         );
                         COUNT += 1;
-                        let index = self.msg_queue_index[executor_id as usize];
-                        IN_MEMORY_MQ[executor_id as usize][index] = Some(msg);
-                        self.msg_queue_index[executor_id as usize] += 1;
-                        if self.msg_queue_index[executor_id as usize] == 1000 {
-                            self.msg_queue_index[executor_id as usize] = 0;
-                        }
+                        self.executor_senders
+                            .get(&executor_id)
+                            .unwrap()
+                            .send(msg)
+                            .await
+                            .unwrap();
+                        // let index = self.msg_queue_index[executor_id as usize];
+                        // IN_MEMORY_MQ[executor_id as usize][index] = Some(msg);
+                        // self.msg_queue_index[executor_id as usize] += 1;
+                        // if self.msg_queue_index[executor_id as usize] == 1000 {
+                        //     self.msg_queue_index[executor_id as usize] = 0;
+                        // }
                     }
                 }
                 None => continue,
