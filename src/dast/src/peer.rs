@@ -140,6 +140,7 @@ impl Peer {
         }
         // update maxts
         self.maxTs[self.id as usize] = ts;
+        txn.from = self.id;
         self.broadcast(txn).await;
     }
 
@@ -398,6 +399,7 @@ impl Peer {
         tokio::spawn(async move {
             run_propose_server(propose_server).await;
         });
+        println!("propose server started");
     }
 
     pub async fn init_run(&mut self, sender: UnboundedSender<Msg>) {
