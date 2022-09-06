@@ -1,4 +1,4 @@
 id : 0
 is_ycsb : true
-txns_per_client : 1000
+txns_per_client : 2000
 read_perc : 95
