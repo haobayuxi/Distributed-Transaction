@@ -93,12 +93,12 @@ impl Executor {
                         }
                     }
                     None => {
-                        // println!(
-                        //     "executor msg queue empty {},{},{}",
-                        //     self.msg_queue_index, i, COUNT
-                        // );
+                        println!(
+                            "executor msg queue empty {},{},{}",
+                            self.msg_queue_index, i, COUNT
+                        );
                         if i == COUNT {
-                            // sleep(Duration::from_secs(2)).await;
+                            sleep(Duration::from_secs(2)).await;
                         }
                         sleep(Duration::from_millis(20)).await;
                     }
