@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, thread::sleep, time::Duration};
 
 use crate::{
-    peer::{Meta, IN_MEMORY_MQ},
+    peer::{Meta, COUNT, IN_MEMORY_MQ},
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
@@ -83,7 +83,10 @@ impl Executor {
                         }
                     }
                     None => {
-                        println!("msg queue empty {},{}", self.msg_queue_index, i);
+                        println!(
+                            "executor msg queue empty {},{},{}",
+                            self.msg_queue_index, i, COUNT
+                        );
                         sleep(Duration::from_millis(20));
                     }
                 }

@@ -32,6 +32,7 @@ pub struct Meta {
 
 // msg queue
 pub static mut IN_MEMORY_MQ: Vec<Vec<Option<Msg>>> = Vec::new();
+pub static mut COUNT: usize = 0;
 
 pub struct Peer {
     server_id: u32,
@@ -138,24 +139,15 @@ impl Peer {
 
     async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {
         let mut recv = recv;
-        let mut i = 0;
+        // let mut i = 0;
         loop {
             match recv.recv().await {
                 Some(msg) => {
                     // println!("txnid {}", msg.tmsg.txn_id);
                     let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
                     // send to executor
-                    i += 1;
                     // match self.executor_num
-                    println!(
-                        "executor id = {}, from {},txnid{}, index{}, {}",
-                        executor_id,
-                        msg.tmsg.from,
-                        msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-                        // msg.tmsg.op()
-                        self.msg_queue_index[executor_id as usize],
-                        i
-                    );
+
                     // self.executor_senders
                     //     .get(&executor_id)
                     //     .unwrap()
@@ -163,6 +155,16 @@ impl Peer {
                     //     .await
                     //     .unwrap();
                     unsafe {
+                        println!(
+                            "executor id = {}, from {},txnid{}, index{}, {}",
+                            executor_id,
+                            msg.tmsg.from,
+                            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+                            // msg.tmsg.op()
+                            self.msg_queue_index[executor_id as usize],
+                            COUNT
+                        );
+                        COUNT += 1;
                         let index = self.msg_queue_index[executor_id as usize];
                         IN_MEMORY_MQ[executor_id as usize][index] = Some(msg);
                         self.msg_queue_index[executor_id as usize] += 1;
