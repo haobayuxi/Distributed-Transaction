@@ -31,7 +31,7 @@ impl ProposeClient {
         is_ycsb: bool,
     ) -> Self {
         let server_id = id % 3;
-        let addr_to_connect = config.server_addrs.get(&server_id).unwrap().clone();
+        let addr_to_connect = config.propose_addrs.get(&server_id).unwrap().clone();
         loop {
             match ClientServiceClient::connect(addr_to_connect.clone()).await {
                 Ok(client) => {
