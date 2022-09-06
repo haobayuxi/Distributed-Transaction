@@ -55,7 +55,7 @@ def run_clients(start_client_id, client_num):
     client_id = start_client_id
     process = []
     while client_id < start_client_id + client_num:
-        cmd = ["./yuxi_client " + str(client_id)]
+        cmd = ["./dast_client " + str(client_id)]
  #       cmd.extend([client_id])
         logger.info("running client %d", client_id)
         p = subprocess.Popen(
