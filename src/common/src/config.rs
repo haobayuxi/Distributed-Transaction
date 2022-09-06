@@ -27,9 +27,9 @@ impl Default for Config {
         server_addrs.insert(1, addr1);
         server_addrs.insert(2, addr2);
 
-        let propose_addr0 = String::from("http://192.168.50.11:50051");
-        let propose_addr1 = String::from("http://192.168.50.13:50051");
-        let propose_addr2 = String::from("http://192.168.50.15:50051");
+        let propose_addr0 = String::from("http://192.168.50.11:50151");
+        let propose_addr1 = String::from("http://192.168.50.13:50151");
+        let propose_addr2 = String::from("http://192.168.50.15:50151");
         let mut propose_addrs = HashMap::new();
         propose_addrs.insert(0, propose_addr0);
         propose_addrs.insert(1, propose_addr1);
