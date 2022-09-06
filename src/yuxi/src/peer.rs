@@ -13,8 +13,6 @@ use tokio::sync::{
     Mutex,
 };
 
-use tokio::runtime::Runtime;
-
 use crate::{
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
@@ -32,17 +30,17 @@ pub struct Meta {
     pub smallest_wait_ts: TS,
 }
 
-// (maxts, wait list, waiting ts, versiondata)
-pub static mut IN_MEMORY_DATA: Vec<(RwLock<Meta>, Vec<VersionData>)> = Vec::new();
+// msg queue
+pub static mut IN_MEMORY_MQ: Vec<Vec<Option<Msg>>> = Vec::new();
 
 pub struct Peer {
     server_id: u32,
 
     // dispatcher
-    executor_senders: HashMap<u32, UnboundedSender<Msg>>,
+    executor_senders: HashMap<u32, Sender<Msg>>,
+    msg_queue_index: Vec<usize>,
     executor_num: u32,
     config: Config,
-    rt: Runtime,
 }
 
 impl Peer {
@@ -53,8 +51,8 @@ impl Peer {
             server_id,
             executor_senders: HashMap::new(),
             executor_num: config.executor_num,
+            msg_queue_index: vec![0; config.executor_num as usize],
             config,
-            rt: Runtime::new().unwrap(),
         }
     }
 
@@ -118,15 +116,21 @@ impl Peer {
         config: Config,
         indexs: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
     ) {
-        // self.executor_num = config.executor_num; =
-
+        // self.executor_num = config.executor_num;
         self.executor_num = 1;
         for i in 0..config.executor_num {
+            unsafe {
+                let mut queue: Vec<Option<Msg>> = Vec::new();
+                for j in 0..1000 {
+                    queue.push(None);
+                }
+                IN_MEMORY_MQ.push(queue);
+            }
             // println!("init executor {}", i);
-            let (sender, receiver) = unbounded_channel::<Msg>();
+            let (sender, receiver) = channel::<Msg>(1000);
             self.executor_senders.insert(i, sender);
             let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
-            self.rt.spawn(async move {
+            tokio::spawn(async move {
                 exec.run().await;
             });
         }
@@ -148,11 +152,20 @@ impl Peer {
                         msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
                         msg.tmsg.op()
                     );
-                    self.executor_senders
-                        .get(&executor_id)
-                        .unwrap()
-                        .send(msg)
-                        .unwrap();
+                    // self.executor_senders
+                    //     .get(&executor_id)
+                    //     .unwrap()
+                    //     .send(msg)
+                    //     .await
+                    //     .unwrap();
+                    unsafe {
+                        let index = self.msg_queue_index[executor_id as usize];
+                        IN_MEMORY_MQ[executor_id as usize][index] = Some(msg);
+                        self.msg_queue_index[executor_id as usize] += 1;
+                        if self.msg_queue_index[executor_id as usize] == 1000 {
+                            self.msg_queue_index[executor_id as usize] = 0;
+                        }
+                    }
                 }
                 None => continue,
             }

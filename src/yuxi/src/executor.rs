@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    peer::{Meta, IN_MEMORY_DATA},
+    peer::{Meta, IN_MEMORY_MQ},
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
@@ -14,7 +14,7 @@ use rpc::{
     yuxi::YuxiMsg,
 };
 use std::time::Duration;
-use tokio::sync::mpsc::{unbounded_channel, Sender};
+use tokio::sync::mpsc::{unbounded_channel, Receiver, Sender};
 use tokio::time::sleep;
 
 pub struct Executor {
@@ -25,6 +25,7 @@ pub struct Executor {
     recv: Receiver<Msg>,
     // sender: Sender<Msg>,
     // cache the txn in memory
+    msg_queue_index: usize,
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
     // ycsb
@@ -49,6 +50,7 @@ impl Executor {
             server_id,
             replica_num: 3,
             recv,
+            msg_queue_index: 0,
             // sender,
             txns: HashMap::new(),
             index,
@@ -59,13 +61,28 @@ impl Executor {
         }
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(&mut self) -> ! {
         loop {
-            match self.recv.recv() {
-                Ok(msg) => self.handle_msg(msg).await,
-                Err(e) => {
-                    println!("recv none error{}", e);
-                    sleep(Duration::from_millis(20)).await;
+            // match self.recv.try_recv() {
+            //     Ok(msg) => self.handle_msg(msg).await,
+            //     Err(e) => {
+            //         println!("recv none error{}", e);
+            //         sleep(Duration::from_millis(20)).await;
+            //     }
+            // }
+            unsafe {
+                match IN_MEMORY_MQ[self.executor_id as usize][self.msg_queue_index].take() {
+                    Some(msg) => {
+                        self.handle_msg(msg).await;
+                        self.msg_queue_index += 1;
+                        if self.msg_queue_index == 1000 {
+                            self.msg_queue_index = 0;
+                        }
+                    }
+                    None => {
+                        println!("msg queue empty");
+                        sleep(Duration::from_millis(20)).await;
+                    }
                 }
             }
         }
