@@ -138,20 +138,23 @@ impl Peer {
 
     async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {
         let mut recv = recv;
+        let mut i = 0;
         loop {
             match recv.recv().await {
                 Some(msg) => {
                     // println!("txnid {}", msg.tmsg.txn_id);
                     let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
                     // send to executor
+                    i += 1;
                     // match self.executor_num
                     println!(
-                        "executor id = {}, from {},txnid{}, {}",
+                        "executor id = {}, from {},txnid{}, index{}, {}",
                         executor_id,
                         msg.tmsg.from,
                         msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
                         // msg.tmsg.op()
-                        self.msg_queue_index[executor_id as usize]
+                        self.msg_queue_index[executor_id as usize],
+                        i
                     );
                     // self.executor_senders
                     //     .get(&executor_id)
