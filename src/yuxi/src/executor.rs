@@ -112,8 +112,8 @@ impl Executor {
         //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
         //     // read_set
         // );
-        msg.callback.send(Ok(msg.tmsg.clone())).await.unwrap();
-        return;
+        // msg.callback.send(Ok(msg.tmsg.clone())).await.unwrap();
+        // return;
         match msg.tmsg.op() {
             TxnOp::Abort => {}
             TxnOp::ReadOnly => self.handle_read_only(msg).await,
