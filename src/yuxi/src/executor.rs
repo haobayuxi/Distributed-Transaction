@@ -130,31 +130,31 @@ impl Executor {
                     timestamp: None,
                 });
             }
-            if waiting_for_read_result == 0 {
-                // reply to coordinator
-                msg.callback.send(Ok(txn)).await;
-            } else {
-                // spawn a new task for this
-                tokio::spawn(async move {
-                    while waiting_for_read_result > 0 {
-                        let (key, value) = receiver.recv().await.unwrap();
-                        txn.read_set.push(ReadStruct {
-                            key,
-                            value: Some(value),
-                            timestamp: None,
-                        });
-                        waiting_for_read_result -= 1;
-                    }
-                    msg.callback.send(Ok(txn)).await;
-                });
-            }
+            // if waiting_for_read_result == 0 {
+            // reply to coordinator
+            msg.callback.send(Ok(txn)).await;
+            // } else {
+            //     // spawn a new task for this
+            //     tokio::spawn(async move {
+            //         while waiting_for_read_result > 0 {
+            //             let (key, value) = receiver.recv().await.unwrap();
+            //             txn.read_set.push(ReadStruct {
+            //                 key,
+            //                 value: Some(value),
+            //                 timestamp: None,
+            //             });
+            //             waiting_for_read_result -= 1;
+            //         }
+            //         msg.callback.send(Ok(txn)).await;
+            //     });
+            // }
         }
-        println!(
-            "readonly done ts tid {},{},{},",
-            self.executor_id,
-            reply.from,
-            reply.txn_id - ((reply.from as u64) << 50),
-        );
+        // println!(
+        //     "readonly done ts tid {},{},{},",
+        //     self.executor_id,
+        //     reply.from,
+        //     reply.txn_id - ((reply.from as u64) << 50),
+        // );
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -441,29 +441,29 @@ impl Executor {
             // println!("is reply {}, need wait?", isreply);
             if isreply {
                 // do we need to wait
-                if waiting_for_read_result == 0 {
-                    // reply to coordinator
-                    msg.callback.send(Ok(txn)).await;
-                } else {
-                    // spawn a new task for this
-                    tokio::spawn(async move {
-                        while waiting_for_read_result > 0 {
-                            match receiver.recv().await {
-                                Some((key, value)) => {
-                                    txn.read_set.push(ReadStruct {
-                                        key,
-                                        value: Some(value),
-                                        timestamp: None,
-                                    });
-                                }
-                                None => {}
-                            }
+                // if waiting_for_read_result == 0 {
+                // reply to coordinator
+                msg.callback.send(Ok(txn)).await;
+                // } else {
+                //     // spawn a new task for this
+                //     tokio::spawn(async move {
+                //         while waiting_for_read_result > 0 {
+                //             match receiver.recv().await {
+                //                 Some((key, value)) => {
+                //                     txn.read_set.push(ReadStruct {
+                //                         key,
+                //                         value: Some(value),
+                //                         timestamp: None,
+                //                     });
+                //                 }
+                //                 None => {}
+                //             }
 
-                            waiting_for_read_result -= 1;
-                        }
-                        msg.callback.send(Ok(txn)).await;
-                    });
-                }
+                //             waiting_for_read_result -= 1;
+                //         }
+                //         msg.callback.send(Ok(txn)).await;
+                //     });
+                // }
             }
         }
         println!(
