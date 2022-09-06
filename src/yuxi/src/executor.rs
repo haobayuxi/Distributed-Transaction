@@ -13,9 +13,9 @@ use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, Receiver, Sender};
 use tokio::time::sleep;
+use tokio::time::Duration;
 
 pub struct Executor {
     executor_id: u32,
