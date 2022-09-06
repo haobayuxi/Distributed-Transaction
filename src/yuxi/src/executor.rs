@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, thread::sleep, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::{
     peer::{Meta, COUNT, IN_MEMORY_MQ},
@@ -14,7 +14,7 @@ use rpc::{
     yuxi::YuxiMsg,
 };
 use tokio::sync::mpsc::{unbounded_channel, Receiver, Sender};
-// use tokio::time::sleep;
+use tokio::time::sleep;
 // use tokio::time::Duration;
 
 pub struct Executor {
@@ -64,44 +64,44 @@ impl Executor {
     pub async fn run(&mut self) {
         let mut i = 0;
         loop {
-            //     match self.recv.recv().await {
-            //         Some(msg) => {
-            //             self.handle_msg(msg).await;
-            //             i += 1;
-            //             unsafe {
-            //                 println!("handle msg {} {} ", i, COUNT);
-            //             }
-            //         }
-            //         None => {
-            //             println!("recv none error");
-            //             sleep(Duration::from_millis(20)).await;
-            //         }
-            //     }
-            // }
-            unsafe {
-                match IN_MEMORY_MQ[self.executor_id as usize][self.msg_queue_index].take() {
-                    Some(msg) => {
-                        self.handle_msg(msg).await;
-                        println!("handle msg {}, {}", self.msg_queue_index, i);
-                        i += 1;
-                        self.msg_queue_index += 1;
-                        if self.msg_queue_index == 1000 {
-                            self.msg_queue_index = 0;
-                        }
+            match self.recv.recv().await {
+                Some(msg) => {
+                    self.handle_msg(msg).await;
+                    i += 1;
+                    unsafe {
+                        println!("handle msg {} {} ", i, COUNT);
                     }
-                    None => {
-                        println!(
-                            "executor msg queue empty {},{},{}",
-                            self.msg_queue_index, i, COUNT
-                        );
-                        if i == COUNT {
-                            sleep(Duration::from_millis(500));
-                        }
-                        sleep(Duration::from_millis(20));
-                    }
+                }
+                None => {
+                    println!("recv none error");
+                    sleep(Duration::from_millis(20)).await;
                 }
             }
         }
+        // unsafe {
+        //     match IN_MEMORY_MQ[self.executor_id as usize][self.msg_queue_index].take() {
+        //         Some(msg) => {
+        //             self.handle_msg(msg).await;
+        //             println!("handle msg {}, {}", self.msg_queue_index, i);
+        //             i += 1;
+        //             self.msg_queue_index += 1;
+        //             if self.msg_queue_index == 1000 {
+        //                 self.msg_queue_index = 0;
+        //             }
+        //         }
+        //         None => {
+        //             println!(
+        //                 "executor msg queue empty {},{},{}",
+        //                 self.msg_queue_index, i, COUNT
+        //             );
+        //             if i == COUNT {
+        //                 sleep(Duration::from_millis(500));
+        //             }
+        //             sleep(Duration::from_millis(20));
+        //         }
+        //     }
+        // }
+        // }
     }
 
     async fn handle_msg(&mut self, msg: Msg) {
