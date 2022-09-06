@@ -1,5 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
+use crate::{
+    peer::{Meta, IN_MEMORY_DATA},
+    ExecuteContext, MaxTs, Msg, VersionData, TS,
+};
 use common::{
     tatp::{AccessInfo, CallForwarding, Subscriber},
     Data,
@@ -9,12 +13,9 @@ use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use tokio::sync::mpsc::{unbounded_channel, Receiver, UnboundedReceiver};
-
-use crate::{
-    peer::{Meta, IN_MEMORY_DATA},
-    ExecuteContext, MaxTs, Msg, VersionData, TS,
-};
+use std::time::Duration;
+use tokio::sync::mpsc::{unbounded_channel, Sender};
+use tokio::time::sleep;
 
 pub struct Executor {
     executor_id: u32,
@@ -22,6 +23,7 @@ pub struct Executor {
 
     replica_num: u32,
     recv: Receiver<Msg>,
+    // sender: Sender<Msg>,
     // cache the txn in memory
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
@@ -39,6 +41,7 @@ impl Executor {
         executor_id: u32,
         server_id: u32,
         recv: Receiver<Msg>,
+        // sender: Sender<Msg>,
         index: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
     ) -> Self {
         Self {
@@ -46,6 +49,7 @@ impl Executor {
             server_id,
             replica_num: 3,
             recv,
+            // sender,
             txns: HashMap::new(),
             index,
             subscriber: Arc::new(HashMap::new()),
@@ -57,20 +61,36 @@ impl Executor {
 
     pub async fn run(&mut self) {
         loop {
-            match self.recv.recv().await {
-                Some(msg) => match msg.tmsg.op() {
-                    TxnOp::Abort => {}
-                    TxnOp::ReadOnly => self.handle_read_only(msg).await,
-                    TxnOp::Commit => self.handle_commit(msg).await,
-                    TxnOp::Prepare => self.handle_prepare(msg).await,
-                    TxnOp::PrepareRes => {}
-                    TxnOp::ReadOnlyRes => {}
-                    TxnOp::Accept => self.handle_accept(msg).await,
-                    TxnOp::AcceptRes => {}
-                    TxnOp::CommitRes => {}
-                },
-                None => {}
+            match self.recv.recv() {
+                Ok(msg) => self.handle_msg(msg).await,
+                Err(e) => {
+                    println!("recv none error{}", e);
+                    sleep(Duration::from_millis(20)).await;
+                }
             }
+        }
+    }
+
+    async fn handle_msg(&mut self, msg: Msg) {
+        println!(
+            "readonly ts tid {},{},{}",
+            self.executor_id,
+            msg.tmsg.from,
+            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+            // read_set
+        );
+        msg.callback.send(Ok(msg.tmsg.clone())).await;
+        return;
+        match msg.tmsg.op() {
+            TxnOp::Abort => {}
+            TxnOp::ReadOnly => self.handle_read_only(msg).await,
+            TxnOp::Commit => self.handle_commit(msg).await,
+            TxnOp::Prepare => self.handle_prepare(msg).await,
+            TxnOp::PrepareRes => {}
+            TxnOp::ReadOnlyRes => {}
+            TxnOp::Accept => self.handle_accept(msg).await,
+            TxnOp::AcceptRes => {}
+            TxnOp::CommitRes => {}
         }
     }
 
@@ -85,12 +105,14 @@ impl Executor {
             let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
             let mut read_set = txn.read_set.clone();
             println!(
-                "readonly ts tid {},{},{},{:?}",
+                "readonly ts tid {},{},{}",
                 self.executor_id,
                 msg.tmsg.from,
                 msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-                read_set
+                // read_set
             );
+            msg.callback.send(Ok(txn)).await;
+            return;
             txn.read_set.clear();
             for read in read_set.iter_mut() {
                 let key = read.key;
@@ -250,6 +272,14 @@ impl Executor {
             msg.tmsg.from,
             msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
         );
+        // match self.recv.try_recv() {
+        //     Ok(msg) => {
+        //         self.sender.send(msg).await;
+        //         ()
+        //     }
+        //     Err(e) => println!("{:?}", e),
+        // }
+        // ()
     }
 
     async fn handle_accept(&mut self, msg: Msg) {

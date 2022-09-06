@@ -13,6 +13,8 @@ use tokio::sync::{
     Mutex,
 };
 
+use tokio::runtime::Runtime;
+
 use crate::{
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
@@ -37,9 +39,10 @@ pub struct Peer {
     server_id: u32,
 
     // dispatcher
-    executor_senders: HashMap<u32, Sender<Msg>>,
+    executor_senders: HashMap<u32, UnboundedSender<Msg>>,
     executor_num: u32,
     config: Config,
+    rt: Runtime,
 }
 
 impl Peer {
@@ -51,6 +54,7 @@ impl Peer {
             executor_senders: HashMap::new(),
             executor_num: config.executor_num,
             config,
+            rt: Runtime::new().unwrap(),
         }
     }
 
@@ -114,14 +118,15 @@ impl Peer {
         config: Config,
         indexs: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
     ) {
-        // self.executor_num = config.executor_num;
+        // self.executor_num = config.executor_num; =
+
         self.executor_num = 1;
         for i in 0..config.executor_num {
             // println!("init executor {}", i);
-            let (sender, receiver) = channel::<Msg>(1000);
+            let (sender, receiver) = unbounded_channel::<Msg>();
             self.executor_senders.insert(i, sender);
             let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
-            tokio::spawn(async move {
+            self.rt.spawn(async move {
                 exec.run().await;
             });
         }
@@ -147,7 +152,7 @@ impl Peer {
                         .get(&executor_id)
                         .unwrap()
                         .send(msg)
-                        .await;
+                        .unwrap();
                 }
                 None => continue,
             }

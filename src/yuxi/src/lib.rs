@@ -29,6 +29,7 @@ pub struct ExecuteContext {
 
 pub static MaxTs: TS = 1 << 62;
 
+#[derive(Debug)]
 pub struct Msg {
     pub tmsg: YuxiMsg,
     pub callback: Sender<Result<YuxiMsg, Status>>,

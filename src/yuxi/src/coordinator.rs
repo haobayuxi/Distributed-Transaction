@@ -44,7 +44,7 @@ impl YuxiCoordinator {
             txn: YuxiMsg::default(),
             servers: HashMap::new(),
             recv,
-            workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
+            workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, 100),
             config,
             txns_per_client,
         }
