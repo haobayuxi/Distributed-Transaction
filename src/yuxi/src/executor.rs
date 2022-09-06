@@ -74,6 +74,7 @@ impl Executor {
                 match IN_MEMORY_MQ[self.executor_id as usize][self.msg_queue_index].take() {
                     Some(msg) => {
                         self.handle_msg(msg).await;
+                        println!("handle msg {}", self.msg_queue_index);
                         self.msg_queue_index += 1;
                         if self.msg_queue_index == 1000 {
                             self.msg_queue_index = 0;
@@ -89,13 +90,13 @@ impl Executor {
     }
 
     async fn handle_msg(&mut self, msg: Msg) {
-        println!(
-            "readonly ts tid {},{},{}",
-            self.executor_id,
-            msg.tmsg.from,
-            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-            // read_set
-        );
+        // println!(
+        //     "readonly ts tid {},{},{}",
+        //     self.executor_id,
+        //     msg.tmsg.from,
+        //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+        //     // read_set
+        // );
         msg.callback.send(Ok(msg.tmsg.clone())).await;
         return;
         match msg.tmsg.op() {
