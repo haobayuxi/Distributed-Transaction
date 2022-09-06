@@ -80,7 +80,7 @@ impl Executor {
                         }
                     }
                     None => {
-                        println!("msg queue empty");
+                        println!("msg queue empty {}", self.msg_queue_index);
                         sleep(Duration::from_millis(20)).await;
                     }
                 }

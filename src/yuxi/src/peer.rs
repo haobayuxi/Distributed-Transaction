@@ -146,11 +146,12 @@ impl Peer {
                     // send to executor
                     // match self.executor_num
                     println!(
-                        "executor id = {}, from {},txnid{}, {:?}",
+                        "executor id = {}, from {},txnid{}, {}",
                         executor_id,
                         msg.tmsg.from,
                         msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-                        msg.tmsg.op()
+                        // msg.tmsg.op()
+                        self.msg_queue_index[executor_id as usize]
                     );
                     // self.executor_senders
                     //     .get(&executor_id)
