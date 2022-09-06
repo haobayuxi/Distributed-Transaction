@@ -61,7 +61,8 @@ impl Executor {
         }
     }
 
-    pub async fn run(&mut self) -> ! {
+    pub async fn run(&mut self) {
+        let mut i = 0;
         loop {
             // match self.recv.try_recv() {
             //     Ok(msg) => self.handle_msg(msg).await,
@@ -74,14 +75,15 @@ impl Executor {
                 match IN_MEMORY_MQ[self.executor_id as usize][self.msg_queue_index].take() {
                     Some(msg) => {
                         self.handle_msg(msg).await;
-                        println!("handle msg {}", self.msg_queue_index);
+                        println!("handle msg {}, {}", self.msg_queue_index, i);
+                        i += 1;
                         self.msg_queue_index += 1;
                         if self.msg_queue_index == 1000 {
                             self.msg_queue_index = 0;
                         }
                     }
                     None => {
-                        println!("msg queue empty {}", self.msg_queue_index);
+                        println!("msg queue empty {},{}", self.msg_queue_index, i);
                         sleep(Duration::from_millis(20)).await;
                     }
                 }
