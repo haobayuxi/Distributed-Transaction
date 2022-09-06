@@ -213,12 +213,7 @@ impl Peer {
         txn_in_memory.reply_num += 1;
         if txn_in_memory.reply_num == self.majority_size {
             // commit
-            self.readyq
-                .get_mut(&txn.timestamp)
-                .unwrap()
-                .as_mut()
-                .unwrap()
-                .committed = true;
+            txn_in_memory.committed = true;
             let commit = DastMsg {
                 txn_id: txn.txn_id,
                 read_set: Vec::new(),
