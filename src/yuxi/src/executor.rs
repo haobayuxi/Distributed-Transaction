@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, thread::sleep, time::Duration};
 
 use crate::{
     peer::{Meta, IN_MEMORY_MQ},
@@ -14,8 +14,8 @@ use rpc::{
     yuxi::YuxiMsg,
 };
 use tokio::sync::mpsc::{unbounded_channel, Receiver, Sender};
-use tokio::time::sleep;
-use tokio::time::Duration;
+// use tokio::time::sleep;
+// use tokio::time::Duration;
 
 pub struct Executor {
     executor_id: u32,
@@ -84,7 +84,7 @@ impl Executor {
                     }
                     None => {
                         println!("msg queue empty {},{}", self.msg_queue_index, i);
-                        sleep(Duration::from_millis(20)).await;
+                        sleep(Duration::from_millis(20));
                     }
                 }
             }
