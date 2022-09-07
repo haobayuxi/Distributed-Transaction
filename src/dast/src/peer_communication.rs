@@ -86,6 +86,7 @@ impl Dast for RpcServer {
                 }
                 Err(_) => {
                     //todo handle network err
+                    break;
                 }
             };
         }

@@ -63,7 +63,9 @@ impl Meerkat for RpcServer {
                         };
                         sender.send(msg);
                     }
-                    Err(_) => {}
+                    Err(_) => {
+                        break;
+                    }
                 }
             }
         });
