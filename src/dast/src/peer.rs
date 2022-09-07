@@ -65,6 +65,8 @@ pub struct Peer {
     // data
     ycsb: HashMap<i64, String>,
     executed: u64,
+    waitfor: u64,
+    waits: u64,
 }
 
 impl Peer {
@@ -98,6 +100,8 @@ impl Peer {
             local_node_ids: Vec::new(),
             ycsb,
             executed: 0,
+            waitfor: 0,
+            waits: 0,
         };
     }
 
@@ -283,9 +287,9 @@ impl Peer {
     fn check_txn(&mut self) -> Vec<TxnInMemory> {
         let mut executed: Vec<TxnInMemory> = Vec::new();
         // println!("check rq size {}", self.readyq.len());
-        if self.readyq.len() > 99 {
-            panic!("")
-        }
+        // if self.readyq.len() > 99 {
+        //     panic!("")
+        // }
         loop {
             match self.readyq.first_key_value() {
                 Some((key, value)) => match value {
@@ -323,6 +327,15 @@ impl Peer {
                     }
                     None => {
                         println!("NONE {}", *key);
+                        if self.waitfor != *key {
+                            self.waitfor = *key;
+                            self.waitfor = 1;
+                        } else {
+                            self.waitfor += 1;
+                        }
+                        if self.waitfor == 50 {
+                            panic!("")
+                        }
                         break;
                     }
                 },
