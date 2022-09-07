@@ -4,7 +4,10 @@ use rpc::{
     common::{ReadStruct, TxnOp},
     janus::JanusMsg,
 };
-use tokio::sync::{mpsc::UnboundedReceiver, RwLock};
+use tokio::sync::{
+    mpsc::{Sender, UnboundedReceiver},
+    RwLock,
+};
 
 use crate::{JanusMeta, Msg};
 
@@ -19,11 +22,7 @@ pub struct Executor {
 }
 
 impl Executor {
-    pub fn new(
-        server_id: u32,
-        mem: HashMap<i64, RwLock<(JanusMeta, String)>>,
-        // recv: UnboundedReceiver<Msg>,
-    ) -> Self {
+    pub fn new(server_id: u32, mem: HashMap<i64, RwLock<(JanusMeta, String)>>) -> Self {
         Self {
             server_id,
             mem,

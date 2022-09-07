@@ -117,8 +117,8 @@ impl JanusCoordinator {
         // send msgs
         let total_start = Instant::now();
         for i in 0..self.txns_per_client {
-            self.txn_id += 1;
             self.workload.generate();
+            self.txn_id += 1;
             let start = Instant::now();
             self.run_transaction().await;
             let end_time = start.elapsed().as_micros();

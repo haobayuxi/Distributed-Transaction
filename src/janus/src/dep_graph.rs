@@ -62,7 +62,10 @@ impl DepGraph {
     ) -> Self {
         // init TXNS
         unsafe {
-            TXNS.reserve(client_num);
+            for i in 0..client_num {
+                TXNS.push(vec![]);
+            }
+            // TXNS.reserve(client_num);
         }
 
         let (waitlist_sender, waitlist_receiver) = unbounded_channel::<u64>();
@@ -75,8 +78,8 @@ impl DepGraph {
                         Some(commit) => {
                             let txnid = commit.txn.txn_id;
                             let node = Node::new(commit);
-                            let clientid = get_client_id(txnid);
-                            TXNS[clientid as usize].push(node);
+                            let client_id = get_client_id(txnid);
+                            TXNS[client_id as usize].push(node);
                             waitlist_sender.send(txnid);
                         }
                         None => continue,
