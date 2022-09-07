@@ -117,7 +117,6 @@ impl MeerkatCoordinator {
         // get the read set from server
         // execute phase
         let read_server_index = self.id % 3;
-        let mut client = self.servers.get(&read_server_index).unwrap().clone();
         let read_request = MeerkatMsg {
             txn_id: self.txn_id,
             read_set: self.txn.read_set.clone(),
@@ -168,24 +167,6 @@ impl MeerkatCoordinator {
         self.broadcast(self.txn.clone()).await;
         return true;
     }
-    // pub async fn init_rpc(&mut self) {
-    //     // hold the clients to all the server
-    //     for (id, server_addr) in self.config.server_addrs.iter() {
-    //         println!("connect to {}-{}", id, server_addr);
-    //         loop {
-    //             match MeerkatClient::connect(server_addr.clone()).await {
-    //                 Ok(client) => {
-    //                     self.servers.insert(*id, client);
-    //                     break;
-    //                 }
-    //                 Err(e) => {
-    //                     println!("{}", e);
-    //                     sleep(Duration::from_millis(100)).await;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
     pub async fn init_rpc(&mut self, sender: Sender<MeerkatMsg>) {
         // init rpc client to connect to other peers
@@ -201,87 +182,4 @@ impl MeerkatCoordinator {
             self.servers.insert(id.clone(), send_to_server);
         }
     }
-
-    ///////////////////////
-    // tpcc txns
-    // async fn get_subscriber_data(&mut self,  query: GetSubscriberDataQuery) -> bool {
-    //     let s_id = query.s_id;
-    //     let timestamp = get_local_time(self.id);
-    //     let mut result_num: i32 = 0;
-    //     let (sender, mut receiver) = unbounded_channel::<MeerkatMsg>();
-    //     // get the read set from server
-    //     let read_server_index = self.id % 3;
-    //     let shard = self.shard_the_transaction(read_set, write_set)
-    //     for (shard, per_server) in self.txn.iter() {
-    //         if per_server.read_set.len() > 0 {
-    //             result_num += 1;
-    //             let server_id = self
-    //                 .config
-    //                 .shards
-    //                 .get(shard)
-    //                 .unwrap()
-    //                 .get(read_server_index as usize)
-    //                 .unwrap();
-    //             let mut client = self.servers.get(server_id).unwrap().clone();
-    //             let result_sender = sender.clone();
-    //             let read_request = MeerkatMsg {
-    //                 txn_id: self.txn_id,
-    //                 read_set: per_server.read_set.clone(),
-    //                 write_set: Vec::new(),
-    //                 executor_id: 0,
-    //                 op: TxnOp::TRead.into(),
-    //                 from: self.id,
-    //                 timestamp,
-    //             };
-    //             tokio::spawn(async move {
-    //                 let result = client.txn_msg(read_request).await.unwrap().into_inner();
-    //                 result_sender.send(result);
-    //             });
-    //         }
-    //     }
-    //     // while result_num
-    //     while result_num > 0 {
-    //         result_num -= 1;
-    //         let read = receiver.recv().await.unwrap();
-    //         match self.txn.get_mut(&read.from) {
-    //             Some(msg) => {
-    //                 msg.read_set = read.read_set;
-    //             }
-    //             None => todo!(),
-    //         }
-    //     }
-    //     // prepare, prepare will send to all the server in the shard
-    //     result_num = (self.txn.len() * 3) as i32;
-    //     for (shard, per_server) in self.txn.iter() {
-    //         let server_ids = self.config.shards.get(shard).unwrap();
-    //         for server_id in server_ids.iter() {
-    //             let mut client = self.servers.get(server_id).unwrap().clone();
-    //             let result_sender = sender.clone();
-    //             let read_request = MeerkatMsg {
-    //                 txn_id: self.txn_id,
-    //                 read_set: per_server.read_set.clone(),
-    //                 write_set: per_server.write_set.clone(),
-    //                 executor_id: 0,
-    //                 op: TxnOp::TPrepare.into(),
-    //                 from: self.id,
-    //                 timestamp,
-    //             };
-    //             tokio::spawn(async move {
-    //                 let result = client.txn_msg(read_request).await.unwrap().into_inner();
-    //                 result_sender.send(result);
-    //             });
-    //         }
-    //     }
-    //     // handle prepare response
-    //     while result_num > 0 {
-    //         result_num -= 1;
-    //         let prepare_res = receiver.recv().await.unwrap();
-    //         if prepare_res.op == TxnOp::TAbort.into() {
-    //             // abort all the txn
-    //             return false;
-    //         }
-    //     }
-    //     // txn success
-    //     true
-    // }
 }
