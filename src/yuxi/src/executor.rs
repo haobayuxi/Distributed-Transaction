@@ -64,16 +64,21 @@ impl Executor {
     pub async fn run(&mut self) {
         let mut i = 0;
         loop {
-            match self.recv.recv().await {
-                Some(msg) => {
+            match self.recv.try_recv() {
+                Ok(msg) => {
                     self.handle_msg(msg).await;
                     i += 1;
                     unsafe {
                         println!("handle msg {} {} ", i, COUNT);
                     }
                 }
-                None => {
-                    println!("recv none error");
+                Err(e) => {
+                    unsafe {
+                        if i < COUNT {
+                            println!("recv none error{}", e);
+                        }
+                    }
+
                     sleep(Duration::from_millis(20)).await;
                 }
             }
