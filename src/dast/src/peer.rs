@@ -103,7 +103,8 @@ impl Peer {
         let time = (Local::now().timestamp_nanos() / 1000) as u64;
         let mut ts = time << 12 + self.id << 5;
         if ts < self.maxTs[self.id as usize] {
-            ts = self.maxTs[self.id as usize] + (self.id as u64) + 1;
+            let maxts = self.maxTs[self.id as usize] >> 12;
+            ts = (maxts + 1) << 12 + (self.id as u64);
         }
         return ts;
     }
