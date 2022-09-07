@@ -162,7 +162,7 @@ impl Peer {
 
         self.readyq
             .insert(msg.timestamp, Some(TxnInMemory::new(msg.clone())));
-
+        println!("prepare {}", msg.timestamp);
         // update notified ts
         let mut notified_txn_ts = Vec::new();
         if self.notifiedTs[msg.from as usize] < msg.timestamp {
@@ -203,7 +203,7 @@ impl Peer {
                 self.readyq.insert(*ts, None);
             }
         }
-
+        println!("handle irt ack {}", txn.timestamp);
         let mut txn_in_memory = self
             .readyq
             .get_mut(&txn.timestamp)
@@ -269,6 +269,7 @@ impl Peer {
                             //
                             let txn = self.readyq.pop_first().unwrap().1.unwrap();
                             // self.execute_txn(txn_in_memory.txn);
+                            println!("executed {}", txn.txn.timestamp);
                             executed.push(txn);
                         } else {
                             break;
