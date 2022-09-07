@@ -308,6 +308,7 @@ impl Peer {
                     }
                     None => {
                         println!("NONE {}", *key);
+                        break;
                     }
                 },
                 None => break,
