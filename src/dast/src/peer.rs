@@ -271,6 +271,9 @@ impl Peer {
     fn check_txn(&mut self) -> Vec<TxnInMemory> {
         let mut executed: Vec<TxnInMemory> = Vec::new();
         println!("check rq size {}", self.readyq.len());
+        if self.readyq.len() > 99 {
+            panic!("")
+        }
         loop {
             match self.readyq.first_key_value() {
                 Some((key, value)) => match value {
