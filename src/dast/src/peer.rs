@@ -141,6 +141,7 @@ impl Peer {
         // update maxts
         self.maxTs[self.id as usize] = ts;
         txn.from = self.id;
+        println!("prepare {}", txn.timestamp);
         self.broadcast(txn).await;
     }
 
@@ -162,7 +163,7 @@ impl Peer {
 
         self.readyq
             .insert(msg.timestamp, Some(TxnInMemory::new(msg.clone())));
-        println!("prepare {}", msg.timestamp);
+        println!("handle prepare {}", msg.timestamp);
         // update notified ts
         let mut notified_txn_ts = Vec::new();
         if self.notifiedTs[msg.from as usize] < msg.timestamp {
