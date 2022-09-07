@@ -160,6 +160,7 @@ impl MeerkatCoordinator {
             read.value = None;
         }
         self.broadcast(self.txn.clone()).await;
+        let reply = self.recv.recv().await;
         return true;
     }
     // pub async fn init_rpc(&mut self) {
