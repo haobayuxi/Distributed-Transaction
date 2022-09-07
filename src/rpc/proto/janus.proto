@@ -17,6 +17,6 @@ message JanusMsg {
 
 
 service Janus {
-    rpc JanusTxn(JanusMsg) returns (JanusMsg) {}
+    rpc JanusTxn(stream JanusMsg) returns (stream JanusMsg) {}
 }
 

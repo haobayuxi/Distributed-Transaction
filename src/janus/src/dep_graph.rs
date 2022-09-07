@@ -115,7 +115,7 @@ impl DepGraph {
             let index = txnid >> CID_LEN;
             let node = &TXNS[clientid as usize][index as usize];
             if !node.executed {
-                self.find_scc(txnid);
+                self.find_scc(txnid).await;
             }
         }
     }

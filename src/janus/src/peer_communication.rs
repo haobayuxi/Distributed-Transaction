@@ -1,14 +1,22 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use rpc::{
     common::TxnOp,
     janus::{
+        janus_client::JanusClient,
         janus_server::{Janus, JanusServer},
         JanusMsg,
     },
 };
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use tonic::{transport::Server, Request, Response, Status};
+use tokio::{
+    sync::mpsc::{channel, unbounded_channel, Receiver, Sender, UnboundedSender},
+    time::sleep,
+};
+use tokio_stream::{wrappers::ReceiverStream, StreamExt};
+use tonic::{
+    transport::{Channel, Server},
+    Request, Response, Status, Streaming,
+};
 
 use crate::Msg;
 
@@ -44,66 +52,79 @@ pub async fn run_rpc_server(rpc_server: RpcServer) {
 
 #[tonic::async_trait]
 impl Janus for RpcServer {
-    async fn janus_txn(&self, request: Request<JanusMsg>) -> Result<Response<JanusMsg>, Status> {
-        let (sender, mut receiver) = unbounded_channel::<JanusMsg>();
-        // let msg = Msg {
-        //     txn: request.into_inner(),
-        //     callback: sender,
-        // };
-        // dispatch txn to executors
-        let txn = request.into_inner();
-
-        let mut result = JanusMsg {
-            txn_id: txn.txn_id,
-            read_set: Vec::new(),
-            write_set: Vec::new(),
-            op: txn.op,
-            from: 0,
-            deps: Vec::new(),
-            txn_type: None,
-        };
-        match txn.op() {
-            TxnOp::Commit => {
-                // commit msg only contains executor ids
-                let msg = Msg {
-                    txn,
-                    callback: sender,
-                };
-                self.send_to_dep_graph.send(msg);
-                let mut msg = receiver.recv().await.unwrap();
-                result.read_set = msg.read_set;
+    type JanusTxnStream = ReceiverStream<Result<JanusMsg, Status>>;
+    async fn janus_txn(
+        &self,
+        request: Request<Streaming<JanusMsg>>,
+    ) -> Result<Response<Self::JanusTxnStream>, Status> {
+        let (callback_sender, mut receiver) = channel::<Result<JanusMsg, Status>>(100);
+        let mut in_stream = request.into_inner();
+        let sender = self.sender.clone();
+        let send_to_dep_graph = self.send_to_dep_graph.clone();
+        tokio::spawn(async move {
+            while let Some(result) = in_stream.next().await {
+                match result {
+                    Ok(txn) => {
+                        match txn.op() {
+                            TxnOp::Commit => {
+                                // commit msg only contains executor ids
+                                let msg = Msg {
+                                    txn,
+                                    callback: callback_sender.clone(),
+                                };
+                                send_to_dep_graph.send(msg);
+                                // let mut msg = receiver.recv().await.unwrap();
+                                // result.read_set = msg.read_set;
+                            }
+                            _ => {
+                                let msg = Msg {
+                                    txn,
+                                    callback: callback_sender.clone(),
+                                };
+                                sender.send(msg);
+                                // result = receiver.recv().await.unwrap();
+                            }
+                        }
+                        // sender.send(msg);
+                    }
+                    Err(_) => {
+                        break;
+                    }
+                }
             }
-            _ => {
-                let msg = Msg {
-                    txn,
-                    callback: sender,
-                };
-                self.sender.send(msg);
-                result = receiver.recv().await.unwrap();
-                // let txns = shard_txn_to_executors(txn);
-                // let mut pieces = txns.len();
-                // for (id, txn_per_executor) in txns {
-                //     let executor_sender = self.senders.get(&id).unwrap();
-                //     let msg = Msg {
-                //         txn: txn_per_executor,
-                //         callback: sender.clone(),
-                //     };
-                //     result.executor_ids.push(id);
-                //     executor_sender.send(msg);
-                // }
+        });
 
-                // // join the result
-                // while pieces > 0 {
-                //     let mut msg = receiver.recv().await.unwrap();
-                //     result.op = msg.op;
-                //     result.read_set.append(msg.read_set.as_mut());
-                //     result.deps.append(msg.deps.as_mut());
-                //     result.from = msg.from;
-                //     pieces -= 1;
-                // }
+        let out_stream = ReceiverStream::new(receiver);
+        // let result = receiver.recv().await.unwrap();
+        Ok(Response::new(out_stream))
+    }
+}
+
+pub struct RpcClient {
+    client: JanusClient<Channel>,
+    sender: Sender<JanusMsg>,
+}
+
+impl RpcClient {
+    pub async fn new(addr: String, sender: Sender<JanusMsg>) -> Self {
+        loop {
+            match JanusClient::connect(addr.clone()).await {
+                Ok(client) => {
+                    return Self { client, sender };
+                }
+                Err(_) => {
+                    sleep(Duration::from_millis(100)).await;
+                }
             }
         }
+    }
 
-        Ok(Response::new(result))
+    pub async fn run_client(&mut self, receiver: Receiver<JanusMsg>) {
+        let receiver = ReceiverStream::new(receiver);
+
+        let mut response = self.client.janus_txn(receiver).await.unwrap().into_inner();
+        while let Some(msg) = response.message().await.unwrap() {
+            self.sender.send(msg).await;
+        }
     }
 }

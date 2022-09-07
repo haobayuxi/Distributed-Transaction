@@ -36,7 +36,7 @@ impl Executor {
         match msg.txn.op() {
             TxnOp::ReadOnly => self.handle_prepare(msg).await,
             TxnOp::Prepare => self.handle_prepare(msg).await,
-            TxnOp::Accept => self.handle_accept(msg),
+            TxnOp::Accept => self.handle_accept(msg).await,
             TxnOp::Commit => self.handle_execute(msg).await,
             TxnOp::ReadOnlyRes => {}
             TxnOp::PrepareRes => {}
@@ -55,32 +55,32 @@ impl Executor {
     //     }
     // }
 
-    async fn handle_read_only(&mut self, msg: Msg) {
-        let txnid = msg.txn.txn_id;
-        let txn = self.txns.remove(&txnid).unwrap();
-        // execute
-        let mut result = JanusMsg {
-            txn_id: txnid,
-            read_set: Vec::new(),
-            write_set: Vec::new(),
-            op: TxnOp::CommitRes.into(),
-            from: self.server_id,
-            deps: Vec::new(),
-            txn_type: None,
-        };
+    // async fn handle_read_only(&mut self, msg: Msg) {
+    //     let txnid = msg.txn.txn_id;
+    //     let txn = self.txns.remove(&txnid).unwrap();
+    //     // execute
+    //     let mut result = JanusMsg {
+    //         txn_id: txnid,
+    //         read_set: Vec::new(),
+    //         write_set: Vec::new(),
+    //         op: TxnOp::CommitRes.into(),
+    //         from: self.server_id,
+    //         deps: Vec::new(),
+    //         txn_type: None,
+    //     };
 
-        for read in txn.read_set {
-            let read_result = ReadStruct {
-                key: read.key.clone(),
-                value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
-                timestamp: None,
-            };
-            result.read_set.push(read_result);
-        }
+    //     for read in txn.read_set {
+    //         let read_result = ReadStruct {
+    //             key: read.key.clone(),
+    //             value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
+    //             timestamp: None,
+    //         };
+    //         result.read_set.push(read_result);
+    //     }
 
-        // reply to coordinator
-        msg.callback.send(result);
-    }
+    //     // reply to coordinator
+    //     msg.callback.send(Ok(result)).await;
+    // }
 
     async fn handle_execute(&mut self, msg: Msg) {
         let txnid = msg.txn.txn_id;
@@ -110,7 +110,9 @@ impl Executor {
         }
 
         // reply to coordinator
-        msg.callback.send(result);
+        if msg.txn.from % 3 == self.server_id {
+            msg.callback.send(Ok(result)).await;
+        }
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -138,12 +140,13 @@ impl Executor {
             result.deps.push(dep);
         }
 
+        result.deps.sort();
         self.txns.insert(msg.txn.txn_id, msg.txn);
         // reply to coordinator
-        msg.callback.send(result);
+        msg.callback.send(Ok(result)).await;
     }
 
-    fn handle_accept(&mut self, msg: Msg) {
+    async fn handle_accept(&mut self, msg: Msg) {
         let txnid = msg.txn.txn_id;
         let accept_ok = JanusMsg {
             txn_id: txnid,
@@ -156,6 +159,6 @@ impl Executor {
         };
         // self.txns.insert(txnid, msg.txn);
         // reply accept ok to coordinator
-        msg.callback.send(accept_ok);
+        msg.callback.send(Ok(accept_ok)).await;
     }
 }

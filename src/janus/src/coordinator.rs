@@ -8,83 +8,113 @@ use rpc::{
 use tokio::{
     fs::OpenOptions,
     io::AsyncWriteExt,
-    sync::mpsc::unbounded_channel,
+    sync::mpsc::{channel, unbounded_channel, Receiver, Sender},
     time::{sleep, Instant},
 };
 use tonic::transport::Channel;
+
+use crate::peer_communication::RpcClient;
 
 pub struct JanusCoordinator {
     // replica_id: i32,
     // read_optimize: bool,
     id: u32,
     txn_id: u64,
-    txn: HashMap<u32, JanusMsg>,
+    txn: JanusMsg,
     workload: YcsbQuery,
     // send to servers
-    servers: HashMap<u32, JanusClient<Channel>>,
+    servers: HashMap<u32, Sender<JanusMsg>>,
     config: Config,
     txns_per_client: i32,
+    recv: Receiver<JanusMsg>,
 }
 
 impl JanusCoordinator {
-    pub fn new(id: u32, config: Config, txns_per_client: i32, read_perc: i32) -> Self {
+    pub fn new(
+        id: u32,
+        config: Config,
+        txns_per_client: i32,
+        read_perc: i32,
+        recv: Receiver<JanusMsg>,
+    ) -> Self {
         Self {
             // read_optimize,
             id,
             txn_id: (id as u64) << CID_LEN,
-            txn: HashMap::new(),
+            txn: JanusMsg::default(),
             servers: HashMap::new(),
             workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
             config,
             txns_per_client,
+            recv,
         }
     }
 
     async fn run_transaction(&mut self) -> bool {
-        let mut result_num: i32 = 0;
-        let (sender, mut receiver) = unbounded_channel::<JanusMsg>();
-
         // prepare
-        result_num = self.txn.len() as i32;
-        for (server_id, per_server) in self.txn.iter() {
-            let mut client = self.servers.get(server_id).unwrap().clone();
-            let result_sender = sender.clone();
-            let read_request = JanusMsg {
-                txn_id: self.txn_id,
-                read_set: per_server.read_set.clone(),
-                write_set: per_server.write_set.clone(),
-                op: TxnOp::Prepare.into(),
-                from: self.id,
-                deps: Vec::new(),
-                txn_type: Some(TxnType::Ycsb.into()),
-            };
-            tokio::spawn(async move {
-                let result = client.janus_txn(read_request).await.unwrap().into_inner();
-                result_sender.send(result);
-            });
-        }
+        self.txn.deps.clear();
+        self.txn.read_set = self.workload.read_set.clone();
+        self.txn.write_set = self.workload.write_set.clone();
+        self.txn.from = self.id;
+        self.txn.op = TxnOp::Prepare.into();
+        self.txn.txn_id = self.txn_id;
+        self.broadcast(self.txn.clone()).await;
+
         // handle prepare response
-        while result_num > 0 {
-            result_num -= 1;
-            let prepare_res = receiver.recv().await.unwrap();
-            if prepare_res.op() == TxnOp::Accept {
-                // abort all the txn
-                return false;
+        let mut result = self.recv.recv().await.unwrap();
+        let mut fast_commit = true;
+        for i in 0..3 {
+            let prepare_res = self.recv.recv().await.unwrap();
+            if result.deps != prepare_res.deps {
+                fast_commit = false;
+                let result_vec = result.deps.clone();
+                for iter in prepare_res.deps.into_iter() {
+                    if !result_vec.contains(&iter) {
+                        result.deps.push(iter);
+                    }
+                }
+            }
+        }
+        self.txn.deps = result.deps;
+        if !fast_commit {
+            // accept
+            let mut accept = self.txn.clone();
+            accept.read_set.clear();
+            accept.write_set.clear();
+            accept.op = TxnOp::Accept.into();
+            self.broadcast(accept).await;
+            for i in 0..3 {
+                self.recv.recv().await;
             }
         }
         // txn success
+        let mut commit = self.txn.clone();
+        commit.read_set.clear();
+        commit.write_set.clear();
+        commit.op = TxnOp::Commit.into();
+        self.broadcast(commit).await;
+        self.recv.recv().await;
         return true;
     }
 
-    pub async fn init_run(&mut self) {
+    async fn broadcast(&mut self, msg: JanusMsg) {
+        for (id, server) in self.servers.iter() {
+            server.send(msg.clone()).await;
+        }
+    }
+
+    pub async fn init_run(&mut self, sender: Sender<JanusMsg>) {
         // self.init_workload();
-        self.init_rpc().await;
+        self.init_rpc(sender).await;
         println!("init rpc done");
         // run transactions
+        self.txn.from = self.id;
+        self.txn.txn_type = Some(TxnType::Ycsb.into());
         let mut latency_result = Vec::new();
         // send msgs
         let total_start = Instant::now();
         for i in 0..self.txns_per_client {
+            self.txn_id += 1;
             self.workload.generate();
             let start = Instant::now();
             self.run_transaction().await;
@@ -120,19 +150,18 @@ impl JanusCoordinator {
         throughput_file.write("\n".as_bytes()).await;
     }
 
-    async fn init_rpc(&mut self) {
-        // hold the clients to all the server
-        for (id, server_addr) in self.config.server_addrs.iter() {
-            loop {
-                match JanusClient::connect(server_addr.clone()).await {
-                    Ok(client) => {
-                        self.servers.insert(*id, client);
-                    }
-                    Err(_) => {
-                        sleep(Duration::from_millis(100)).await;
-                    }
-                }
-            }
+    pub async fn init_rpc(&mut self, sender: Sender<JanusMsg>) {
+        // init rpc client to connect to other peers
+        for (id, ip) in self.config.server_addrs.iter() {
+            tracing::info!("init client connect to {}", ip);
+            // let mut client = PeerCommunicationClient::connect(ip).await?;
+            let (send_to_server, server_receiver) = channel::<JanusMsg>(100);
+            //init client
+            let mut client = RpcClient::new(ip.clone(), sender.clone()).await;
+            tokio::spawn(async move {
+                client.run_client(server_receiver).await;
+            });
+            self.servers.insert(id.clone(), send_to_server);
         }
     }
 }

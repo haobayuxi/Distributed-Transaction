@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use common::EXECUTOR_NUM;
 use rpc::janus::JanusMsg;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::Sender;
+use tonic::Status;
 
 pub mod coordinator;
 pub mod dep_graph;
@@ -10,10 +11,10 @@ pub mod executor;
 pub mod peer;
 pub mod peer_communication;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Msg {
     pub txn: JanusMsg,
-    pub callback: UnboundedSender<JanusMsg>,
+    pub callback: Sender<Result<JanusMsg, Status>>,
 }
 
 #[derive(Default, Clone)]

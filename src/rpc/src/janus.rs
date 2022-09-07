@@ -50,8 +50,9 @@ pub mod janus_client {
         }
         pub async fn janus_txn(
             &mut self,
-            request: impl tonic::IntoRequest<super::JanusMsg>,
-        ) -> Result<tonic::Response<super::JanusMsg>, tonic::Status> {
+            request: impl tonic::IntoStreamingRequest<Message = super::JanusMsg>,
+        ) -> Result<tonic::Response<tonic::codec::Streaming<super::JanusMsg>>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -60,7 +61,9 @@ pub mod janus_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/janus.Janus/JanusTxn");
-            self.inner.unary(request.into_request(), path, codec).await
+            self.inner
+                .streaming(request.into_streaming_request(), path, codec)
+                .await
         }
     }
     impl<T: Clone> Clone for JanusClient<T> {
@@ -83,10 +86,15 @@ pub mod janus_server {
     #[doc = "Generated trait containing gRPC methods that should be implemented for use with JanusServer."]
     #[async_trait]
     pub trait Janus: Send + Sync + 'static {
+        #[doc = "Server streaming response type for the JanusTxn method."]
+        type JanusTxnStream: futures_core::Stream<Item = Result<super::JanusMsg, tonic::Status>>
+            + Send
+            + Sync
+            + 'static;
         async fn janus_txn(
             &self,
-            request: tonic::Request<super::JanusMsg>,
-        ) -> Result<tonic::Response<super::JanusMsg>, tonic::Status>;
+            request: tonic::Request<tonic::Streaming<super::JanusMsg>>,
+        ) -> Result<tonic::Response<Self::JanusTxnStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct JanusServer<T: Janus> {
@@ -123,12 +131,14 @@ pub mod janus_server {
                 "/janus.Janus/JanusTxn" => {
                     #[allow(non_camel_case_types)]
                     struct JanusTxnSvc<T: Janus>(pub Arc<T>);
-                    impl<T: Janus> tonic::server::UnaryService<super::JanusMsg> for JanusTxnSvc<T> {
+                    impl<T: Janus> tonic::server::StreamingService<super::JanusMsg> for JanusTxnSvc<T> {
                         type Response = super::JanusMsg;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type ResponseStream = T::JanusTxnStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::JanusMsg>,
+                            request: tonic::Request<tonic::Streaming<super::JanusMsg>>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).janus_txn(request).await };
@@ -137,7 +147,7 @@ pub mod janus_server {
                     }
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let interceptor = inner.1.clone();
+                        let interceptor = inner.1;
                         let inner = inner.0;
                         let method = JanusTxnSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
@@ -146,7 +156,7 @@ pub mod janus_server {
                         } else {
                             tonic::server::Grpc::new(codec)
                         };
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
