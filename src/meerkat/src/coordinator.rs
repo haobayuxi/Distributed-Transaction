@@ -59,6 +59,8 @@ impl MeerkatCoordinator {
         // send msgs
         let total_start = Instant::now();
         for i in 0..self.txns_per_client {
+            self.txn_id += 1;
+            self.txn.txn_id = self.txn_id;
             self.workload.generate();
             let start = Instant::now();
             let mut j = 0;
