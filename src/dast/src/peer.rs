@@ -231,7 +231,8 @@ impl Peer {
             self.broadcast(commit).await;
             // execute
             println!("master commit {},{:?}", txn.timestamp, self.maxTs);
-            self.check_txn();
+            let to_execute = self.check_txn();
+            self.execute_txn(to_execute);
         }
     }
 
