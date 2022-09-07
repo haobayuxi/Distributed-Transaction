@@ -48,7 +48,7 @@ impl MeerkatCoordinator {
         let mut latency_result = Vec::new();
         // send msgs
         let total_start = Instant::now();
-        for i in 0..self.txns_per_client {
+        for i in 0..1 {
             self.workload.generate();
             let start = Instant::now();
             let mut j = 0;
