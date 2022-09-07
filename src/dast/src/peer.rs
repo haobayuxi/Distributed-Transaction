@@ -264,20 +264,24 @@ impl Peer {
             match self.readyq.first_key_value() {
                 Some((key, value)) => match value {
                     Some(txn_in_memory) => {
-                        let mut safe = true;
-                        for max_ts in self.maxTs.iter() {
-                            if *max_ts < *key {
-                                safe = false;
+                        if txn_in_memory.committed {
+                            let mut safe = true;
+                            for max_ts in self.maxTs.iter() {
+                                if *max_ts < *key {
+                                    safe = false;
+                                    break;
+                                }
+                            }
+                            // execute
+                            if safe {
+                                //
+                                let txn = self.readyq.pop_first().unwrap().1.unwrap();
+                                // self.execute_txn(txn_in_memory.txn);
+                                println!("executed {}", txn.txn.timestamp);
+                                executed.push(txn);
+                            } else {
                                 break;
                             }
-                        }
-                        // execute
-                        if safe {
-                            //
-                            let txn = self.readyq.pop_first().unwrap().1.unwrap();
-                            // self.execute_txn(txn_in_memory.txn);
-                            println!("executed {}", txn.txn.timestamp);
-                            executed.push(txn);
                         } else {
                             break;
                         }
