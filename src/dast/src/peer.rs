@@ -270,10 +270,7 @@ impl Peer {
 
     fn check_txn(&mut self) -> Vec<TxnInMemory> {
         let mut executed: Vec<TxnInMemory> = Vec::new();
-        println!("check rq size {}", self.readyq.len());
-        if self.readyq.len() > 99 {
-            panic!("")
-        }
+        // println!("check rq size {}", self.readyq.len());
         loop {
             match self.readyq.first_key_value() {
                 Some((key, value)) => match value {
@@ -339,6 +336,7 @@ impl Peer {
     async fn execute_txn(&mut self, txns: Vec<TxnInMemory>) {
         // println!("execute txns {:?}", txns);
         for txn_in_memory in txns.iter() {
+            self.executed_up_to = txn_in_memory.txn.timestamp;
             let mut reply = txn_in_memory.txn.clone();
             match txn_in_memory.txn.txn_type() {
                 rpc::common::TxnType::TatpGetSubscriberData => {}
