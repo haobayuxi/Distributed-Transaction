@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use rpc::meerkat::MeerkatMsg;
 use tokio::sync::mpsc::Sender;
+use tonic::Status;
 
 pub mod coordinator;
 pub mod executor;
@@ -12,7 +13,7 @@ pub mod peer_communication;
 #[derive(Debug)]
 pub struct Msg {
     pub tmsg: MeerkatMsg,
-    pub callback: Sender<MeerkatMsg>,
+    pub callback: Sender<Result<MeerkatMsg, Status>>,
 }
 
 // Meerkat meta for every row

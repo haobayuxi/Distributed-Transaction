@@ -8,10 +8,12 @@ use rpc::{
 use tokio::{
     fs::OpenOptions,
     io::AsyncWriteExt,
-    sync::mpsc::unbounded_channel,
+    sync::mpsc::{channel, unbounded_channel, Receiver, Sender},
     time::{sleep, Instant},
 };
 use tonic::transport::Channel;
+
+use crate::peer_communication::RpcClient;
 
 static RETRY: i32 = 20;
 
@@ -22,13 +24,20 @@ pub struct MeerkatCoordinator {
     // sharded txn
     txn: MeerkatMsg,
     // send to servers
-    servers: HashMap<u32, MeerkatClient<Channel>>,
+    servers: HashMap<u32, Sender<MeerkatMsg>>,
     workload: YcsbQuery,
     txns_per_client: i32,
+    recv: Receiver<MeerkatMsg>,
 }
 
 impl MeerkatCoordinator {
-    pub fn new(id: u32, config: Config, read_perc: i32, txns_per_client: i32) -> Self {
+    pub fn new(
+        id: u32,
+        config: Config,
+        read_perc: i32,
+        txns_per_client: i32,
+        recv: Receiver<MeerkatMsg>,
+    ) -> Self {
         Self {
             id,
             txn_id: (id as u64) << CID_LEN,
@@ -37,12 +46,13 @@ impl MeerkatCoordinator {
             workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
             config,
             txns_per_client,
+            recv,
         }
     }
 
-    pub async fn init_run(&mut self) {
+    pub async fn init_run(&mut self, sender: Sender<MeerkatMsg>) {
         // self.init_workload();
-        self.init_rpc().await;
+        self.init_rpc(sender).await;
         println!("init rpc done");
         // run transactions
         let mut latency_result = Vec::new();
@@ -90,70 +100,18 @@ impl MeerkatCoordinator {
         throughput_file.write("\n".as_bytes()).await;
     }
 
-    // fn get_servers_by_shardid(&mut self, shard: i32) -> Vec<i32> {
-    //     self.config.shards.get(&shard).unwrap().clone()
-    // }
+    async fn broadcast(&mut self, msg: MeerkatMsg) {
+        for (id, server) in self.servers.iter() {
+            server.send(msg.clone()).await;
+        }
+    }
 
-    // fn shard_the_transaction(&mut self, read_set: Vec<i64>, write_set: Vec<(i64, String)>) {
-    //     self.txn.clear();
-    //     // group read write into multi shards, try to read from one of the server
-    //     for read in read_set {
-    //         let shard = (read as i32) % SHARD_NUM;
-    //         let read_struct = ReadStruct {
-    //             key: read,
-    //             value: None,
-    //             timestamp: None,
-    //         };
-    //         if self.txn.contains_key(&shard) {
-    //             let msg = self.txn.get_mut(&shard).unwrap();
-
-    //             msg.read_set.push(read_struct);
-    //         } else {
-    //             let msg = MeerkatMsg {
-    //                 txn_id: self.txn_id,
-    //                 read_set: vec![read_struct],
-    //                 write_set: Vec::new(),
-    //                 executor_id: 0,
-    //                 op: TxnOp::Prepare.into(),
-    //                 from: self.id,
-    //                 timestamp: 0,
-    //                 txn_type: Some(TxnType::Ycsb.into()),
-    //             };
-    //             self.txn.insert(shard, msg);
-    //         }
-    //     }
-
-    //     for (key, value) in write_set {
-    //         let shard = (key as i32) % SHARD_NUM;
-    //         let write_struct = WriteStruct {
-    //             key,
-    //             value,
-    //             // timestamp: None,
-    //         };
-    //         if self.txn.contains_key(&shard) {
-    //             let msg = self.txn.get_mut(&shard).unwrap();
-
-    //             msg.write_set.push(write_struct);
-    //         } else {
-    //             let msg = MeerkatMsg {
-    //                 txn_id: self.txn_id,
-    //                 read_set: Vec::new(),
-    //                 write_set: vec![write_struct],
-    //                 executor_id: 0,
-    //                 op: TxnOp::Prepare.into(),
-    //                 from: self.id,
-    //                 timestamp: 0,
-    //                 txn_type: Some(TxnType::Ycsb.into()),
-    //             };
-    //             self.txn.insert(shard, msg);
-    //         }
-    //     }
-    // }
+    async fn send_to_server(&mut self, msg: MeerkatMsg, id: u32) {
+        self.servers.get(&id).unwrap().send(msg).await;
+    }
 
     async fn run_transaction(&mut self) -> bool {
         let timestamp = get_local_time(self.id);
-        let mut result_num: i32 = 0;
-        let (result_sender, mut receiver) = unbounded_channel::<MeerkatMsg>();
         // get the read set from server
         // execute phase
         let read_server_index = self.id % 3;
@@ -168,25 +126,28 @@ impl MeerkatCoordinator {
             timestamp,
             txn_type: Some(TxnType::Ycsb.into()),
         };
-        let result = client.txn_msg(read_request).await.unwrap().into_inner();
+        // let result = client.txn_msg(read_request).await.unwrap().into_inner();
+        self.send_to_server(read_request, read_server_index).await;
+        // wait for result
+        let result = self.recv.recv().await.unwrap();
         self.txn.read_set = result.read_set;
         self.txn.op = TxnOp::Prepare.into();
         // validate phase
         // prepare, prepare will send to all the server in the shard
-        for (id, server) in self.servers.iter() {
-            let mut server_client = server.clone();
-            let validate = self.txn.clone();
-            let sender = result_sender.clone();
-            tokio::spawn(async move {
-                let result = server_client.txn_msg(validate).await.unwrap().into_inner();
-                sender.send(result);
-            });
-        }
+        self.broadcast(self.txn.clone()).await;
+        // for (id, server) in self.servers.iter() {
+        //     let mut server_client = server.clone();
+        //     let validate = self.txn.clone();
+        //     let sender = result_sender.clone();
+        //     tokio::spawn(async move {
+        //         let result = server_client.txn_msg(validate).await.unwrap().into_inner();
+        //         sender.send(result);
+        //     });
+        // }
 
         // handle prepare response
-        while result_num > 0 {
-            result_num -= 1;
-            let prepare_res = receiver.recv().await.unwrap();
+        for i in 0..3 {
+            let prepare_res = self.recv.recv().await.unwrap();
             if prepare_res.op() == TxnOp::Abort.into() {
                 // abort all the txn
                 return false;
@@ -198,32 +159,40 @@ impl MeerkatCoordinator {
         for read in self.txn.read_set.iter_mut() {
             read.value = None;
         }
-        for (_id, server) in self.servers.iter() {
-            let mut server_client = server.clone();
-            let validate = self.txn.clone();
-            tokio::spawn(async move {
-                let _result = server_client.txn_msg(validate).await.unwrap().into_inner();
-                // sender.send(result);
-            });
-        }
+        self.broadcast(self.txn.clone()).await;
         return true;
     }
-    pub async fn init_rpc(&mut self) {
-        // hold the clients to all the server
-        for (id, server_addr) in self.config.server_addrs.iter() {
-            println!("connect to {}-{}", id, server_addr);
-            loop {
-                match MeerkatClient::connect(server_addr.clone()).await {
-                    Ok(client) => {
-                        self.servers.insert(*id, client);
-                        break;
-                    }
-                    Err(e) => {
-                        println!("{}", e);
-                        sleep(Duration::from_millis(100)).await;
-                    }
-                }
-            }
+    // pub async fn init_rpc(&mut self) {
+    //     // hold the clients to all the server
+    //     for (id, server_addr) in self.config.server_addrs.iter() {
+    //         println!("connect to {}-{}", id, server_addr);
+    //         loop {
+    //             match MeerkatClient::connect(server_addr.clone()).await {
+    //                 Ok(client) => {
+    //                     self.servers.insert(*id, client);
+    //                     break;
+    //                 }
+    //                 Err(e) => {
+    //                     println!("{}", e);
+    //                     sleep(Duration::from_millis(100)).await;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    pub async fn init_rpc(&mut self, sender: Sender<MeerkatMsg>) {
+        // init rpc client to connect to other peers
+        for (id, ip) in self.config.server_addrs.iter() {
+            tracing::info!("init client connect to {}", ip);
+            // let mut client = PeerCommunicationClient::connect(ip).await?;
+            let (send_to_server, server_receiver) = channel::<MeerkatMsg>(100);
+            //init client
+            let mut client = RpcClient::new(ip.clone(), sender.clone()).await;
+            tokio::spawn(async move {
+                client.run_client(server_receiver).await;
+            });
+            self.servers.insert(id.clone(), send_to_server);
         }
     }
 

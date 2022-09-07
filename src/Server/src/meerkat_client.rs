@@ -1,7 +1,9 @@
 use std::env;
 
 use common::{config::Config, ConfigInFile};
-use meerkat::coordinator::MeerkatCoordinator;
+use meerkat::{coordinator::MeerkatCoordinator, MeerkatMeta};
+use rpc::meerkat::MeerkatMsg;
+use tokio::sync::mpsc::channel;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,12 +14,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::default();
     // let client_config = ConfigPerClient::default();
+    let (sender, recv) = channel::<MeerkatMsg>(1000);
     let mut client = MeerkatCoordinator::new(
         id,
         config,
         client_config.read_perc,
         client_config.txns_per_client,
+        recv,
     );
-    client.init_run().await;
+    client.init_run(sender).await;
     Ok(())
 }

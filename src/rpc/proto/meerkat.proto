@@ -21,6 +21,6 @@ message MeerkatMsg {
 
 
 service Meerkat {
-    rpc TxnMsg(MeerkatMsg) returns (MeerkatMsg) {}
+    rpc TxnMsg(stream MeerkatMsg) returns (stream MeerkatMsg) {}
 }
 

@@ -52,8 +52,9 @@ pub mod meerkat_client {
         }
         pub async fn txn_msg(
             &mut self,
-            request: impl tonic::IntoRequest<super::MeerkatMsg>,
-        ) -> Result<tonic::Response<super::MeerkatMsg>, tonic::Status> {
+            request: impl tonic::IntoStreamingRequest<Message = super::MeerkatMsg>,
+        ) -> Result<tonic::Response<tonic::codec::Streaming<super::MeerkatMsg>>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -62,7 +63,9 @@ pub mod meerkat_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/meerkat.Meerkat/TxnMsg");
-            self.inner.unary(request.into_request(), path, codec).await
+            self.inner
+                .streaming(request.into_streaming_request(), path, codec)
+                .await
         }
     }
     impl<T: Clone> Clone for MeerkatClient<T> {
@@ -85,10 +88,15 @@ pub mod meerkat_server {
     #[doc = "Generated trait containing gRPC methods that should be implemented for use with MeerkatServer."]
     #[async_trait]
     pub trait Meerkat: Send + Sync + 'static {
+        #[doc = "Server streaming response type for the TxnMsg method."]
+        type TxnMsgStream: futures_core::Stream<Item = Result<super::MeerkatMsg, tonic::Status>>
+            + Send
+            + Sync
+            + 'static;
         async fn txn_msg(
             &self,
-            request: tonic::Request<super::MeerkatMsg>,
-        ) -> Result<tonic::Response<super::MeerkatMsg>, tonic::Status>;
+            request: tonic::Request<tonic::Streaming<super::MeerkatMsg>>,
+        ) -> Result<tonic::Response<Self::TxnMsgStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct MeerkatServer<T: Meerkat> {
@@ -125,12 +133,14 @@ pub mod meerkat_server {
                 "/meerkat.Meerkat/TxnMsg" => {
                     #[allow(non_camel_case_types)]
                     struct TxnMsgSvc<T: Meerkat>(pub Arc<T>);
-                    impl<T: Meerkat> tonic::server::UnaryService<super::MeerkatMsg> for TxnMsgSvc<T> {
+                    impl<T: Meerkat> tonic::server::StreamingService<super::MeerkatMsg> for TxnMsgSvc<T> {
                         type Response = super::MeerkatMsg;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type ResponseStream = T::TxnMsgStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::MeerkatMsg>,
+                            request: tonic::Request<tonic::Streaming<super::MeerkatMsg>>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).txn_msg(request).await };
@@ -139,7 +149,7 @@ pub mod meerkat_server {
                     }
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let interceptor = inner.1.clone();
+                        let interceptor = inner.1;
                         let inner = inner.0;
                         let method = TxnMsgSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
@@ -148,7 +158,7 @@ pub mod meerkat_server {
                         } else {
                             tonic::server::Grpc::new(codec)
                         };
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

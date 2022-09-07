@@ -89,12 +89,12 @@ impl Executor {
             timestamp: 0,
             txn_type: None,
         };
-        msg.callback.send(read_back).await.unwrap();
+        msg.callback.send(Ok(read_back)).await.unwrap();
         // });
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        println!("handle commit {:?}", msg);
+        println!("handle prepare {:?}", msg);
         // check read set
         for read in msg.tmsg.read_set.iter() {
             // match self.mem.get(&read.key).unwrap().try_read() {
@@ -133,7 +133,7 @@ impl Executor {
                     txn_type: None,
                 };
                 // send back to client
-                msg.callback.send(abort_msg).await.unwrap();
+                msg.callback.send(Ok(abort_msg)).await.unwrap();
                 return;
             }
             // insert ts to prepared read
@@ -178,7 +178,7 @@ impl Executor {
                     txn_type: None,
                 };
                 // send back to client
-                msg.callback.send(abort_msg).await;
+                msg.callback.send(Ok(abort_msg)).await;
                 return;
             }
             guard.0.prepared_write.insert(msg.tmsg.timestamp);
@@ -194,7 +194,7 @@ impl Executor {
             timestamp: 0,
             txn_type: None,
         };
-        msg.callback.send(prepare_ok).await.unwrap();
+        msg.callback.send(Ok(prepare_ok)).await.unwrap();
         println!("send prepareok back");
     }
 
