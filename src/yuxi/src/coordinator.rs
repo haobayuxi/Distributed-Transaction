@@ -60,6 +60,9 @@ impl YuxiCoordinator {
         let total_start = Instant::now();
 
         for i in 0..self.txns_per_client {
+            if i == 500 {
+                break;
+            }
             self.workload.generate();
             self.txn_id += 1;
             self.txn.txn_id = self.txn_id;
