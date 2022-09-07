@@ -5,7 +5,7 @@ use std::{
 };
 
 use chrono::Local;
-use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
+use common::{config::Config, convert_ip_addr, get_txnid, ycsb::init_ycsb};
 use rpc::{common::TxnOp, dast::DastMsg};
 use tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedReceiver, UnboundedSender};
 use tracing::info;
@@ -231,7 +231,12 @@ impl Peer {
 
             self.broadcast(commit).await;
             // execute
-            println!("master commit {},{:?}", txn.timestamp, self.maxTs);
+            println!(
+                "master commit {},{:?}, {:?}",
+                txn.timestamp,
+                self.maxTs,
+                get_txnid(txn.txn_id)
+            );
             let to_execute = self.check_txn();
             self.execute_txn(to_execute).await;
         }
@@ -243,7 +248,12 @@ impl Peer {
             self.maxTs[msg.from as usize] = msg.maxts;
         }
 
-        println!("handle commit {},{:?}", msg.timestamp, self.maxTs);
+        println!(
+            "handle commit {},{:?}, {:?}",
+            msg.timestamp,
+            self.maxTs,
+            get_txnid(msg.txn_id)
+        );
         self.readyq
             .get_mut(&msg.timestamp)
             .unwrap()
