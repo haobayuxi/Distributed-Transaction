@@ -159,18 +159,18 @@ impl Peer {
                             COUNT
                         );
                         COUNT += 1;
-                        self.executor_senders
-                            .get(&executor_id)
-                            .unwrap()
-                            .send(msg)
-                            .await
-                            .unwrap();
-                        // let index = self.msg_queue_index[executor_id as usize];
-                        // IN_MEMORY_MQ[executor_id as usize][index] = Some(msg);
-                        // self.msg_queue_index[executor_id as usize] += 1;
-                        // if self.msg_queue_index[executor_id as usize] == 1000 {
-                        //     self.msg_queue_index[executor_id as usize] = 0;
-                        // }
+                        // self.executor_senders
+                        //     .get(&executor_id)
+                        //     .unwrap()
+                        //     .send(msg)
+                        //     .await
+                        //     .unwrap();
+                        let index = self.msg_queue_index[executor_id as usize];
+                        IN_MEMORY_MQ[executor_id as usize][index] = Some(msg);
+                        self.msg_queue_index[executor_id as usize] += 1;
+                        if self.msg_queue_index[executor_id as usize] == 1000 {
+                            self.msg_queue_index[executor_id as usize] = 0;
+                        }
                     }
                 }
                 None => continue,
