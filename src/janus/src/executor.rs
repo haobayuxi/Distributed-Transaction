@@ -144,6 +144,7 @@ impl Executor {
         self.txns.insert(msg.txn.txn_id, msg.txn);
         // reply to coordinator
         msg.callback.send(Ok(result)).await;
+        // println!("send back prepareok {:?}", result);
     }
 
     async fn handle_accept(&mut self, msg: Msg) {

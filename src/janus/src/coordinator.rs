@@ -64,7 +64,7 @@ impl JanusCoordinator {
         // handle prepare response
         let mut result = self.recv.recv().await.unwrap();
         let mut fast_commit = true;
-        for i in 0..3 {
+        for i in 0..2 {
             let prepare_res = self.recv.recv().await.unwrap();
             if result.deps != prepare_res.deps {
                 fast_commit = false;
