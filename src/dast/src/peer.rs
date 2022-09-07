@@ -229,6 +229,7 @@ impl Peer {
 
             self.broadcast(commit).await;
             // execute
+            println!("master commit {}", txn.timestamp);
             self.check_txn();
         }
     }
@@ -245,6 +246,7 @@ impl Peer {
             .unwrap()
             .committed = true;
         let to_execute = self.check_txn();
+        println!("handle commit {}", msg.timestamp);
         self.execute_txn(to_execute);
     }
 
