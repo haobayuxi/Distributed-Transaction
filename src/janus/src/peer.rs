@@ -117,6 +117,7 @@ impl Peer {
         loop {
             match recv.recv().await {
                 Some(msg) => {
+                    println!("handle msg {:?}", msg);
                     self.executor.handle_msg(msg).await;
                     // let executor_id = (msg.txn.txn_id as i32) % self.executor_num;
                     // // send to executor

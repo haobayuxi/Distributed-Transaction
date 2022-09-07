@@ -52,6 +52,8 @@ impl JanusCoordinator {
 
     async fn run_transaction(&mut self) -> bool {
         // prepare
+
+        println!("prepare");
         self.txn.deps.clear();
         self.txn.read_set = self.workload.read_set.clone();
         self.txn.write_set = self.workload.write_set.clone();
@@ -59,7 +61,6 @@ impl JanusCoordinator {
         self.txn.op = TxnOp::Prepare.into();
         self.txn.txn_id = self.txn_id;
         self.broadcast(self.txn.clone()).await;
-
         // handle prepare response
         let mut result = self.recv.recv().await.unwrap();
         let mut fast_commit = true;
@@ -78,6 +79,7 @@ impl JanusCoordinator {
         self.txn.deps = result.deps;
         if !fast_commit {
             // accept
+            println!("accept");
             let mut accept = self.txn.clone();
             accept.read_set.clear();
             accept.write_set.clear();
@@ -88,6 +90,7 @@ impl JanusCoordinator {
             }
         }
         // txn success
+        println!("commit ");
         let mut commit = self.txn.clone();
         commit.read_set.clear();
         commit.write_set.clear();
@@ -153,7 +156,7 @@ impl JanusCoordinator {
     pub async fn init_rpc(&mut self, sender: Sender<JanusMsg>) {
         // init rpc client to connect to other peers
         for (id, ip) in self.config.server_addrs.iter() {
-            tracing::info!("init client connect to {}", ip);
+            println!("init client connect to {}", ip);
             // let mut client = PeerCommunicationClient::connect(ip).await?;
             let (send_to_server, server_receiver) = channel::<JanusMsg>(100);
             //init client
