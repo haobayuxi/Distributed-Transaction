@@ -69,7 +69,7 @@ pub fn get_client_id(txnid: u64) -> u32 {
 
 pub fn get_txnid(txnid: u64) -> (u64, u64) {
     let cid = get_client_id(txnid) as u64;
-    let tid = txnid - cid << CID_LEN;
+    let tid = txnid - (cid << CID_LEN);
     (cid, tid)
 }
 
