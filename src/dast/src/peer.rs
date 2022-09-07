@@ -293,6 +293,11 @@ impl Peer {
                                 break;
                             }
                         } else {
+                            println!(
+                                "execute not commit {:?} {}",
+                                get_txnid(txn_in_memory.txn.txn_id),
+                                txn_in_memory.txn.timestamp
+                            );
                             break;
                         }
                     }
