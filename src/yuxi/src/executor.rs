@@ -64,48 +64,48 @@ impl Executor {
     pub async fn run(&mut self) {
         let mut i = 0;
         loop {
-            //     match self.recv.try_recv() {
-            //         Ok(msg) => {
+            match self.recv.recv().await {
+                Some(msg) => {
+                    self.handle_msg(msg).await;
+                    i += 1;
+                    unsafe {
+                        println!("handle msg {} {} ", i, COUNT);
+                    }
+                }
+                None => {
+                    unsafe {
+                        println!("{},{}", i, COUNT);
+                        if i < COUNT {
+                            println!("recv none error");
+                        }
+                    }
+                    sleep(Duration::from_millis(20)).await;
+                }
+            }
+            // }
+            // unsafe {
+            //     match IN_MEMORY_MQ[self.executor_id as usize][self.msg_queue_index].take() {
+            //         Some(msg) => {
             //             self.handle_msg(msg).await;
+            //             println!("handle msg {}, {}", self.msg_queue_index, i);
             //             i += 1;
-            //             unsafe {
-            //                 println!("handle msg {} {} ", i, COUNT);
+            //             self.msg_queue_index += 1;
+            //             if self.msg_queue_index == 1000 {
+            //                 self.msg_queue_index = 0;
             //             }
             //         }
-            //         Err(e) => {
-            //             unsafe {
-            //                 println!("{},{}", i, COUNT);
-            //                 if i < COUNT {
-            //                     println!("recv none error{}", e);
-            //                 }
+            //         None => {
+            //             println!(
+            //                 "executor msg queue empty {},{},{}",
+            //                 self.msg_queue_index, i, COUNT
+            //             );
+            //             if i == COUNT {
+            //                 sleep(Duration::from_millis(500)).await;
             //             }
             //             sleep(Duration::from_millis(20)).await;
             //         }
             //     }
             // }
-            unsafe {
-                match IN_MEMORY_MQ[self.executor_id as usize][self.msg_queue_index].take() {
-                    Some(msg) => {
-                        self.handle_msg(msg).await;
-                        println!("handle msg {}, {}", self.msg_queue_index, i);
-                        i += 1;
-                        self.msg_queue_index += 1;
-                        if self.msg_queue_index == 1000 {
-                            self.msg_queue_index = 0;
-                        }
-                    }
-                    None => {
-                        println!(
-                            "executor msg queue empty {},{},{}",
-                            self.msg_queue_index, i, COUNT
-                        );
-                        if i == COUNT {
-                            sleep(Duration::from_millis(500)).await;
-                        }
-                        sleep(Duration::from_millis(20)).await;
-                    }
-                }
-            }
         }
     }
 
