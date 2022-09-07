@@ -64,9 +64,7 @@ pub struct Peer {
 
     // data
     ycsb: HashMap<i64, String>,
-    executed: u64,
-    waitfor: u64,
-    waits: u64,
+    // executed: u64,
 }
 
 impl Peer {
@@ -99,9 +97,7 @@ impl Peer {
             mytxns: BTreeMap::new(),
             local_node_ids: Vec::new(),
             ycsb,
-            executed: 0,
-            waitfor: 0,
-            waits: 0,
+            // executed: 0,
         };
     }
 
@@ -327,15 +323,7 @@ impl Peer {
                     }
                     None => {
                         println!("NONE {}", *key);
-                        if self.waitfor != *key {
-                            self.waitfor = *key;
-                            self.waitfor = 1;
-                        } else {
-                            self.waitfor += 1;
-                        }
-                        if self.waitfor == 50 {
-                            panic!("")
-                        }
+
                         break;
                     }
                 },
@@ -364,7 +352,7 @@ impl Peer {
     async fn execute_txn(&mut self, txns: Vec<TxnInMemory>) {
         // println!("execute txns {:?}", txns);
         for txn_in_memory in txns.iter() {
-            self.executed += 1;
+            // self.executed += 1;
             self.executed_up_to = txn_in_memory.txn.timestamp;
             let mut reply = txn_in_memory.txn.clone();
             match txn_in_memory.txn.txn_type() {
@@ -395,7 +383,7 @@ impl Peer {
                 None => continue,
             }
         }
-        println!("self executed {}", self.executed);
+        // println!("self executed {}", self.executed);
     }
 
     async fn broadcast(&mut self, msg: DastMsg) {

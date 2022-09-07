@@ -169,43 +169,43 @@ impl MeerkatCoordinator {
             txn_type: Some(TxnType::Ycsb.into()),
         };
         let result = client.txn_msg(read_request).await.unwrap().into_inner();
-        self.txn.read_set = result.read_set;
-        self.txn.op = TxnOp::Prepare.into();
-        // validate phase
-        // prepare, prepare will send to all the server in the shard
-        for (id, server) in self.servers.iter() {
-            let mut server_client = server.clone();
-            let validate = self.txn.clone();
-            let sender = result_sender.clone();
-            tokio::spawn(async move {
-                let result = server_client.txn_msg(validate).await.unwrap().into_inner();
-                sender.send(result);
-            });
-        }
+        // self.txn.read_set = result.read_set;
+        // self.txn.op = TxnOp::Prepare.into();
+        // // validate phase
+        // // prepare, prepare will send to all the server in the shard
+        // for (id, server) in self.servers.iter() {
+        //     let mut server_client = server.clone();
+        //     let validate = self.txn.clone();
+        //     let sender = result_sender.clone();
+        //     tokio::spawn(async move {
+        //         let result = server_client.txn_msg(validate).await.unwrap().into_inner();
+        //         sender.send(result);
+        //     });
+        // }
 
-        // handle prepare response
-        while result_num > 0 {
-            result_num -= 1;
-            let prepare_res = receiver.recv().await.unwrap();
-            if prepare_res.op() == TxnOp::Abort.into() {
-                // abort all the txn
-                return false;
-            }
-        }
-        // txn success
-        // broadcast commit
-        self.txn.op = TxnOp::Commit.into();
-        for read in self.txn.read_set.iter_mut() {
-            read.value = None;
-        }
-        for (_id, server) in self.servers.iter() {
-            let mut server_client = server.clone();
-            let validate = self.txn.clone();
-            tokio::spawn(async move {
-                let _result = server_client.txn_msg(validate).await.unwrap().into_inner();
-                // sender.send(result);
-            });
-        }
+        // // handle prepare response
+        // while result_num > 0 {
+        //     result_num -= 1;
+        //     let prepare_res = receiver.recv().await.unwrap();
+        //     if prepare_res.op() == TxnOp::Abort.into() {
+        //         // abort all the txn
+        //         return false;
+        //     }
+        // }
+        // // txn success
+        // // broadcast commit
+        // self.txn.op = TxnOp::Commit.into();
+        // for read in self.txn.read_set.iter_mut() {
+        //     read.value = None;
+        // }
+        // for (_id, server) in self.servers.iter() {
+        //     let mut server_client = server.clone();
+        //     let validate = self.txn.clone();
+        //     tokio::spawn(async move {
+        //         let _result = server_client.txn_msg(validate).await.unwrap().into_inner();
+        //         // sender.send(result);
+        //     });
+        // }
         return true;
     }
     pub async fn init_rpc(&mut self) {

@@ -66,31 +66,31 @@ impl Executor {
         // perform read & return read ts
         let mem = self.mem.clone();
         let server_id = self.server_id;
-        tokio::spawn(async move {
-            let mut result_read_set = Vec::new();
-            for read in msg.tmsg.read_set.iter() {
-                let key = read.key;
-                let read_guard = mem.get(&key).unwrap().read().await;
-                let result = ReadStruct {
-                    key,
-                    value: Some(read_guard.1.clone()),
-                    timestamp: Some(read_guard.0.version),
-                };
-                result_read_set.push(result);
-            }
-            // send result back
-            let read_back = MeerkatMsg {
-                txn_id: msg.tmsg.txn_id,
-                read_set: result_read_set,
-                write_set: Vec::new(),
-                executor_id: 0,
-                op: TxnOp::ReadOnlyRes.into(),
-                from: server_id,
-                timestamp: 0,
-                txn_type: None,
+        // tokio::spawn(async move {
+        let mut result_read_set = Vec::new();
+        for read in msg.tmsg.read_set.iter() {
+            let key = read.key;
+            let read_guard = mem.get(&key).unwrap().read().await;
+            let result = ReadStruct {
+                key,
+                value: Some(read_guard.1.clone()),
+                timestamp: Some(read_guard.0.version),
             };
-            msg.callback.send(read_back).await;
-        });
+            result_read_set.push(result);
+        }
+        // send result back
+        let read_back = MeerkatMsg {
+            txn_id: msg.tmsg.txn_id,
+            read_set: result_read_set,
+            write_set: Vec::new(),
+            executor_id: 0,
+            op: TxnOp::ReadOnlyRes.into(),
+            from: server_id,
+            timestamp: 0,
+            txn_type: None,
+        };
+        msg.callback.send(read_back).await.unwrap();
+        // });
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
