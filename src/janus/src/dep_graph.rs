@@ -114,11 +114,10 @@ impl DepGraph {
 
     async fn execute_txn(&mut self, txnid: u64) {
         unsafe {
-            let clientid = get_client_id(txnid);
-            let index = txnid >> CID_LEN;
+            let (client_id, index) = get_txnid(txnid);
 
-            println!("try to execute {},{}", clientid, index);
-            let node = &TXNS[clientid as usize][index as usize];
+            println!("try to execute {},{}", client_id, index);
+            let node = &TXNS[client_id as usize][index as usize];
             if !node.executed {
                 self.find_scc(txnid).await;
             }
