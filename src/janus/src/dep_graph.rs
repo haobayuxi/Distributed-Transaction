@@ -116,6 +116,8 @@ impl DepGraph {
         unsafe {
             let clientid = get_client_id(txnid);
             let index = txnid >> CID_LEN;
+
+            println!("try to execute {},{}", clientid, index);
             let node = &TXNS[clientid as usize][index as usize];
             if !node.executed {
                 self.find_scc(txnid).await;
@@ -134,6 +136,7 @@ impl DepGraph {
                 let tid = self.stack[self.visit as usize];
                 let client_id = get_client_id(tid);
                 let index = tid >> CID_LEN;
+                println!("find scc {},{}", client_id, index);
                 let mut node = TXNS[client_id as usize].get_mut(index as usize).unwrap();
                 if node.low < 0 {
                     self.index += 1;
