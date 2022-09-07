@@ -148,12 +148,16 @@ impl MeerkatCoordinator {
         // }
 
         // handle prepare response
+        let mut abort = false;
         for i in 0..3 {
             let prepare_res = self.recv.recv().await.unwrap();
             if prepare_res.op() == TxnOp::Abort.into() {
                 // abort all the txn
-                return false;
+                abort = true;
             }
+        }
+        if abort {
+            return false;
         }
         // txn success
         // broadcast commit
