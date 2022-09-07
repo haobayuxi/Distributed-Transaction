@@ -70,7 +70,9 @@ impl Yuxi for RpcServer {
                         };
                         sender.send(msg);
                     }
-                    Err(_) => {}
+                    Err(_) => {
+                        break;
+                    }
                 }
             }
         });
