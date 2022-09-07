@@ -270,6 +270,7 @@ impl Peer {
 
     fn check_txn(&mut self) -> Vec<TxnInMemory> {
         let mut executed: Vec<TxnInMemory> = Vec::new();
+        println!("check rq size {}", self.readyq.len());
         loop {
             match self.readyq.first_key_value() {
                 Some((key, value)) => match value {
@@ -287,7 +288,11 @@ impl Peer {
                                 //
                                 let txn = self.readyq.pop_first().unwrap().1.unwrap();
                                 // self.execute_txn(txn_in_memory.txn);
-                                println!("executed {}", txn.txn.timestamp);
+                                println!(
+                                    "executed {:?}, {}",
+                                    get_txnid(txn.txn.txn_id),
+                                    txn.txn.timestamp
+                                );
                                 executed.push(txn);
                             } else {
                                 break;
@@ -301,7 +306,9 @@ impl Peer {
                             break;
                         }
                     }
-                    None => break,
+                    None => {
+                        println!("NONE {}", *key);
+                    }
                 },
                 None => break,
             }
