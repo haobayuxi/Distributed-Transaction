@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
+use common::{config::Config, convert_ip_addr, get_txnid, ycsb::init_ycsb};
 use log::info;
 use serde::{Deserialize, Serialize};
 
@@ -117,7 +117,7 @@ impl Peer {
         loop {
             match recv.recv().await {
                 Some(msg) => {
-                    println!("handle msg {:?}", msg);
+                    println!("handle msg {:?}", get_txnid(msg.txn.txn_id));
                     self.executor.handle_msg(msg).await;
                     // let executor_id = (msg.txn.txn_id as i32) % self.executor_num;
                     // // send to executor

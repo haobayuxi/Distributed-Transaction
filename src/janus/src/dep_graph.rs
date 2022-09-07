@@ -137,7 +137,7 @@ impl DepGraph {
                 // let client_id = get_client_id(tid);
                 // let index = tid >> CID_LEN;
                 let (client_id, index) = get_txnid(tid);
-                println!("find scc {},{}", client_id, index);
+                // println!("find scc {},{}", client_id, index);
                 let mut node = TXNS[client_id as usize].get_mut(index as usize).unwrap();
                 if node.low < 0 {
                     self.index += 1;
