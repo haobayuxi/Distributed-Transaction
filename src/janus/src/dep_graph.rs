@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use common::{get_client_id, CID_LEN};
+use common::{get_client_id, get_txnid, CID_LEN};
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
@@ -134,8 +134,9 @@ impl DepGraph {
             self.stack.push(txnid);
             while self.visit >= 0 {
                 let tid = self.stack[self.visit as usize];
-                let client_id = get_client_id(tid);
-                let index = tid >> CID_LEN;
+                // let client_id = get_client_id(tid);
+                // let index = tid >> CID_LEN;
+                let (client_id, index) = get_txnid(tid);
                 println!("find scc {},{}", client_id, index);
                 let mut node = TXNS[client_id as usize].get_mut(index as usize).unwrap();
                 if node.low < 0 {
@@ -146,8 +147,9 @@ impl DepGraph {
                         if dep == 0 {
                             continue;
                         }
-                        let dep_index = dep >> CID_LEN;
-                        let dep_clientid = get_client_id(dep);
+                        // let dep_index = dep >> CID_LEN;
+                        // let dep_clientid = get_client_id(dep);
+                        let (dep_clientid, dep_index) = get_txnid(dep);
                         while dep_index > TXNS[dep_clientid as usize].len() as u64 {
                             // not committed
                             sleep(Duration::from_nanos(10)).await;
@@ -171,6 +173,8 @@ impl DepGraph {
                         loop {
                             let tid = self.stack.pop().unwrap();
                             // to_execute.push(self.graph.remove(&tid).unwrap().txn);
+                            let (client_id, index) = get_txnid(tid);
+                            to_execute.push(TXNS[client_id as usize][index as usize].msg.clone());
                             self.visit -= 1;
                             if tid == txnid {
                                 break;

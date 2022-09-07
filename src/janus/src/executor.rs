@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use common::get_txnid;
 use rpc::{
     common::{ReadStruct, TxnOp},
     janus::JanusMsg,
@@ -83,6 +84,7 @@ impl Executor {
 
     async fn handle_execute(&mut self, msg: Msg) {
         let txnid = msg.txn.txn_id;
+        println!("execute txn {:?}", get_txnid(txnid));
         let txn = self.txns.remove(&txnid).unwrap();
         // execute
         let mut result = JanusMsg {
