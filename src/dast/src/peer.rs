@@ -229,7 +229,7 @@ impl Peer {
 
             self.broadcast(commit).await;
             // execute
-            println!("master commit {}", txn.timestamp);
+            println!("master commit {},{:?}", txn.timestamp, self.maxTs);
             self.check_txn();
         }
     }
