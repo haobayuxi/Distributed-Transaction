@@ -94,6 +94,7 @@ impl Executor {
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
+        println!("handle commit {:?}", msg);
         // check read set
         for read in msg.tmsg.read_set.iter() {
             // match self.mem.get(&read.key).unwrap().try_read() {
@@ -194,9 +195,11 @@ impl Executor {
             txn_type: None,
         };
         msg.callback.send(prepare_ok).await.unwrap();
+        println!("send prepareok back");
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
+        println!("handle commit {:?}", msg);
         // update
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {

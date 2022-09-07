@@ -9,6 +9,7 @@ pub mod executor;
 pub mod peer;
 pub mod peer_communication;
 
+#[derive(Debug)]
 pub struct Msg {
     pub tmsg: MeerkatMsg,
     pub callback: Sender<MeerkatMsg>,

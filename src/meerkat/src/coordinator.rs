@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use common::{config::Config, get_local_time, ycsb::YcsbQuery};
+use common::{config::Config, get_local_time, ycsb::YcsbQuery, CID_LEN};
 use rpc::{
     common::{ReadStruct, TxnOp, TxnType, WriteStruct},
     meerkat::{meerkat_client::MeerkatClient, MeerkatMsg},
@@ -31,7 +31,7 @@ impl MeerkatCoordinator {
     pub fn new(id: u32, config: Config, read_perc: i32, txns_per_client: i32) -> Self {
         Self {
             id,
-            txn_id: (id as u64) << 40,
+            txn_id: (id as u64) << CID_LEN,
             txn: MeerkatMsg::default(),
             servers: HashMap::new(),
             workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
