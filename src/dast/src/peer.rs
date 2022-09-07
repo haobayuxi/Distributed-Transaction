@@ -152,7 +152,7 @@ impl Peer {
             self.maxTs[msg.from as usize] = msg.timestamp;
         }
         if msg.timestamp > self.maxTs[self.id as usize] {
-            self.maxTs[msg.from as usize] = msg.timestamp;
+            self.maxTs[self.id as usize] = msg.timestamp;
         }
         // insert ts into readyq
         for ts in msg.notified_txn_ts.iter() {
