@@ -160,7 +160,7 @@ impl Peer {
                 self.readyq.insert(*ts, None);
             }
         }
-
+        println!("insert into rq {}", msg.timestamp);
         self.readyq
             .insert(msg.timestamp, Some(TxnInMemory::new(msg.clone())));
         println!("handle prepare {:?}", msg);
@@ -202,6 +202,7 @@ impl Peer {
         // insert ts into readyq
         for ts in txn.notified_txn_ts.iter() {
             if *ts > self.executed_up_to && !self.readyq.contains_key(ts) {
+                println!("insert into rq nont {}", *ts);
                 self.readyq.insert(*ts, None);
             }
         }
