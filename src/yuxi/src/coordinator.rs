@@ -7,7 +7,7 @@ use tokio::{
     fs::OpenOptions,
     io::AsyncWriteExt,
     sync::mpsc::{channel, unbounded_channel, Receiver, Sender},
-    time::{sleep, Instant},
+    time::{sleep, Instant, Sleep},
 };
 use tonic::transport::Channel;
 
@@ -106,6 +106,7 @@ impl YuxiCoordinator {
             .write(throughput_result.to_string().as_bytes())
             .await;
         throughput_file.write("\n".as_bytes()).await;
+        sleep(Duration::from_secs(100)).await;
     }
 
     async fn run_readonly(&mut self) {
