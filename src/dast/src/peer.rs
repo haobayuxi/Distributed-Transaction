@@ -15,7 +15,7 @@ use crate::{
     ClientMsg, Msg,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct TxnInMemory {
     txn: DastMsg,
     callback: Option<Sender<DastMsg>>,
@@ -305,6 +305,7 @@ impl Peer {
     }
 
     async fn execute_txn(&mut self, txns: Vec<TxnInMemory>) {
+        println!("execute txns {:?}", txns);
         for txn_in_memory in txns.iter() {
             let mut reply = txn_in_memory.txn.clone();
             match txn_in_memory.txn.txn_type() {
@@ -329,6 +330,7 @@ impl Peer {
             match &txn_in_memory.callback {
                 Some(callback) => {
                     //
+                    println!("send back result");
                     callback.send(reply).await;
                 }
                 None => continue,
