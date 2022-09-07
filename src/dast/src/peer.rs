@@ -114,7 +114,7 @@ impl Peer {
                 TxnOp::ReadOnly => todo!(),
                 TxnOp::Prepare => self.handle_prepare(peer_msg).await,
                 TxnOp::Accept => todo!(),
-                TxnOp::Commit => self.handle_commit(peer_msg),
+                TxnOp::Commit => self.handle_commit(peer_msg).await,
                 TxnOp::ReadOnlyRes => todo!(),
                 TxnOp::PrepareRes => self.handle_irt_ack(peer_msg).await,
                 TxnOp::AcceptRes => todo!(),
@@ -232,11 +232,11 @@ impl Peer {
             // execute
             println!("master commit {},{:?}", txn.timestamp, self.maxTs);
             let to_execute = self.check_txn();
-            self.execute_txn(to_execute);
+            self.execute_txn(to_execute).await;
         }
     }
 
-    fn handle_commit(&mut self, msg: DastMsg) {
+    async fn handle_commit(&mut self, msg: DastMsg) {
         // execute
         if self.maxTs[msg.from as usize] < msg.maxts {
             self.maxTs[msg.from as usize] = msg.maxts;
@@ -249,7 +249,7 @@ impl Peer {
             .committed = true;
         let to_execute = self.check_txn();
         println!("handle commit {}", msg.timestamp);
-        self.execute_txn(to_execute);
+        self.execute_txn(to_execute).await;
     }
 
     async fn coor_crt(&mut self, msg: DastMsg) {}
