@@ -74,11 +74,11 @@ impl Executor {
                 }
                 Err(e) => {
                     unsafe {
+                        println!("{},{}", i, COUNT);
                         if i < COUNT {
                             println!("recv none error{}", e);
                         }
                     }
-
                     sleep(Duration::from_millis(20)).await;
                 }
             }
