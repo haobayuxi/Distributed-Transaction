@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
-use common::tatp::{AccessInfo, CallForwarding, Subscriber};
+use common::{
+    get_txnid,
+    tatp::{AccessInfo, CallForwarding, Subscriber},
+};
 use rpc::{
     common::{ReadStruct, TxnOp},
     meerkat::MeerkatMsg,
@@ -94,7 +97,7 @@ impl Executor {
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        println!("handle prepare {:?}", msg);
+        println!("handle prepare {:?}", get_txnid(msg.tmsg.txn_id));
         // check read set
         for read in msg.tmsg.read_set.iter() {
             // match self.mem.get(&read.key).unwrap().try_read() {
@@ -195,11 +198,11 @@ impl Executor {
             txn_type: None,
         };
         msg.callback.send(Ok(prepare_ok)).await.unwrap();
-        println!("send prepareok back");
+        // println!("send prepareok back");
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
-        println!("handle commit {:?}", msg);
+        println!("handle commit {:?}", get_txnid(msg.tmsg.txn_id));
         // update
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {
