@@ -67,6 +67,12 @@ pub fn get_client_id(txnid: u64) -> u32 {
     return (txnid >> CID_LEN) as u32;
 }
 
+pub fn get_txnid(txnid: u64) -> (u64, u64) {
+    let cid = get_client_id(txnid) as u64;
+    let tid = txnid - cid << CID_LEN;
+    (cid, tid)
+}
+
 pub fn get_local_time(coordinator_id: u32) -> u64 {
     // use microsecond as ts
     let time = (Local::now().timestamp_nanos() / 1000) as u64;

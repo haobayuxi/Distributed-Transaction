@@ -160,10 +160,10 @@ impl Peer {
                 self.readyq.insert(*ts, None);
             }
         }
-        println!("insert into rq {}", msg.timestamp);
+        // println!("insert into rq {}", msg.timestamp);
         self.readyq
             .insert(msg.timestamp, Some(TxnInMemory::new(msg.clone())));
-        println!("handle prepare {:?}", msg);
+        println!("handle prepare {:?}", msg.timestamp);
         // println!("self maxts {:?}", self.maxTs);
         // update notified ts
         let mut notified_txn_ts = Vec::new();
@@ -206,7 +206,7 @@ impl Peer {
                 self.readyq.insert(*ts, None);
             }
         }
-        println!("handle irt ack {:?}", txn);
+        println!("handle irt ack {:?}", txn.timestamp);
         let mut txn_in_memory = self
             .readyq
             .get_mut(&txn.timestamp)
@@ -243,7 +243,7 @@ impl Peer {
             self.maxTs[msg.from as usize] = msg.maxts;
         }
 
-        println!("handle commit {}", msg.timestamp);
+        println!("handle commit {},{:?}", msg.timestamp, self.maxTs);
         self.readyq
             .get_mut(&msg.timestamp)
             .unwrap()
