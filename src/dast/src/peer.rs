@@ -164,7 +164,7 @@ impl Peer {
         self.readyq
             .insert(msg.timestamp, Some(TxnInMemory::new(msg.clone())));
         println!("handle prepare {:?}", msg);
-        println!("self maxts {:?}", self.maxTs);
+        // println!("self maxts {:?}", self.maxTs);
         // update notified ts
         let mut notified_txn_ts = Vec::new();
         if self.notifiedTs[msg.from as usize] < msg.timestamp {
@@ -241,6 +241,8 @@ impl Peer {
         if self.maxTs[msg.from as usize] < msg.maxts {
             self.maxTs[msg.from as usize] = msg.maxts;
         }
+
+        println!("handle commit {}", msg.timestamp);
         self.readyq
             .get_mut(&msg.timestamp)
             .unwrap()
@@ -248,7 +250,6 @@ impl Peer {
             .unwrap()
             .committed = true;
         let to_execute = self.check_txn();
-        println!("handle commit {}", msg.timestamp);
         self.execute_txn(to_execute).await;
     }
 
@@ -305,7 +306,7 @@ impl Peer {
     }
 
     async fn execute_txn(&mut self, txns: Vec<TxnInMemory>) {
-        println!("execute txns {:?}", txns);
+        // println!("execute txns {:?}", txns);
         for txn_in_memory in txns.iter() {
             let mut reply = txn_in_memory.txn.clone();
             match txn_in_memory.txn.txn_type() {
@@ -330,7 +331,7 @@ impl Peer {
             match &txn_in_memory.callback {
                 Some(callback) => {
                     //
-                    println!("send back result");
+                    // println!("send back result");
                     callback.send(reply).await;
                 }
                 None => continue,
