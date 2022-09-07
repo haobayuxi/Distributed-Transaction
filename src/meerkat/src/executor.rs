@@ -132,7 +132,7 @@ impl Executor {
                     txn_type: None,
                 };
                 // send back to client
-                msg.callback.send(abort_msg).await;
+                msg.callback.send(abort_msg).await.unwrap();
                 return;
             }
             // insert ts to prepared read
@@ -193,7 +193,7 @@ impl Executor {
             timestamp: 0,
             txn_type: None,
         };
-        msg.callback.send(prepare_ok).await;
+        msg.callback.send(prepare_ok).await.unwrap();
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
