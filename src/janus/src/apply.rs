@@ -60,7 +60,7 @@ impl Apply {
                 *data = write.value.clone();
             }
             let (clientid, index) = get_txnid(result.txn_id);
-            TXNS[clientid as usize][index as usize].committed = true;
+            TXNS[clientid as usize][index as usize].executed = true;
 
             // reply to coordinator
             if self.is_reply {
