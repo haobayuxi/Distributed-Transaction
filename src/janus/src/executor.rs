@@ -106,7 +106,7 @@ impl Executor {
             node.callback = Some(commit.callback);
             node.txn.deps = commit.txn.deps;
             node.committed = true;
-            // self.dep_graph.send(txnid);
+            self.dep_graph.send(txnid);
 
             // let mut result = JanusMsg {
             //     txn_id: txnid,
