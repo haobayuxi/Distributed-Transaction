@@ -52,7 +52,9 @@ impl Executor {
             match self.recv.recv().await {
                 Some(msg) => {
                     let reply = MeerkatMsg::default();
-                    msg.callback.send(Ok(reply)).await;
+                    if msg.tmsg.op() != TxnOp::Commit.into() {
+                        msg.callback.send(Ok(reply)).await;
+                    }
                     // match msg.tmsg.op() {
                     //     TxnOp::Abort => self.handle_abort(msg).await,
                     //     TxnOp::ReadOnly => self.handle_read(msg).await,
