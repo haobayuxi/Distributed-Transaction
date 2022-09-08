@@ -9,7 +9,7 @@ use tonic::Status;
 pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 
 pub struct Node {
-    executed: bool,
+    pub executed: bool,
     pub committed: bool,
     // msg: Msg,
     pub txn: JanusMsg,
@@ -137,10 +137,11 @@ impl DepGraph {
                             // not committed
                             sleep(Duration::from_nanos(100));
                         }
-                        if TXNS[dep_clientid as usize][dep_index as usize].executed {
+
+                        let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
+                        if next.executed {
                             continue;
                         }
-                        let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
                         // check if next in the stack
                         if next.dfn < 0 {
                             // not in stack

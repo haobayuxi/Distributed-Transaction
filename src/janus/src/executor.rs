@@ -14,6 +14,7 @@ use tokio::sync::{
 };
 
 use crate::{
+    apply::Apply,
     dep_graph::{Node, TXNS},
     peer::META,
     JanusMeta, Msg,
@@ -103,10 +104,23 @@ impl Executor {
         unsafe {
             let (clientid, index) = get_txnid(txnid);
             let node = &mut TXNS[clientid as usize][index as usize];
-            node.callback = Some(commit.callback);
-            node.txn.deps = commit.txn.deps;
+            // node.callback = Some(commit.callback);
+            // node.txn.deps = commit.txn.deps;
             node.committed = true;
-            self.dep_graph.send(txnid);
+            let is_reply = if commit.txn.from % 3 == self.server_id {
+                true
+            } else {
+                false
+            };
+            let apply = Apply {
+                mem_index: self.meta_index.clone(),
+                msg: commit,
+                is_reply,
+            };
+            tokio::spawn(async move {
+                apply.run().await;
+            });
+            // self.dep_graph.send(txnid);
 
             // let mut result = JanusMsg {
             //     txn_id: txnid,
@@ -141,7 +155,7 @@ impl Executor {
             for read in msg.txn.read_set.iter() {
                 let index = self.meta_index.get(&read.key).unwrap();
                 // let meta = self.meta.get_mut(&read.key).unwrap();
-                let meta = META[*index].read().await;
+                let meta = META[*index].0.read().await;
                 let dep = meta.last_visited_txnid;
                 // meta.last_visited_txnid = msg.txn.txn_id;
                 // result.deps.push(dep);
@@ -151,7 +165,7 @@ impl Executor {
             for write in msg.txn.write_set.iter() {
                 let index = self.meta_index.get(&write.key).unwrap();
                 // let meta = self.meta.get_mut(&read.key).unwrap();
-                let mut meta = META[*index].write().await;
+                let mut meta = META[*index].0.write().await;
                 let dep = meta.last_visited_txnid;
                 meta.last_visited_txnid = msg.txn.txn_id;
                 // result.deps.push(dep);
