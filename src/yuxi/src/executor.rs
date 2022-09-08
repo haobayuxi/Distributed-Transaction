@@ -170,13 +170,17 @@ impl Executor {
             // spawn a new task for this
             tokio::spawn(async move {
                 while waiting_for_read_result > 0 {
-                    if let Some((key, value)) = receiver.recv().await {
-                        txn.read_set.push(ReadStruct {
-                            key,
-                            value: Some(value),
-                            timestamp: None,
-                        });
+                    match receiver.recv().await {
+                        Some((key, value)) => {
+                            txn.read_set.push(ReadStruct {
+                                key,
+                                value: Some(value),
+                                timestamp: None,
+                            });
+                        }
+                        None => break,
                     }
+
                     waiting_for_read_result -= 1;
                 }
                 msg.callback.send(Ok(txn)).await;
@@ -314,7 +318,7 @@ impl Executor {
         //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
         // );
         // println!("check write {},{:?}", tid, write_ts_in_waitlist);
-        for (write, write_ts) in write_ts_in_waitlist.iter() {
+        for (write, write_ts) in write_ts_in_waitlist.into_iter() {
             let key = write.key;
 
             let mut tuple = self.index.get(&key).unwrap().write();
@@ -332,7 +336,7 @@ impl Executor {
             //     tuple.0.waitlist
             // );
 
-            if let Some(mut execution_context) = tuple.0.waitlist.remove(write_ts) {
+            if let Some(mut execution_context) = tuple.0.waitlist.remove(&write_ts) {
                 execution_context.committed = true;
                 tuple.0.waitlist.insert(final_ts, execution_context);
             }
@@ -457,7 +461,9 @@ impl Executor {
                                     timestamp: None,
                                 });
                             }
-                            None => {}
+                            None => {
+                                break;
+                            }
                         }
 
                         waiting_for_read_result -= 1;
