@@ -67,11 +67,11 @@ impl DepGraph {
         }
     }
 
-    pub async fn run(&mut self) {
+    pub fn run(&mut self) {
         loop {
             match self.wait_list.try_recv() {
                 Ok(txnid) => {
-                    self.execute_txn(txnid).await;
+                    self.execute_txn(txnid);
                 }
                 Err(e) => {
                     sleep(Duration::from_nanos(100));
@@ -89,19 +89,19 @@ impl DepGraph {
         self.apply.send(txnid);
     }
 
-    async fn execute_txn(&mut self, txnid: u64) {
+    fn execute_txn(&mut self, txnid: u64) {
         unsafe {
             let (client_id, index) = get_txnid(txnid);
 
             // println!("try to execute {},{}", client_id, index);
             let node = &TXNS[client_id as usize][index as usize];
             if !node.executed {
-                self.find_scc(txnid).await;
+                self.find_scc(txnid);
             }
         }
     }
 
-    async fn find_scc(&mut self, txnid: u64) -> bool {
+    fn find_scc(&mut self, txnid: u64) -> bool {
         unsafe {
             self.stack.clear();
             self.visit = 0;
