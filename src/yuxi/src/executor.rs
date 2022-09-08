@@ -192,13 +192,6 @@ impl Executor {
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        //
-        // println!(
-        //     " prepare {},{},{}",
-        //     self.executor_id,
-        //     msg.tmsg.from,
-        //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
-        // );
         // let reply = YuxiMsg::default();
         // msg.callback.send(Ok(reply)).await;
         // return;
@@ -235,12 +228,12 @@ impl Executor {
                     call_back: None,
                     txnid: msg.tmsg.txn_id,
                 };
-                // if meta.smallest_wait_ts > meta.maxts {
-                //     meta.smallest_wait_ts = meta.maxts;
-                // }
+                if meta.smallest_wait_ts > meta.maxts {
+                    meta.smallest_wait_ts = meta.maxts;
+                }
                 let wait_ts = meta.maxts;
                 // println!("insert waitlist {},{}", key, wait_ts);
-                // meta.waitlist.insert(wait_ts, execute_context);
+                meta.waitlist.insert(wait_ts, execute_context);
                 write_ts_in_waitlist.push((write.clone(), wait_ts));
             }
         }
@@ -254,15 +247,14 @@ impl Executor {
         for read in msg.tmsg.read_set.iter() {
             let key = read.key;
             // find and update the ts
-            {
-                let mut tuple = self.index.get(&key).unwrap().write();
-                let meta = &mut tuple.0;
-                if ts > meta.maxts {
-                    meta.maxts = ts;
-                } else {
-                    if prepare_response.timestamp < meta.maxts {
-                        prepare_response.timestamp = meta.maxts;
-                    }
+
+            let mut tuple = self.index.get(&key).unwrap().write();
+            let meta = &mut tuple.0;
+            if ts > meta.maxts {
+                meta.maxts = ts;
+            } else {
+                if prepare_response.timestamp < meta.maxts {
+                    prepare_response.timestamp = meta.maxts;
                 }
             }
         }
@@ -315,11 +307,11 @@ impl Executor {
         } else {
             false
         };
-        if isreply {
-            let reply = YuxiMsg::default();
-            msg.callback.send(Ok(reply)).await;
-        }
-        return;
+        // if isreply {
+        //     let reply = YuxiMsg::default();
+        //     msg.callback.send(Ok(reply)).await;
+        // }
+        // return;
         // get write_ts in waitlist to erase
         let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
 
