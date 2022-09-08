@@ -97,7 +97,7 @@ impl Executor {
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        println!("handle prepare {:?}", get_txnid(msg.tmsg.txn_id));
+        // println!("handle prepare {:?}", get_txnid(msg.tmsg.txn_id));
         // check read set
         for read in msg.tmsg.read_set.iter() {
             // match self.mem.get(&read.key).unwrap().try_read() {
@@ -202,7 +202,7 @@ impl Executor {
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
-        println!("handle commit {:?}", get_txnid(msg.tmsg.txn_id));
+        // println!("handle commit {:?}", get_txnid(msg.tmsg.txn_id));
         // update
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {

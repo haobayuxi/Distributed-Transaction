@@ -118,7 +118,7 @@ impl Peer {
         indexs: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
     ) {
         // self.executor_num = config.executor_num;
-        self.executor_num = 1;
+        self.executor_num = config.executor_num;
         for i in 0..self.executor_num {
             unsafe {
                 let mut queue: Vec<Option<Msg>> = Vec::new();
@@ -146,18 +146,16 @@ impl Peer {
                     // println!("txnid {}", msg.tmsg.txn_id);
                     let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
                     // send to executor
-                    // match self.executor_num
-
                     unsafe {
-                        println!(
-                            "executor id = {}, from {},txnid{}, index{}, {}",
-                            executor_id,
-                            msg.tmsg.from,
-                            msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-                            // msg.tmsg.op()
-                            self.msg_queue_index[executor_id as usize],
-                            COUNT
-                        );
+                        // println!(
+                        //     "executor id = {}, from {},txnid{}, index{}, {}",
+                        //     executor_id,
+                        //     msg.tmsg.from,
+                        //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
+                        //     // msg.tmsg.op()
+                        //     self.msg_queue_index[executor_id as usize],
+                        //     COUNT
+                        // );
                         COUNT += 1;
                         self.executor_senders
                             .get(&executor_id)

@@ -210,15 +210,14 @@ impl Peer {
         // insert ts into readyq
         for ts in txn.notified_txn_ts.iter() {
             if *ts > self.executed_up_to && !self.readyq.contains_key(ts) {
-                println!("insert into rq nont {}", *ts);
                 self.readyq.insert(*ts, None);
             }
         }
-        println!(
-            "handle irt ack {},{:?}",
-            txn.timestamp,
-            get_txnid(txn.txn_id)
-        );
+        // println!(
+        //     "handle irt ack {},{:?}",
+        //     txn.timestamp,
+        //     get_txnid(txn.txn_id)
+        // );
         let mut txn_in_memory = self
             .readyq
             .get_mut(&txn.timestamp)
@@ -243,12 +242,7 @@ impl Peer {
 
             self.broadcast(commit).await;
             // execute
-            println!(
-                "master commit {},{:?}, {:?}",
-                txn.timestamp,
-                self.maxTs,
-                get_txnid(txn.txn_id)
-            );
+
             let to_execute = self.check_txn();
             self.execute_txn(to_execute).await;
         }
@@ -260,12 +254,12 @@ impl Peer {
             self.maxTs[msg.from as usize] = msg.maxts;
         }
 
-        println!(
-            "handle commit {},{:?}, {:?}",
-            msg.timestamp,
-            self.maxTs,
-            get_txnid(msg.txn_id)
-        );
+        // println!(
+        //     "handle commit {},{:?}, {:?}",
+        //     msg.timestamp,
+        //     self.maxTs,
+        //     get_txnid(msg.txn_id)
+        // );
         self.readyq
             .get_mut(&msg.timestamp)
             .unwrap()
@@ -303,26 +297,26 @@ impl Peer {
                                 //
                                 let txn = self.readyq.pop_first().unwrap().1.unwrap();
                                 // self.execute_txn(txn_in_memory.txn);
-                                println!(
-                                    "executed {:?}, {}",
-                                    get_txnid(txn.txn.txn_id),
-                                    txn.txn.timestamp
-                                );
+                                // println!(
+                                //     "executed {:?}, {}",
+                                //     get_txnid(txn.txn.txn_id),
+                                //     txn.txn.timestamp
+                                // );
                                 executed.push(txn);
                             } else {
                                 break;
                             }
                         } else {
-                            println!(
-                                "execute not commit {:?} {}",
-                                get_txnid(txn_in_memory.txn.txn_id),
-                                txn_in_memory.txn.timestamp
-                            );
+                            // println!(
+                            //     "execute not commit {:?} {}",
+                            //     get_txnid(txn_in_memory.txn.txn_id),
+                            //     txn_in_memory.txn.timestamp
+                            // );
                             break;
                         }
                     }
                     None => {
-                        println!("NONE {}", *key);
+                        // println!("NONE {}", *key);
 
                         break;
                     }
@@ -377,13 +371,11 @@ impl Peer {
             match &txn_in_memory.callback {
                 Some(callback) => {
                     //
-                    // println!("send back result");
                     callback.send(reply).await;
                 }
                 None => continue,
             }
         }
-        // println!("self executed {}", self.executed);
     }
 
     async fn broadcast(&mut self, msg: DastMsg) {
