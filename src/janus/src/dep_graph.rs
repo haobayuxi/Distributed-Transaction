@@ -111,7 +111,7 @@ impl DepGraph {
     fn apply(&mut self, txn: Msg) {
         let txnid = txn.txn.txn_id;
         let (client_id, index) = get_txnid(txnid);
-        println!("send execute {:?}", get_txnid(txnid));
+        // println!("send execute {:?}", get_txnid(txnid));
         unsafe {
             TXNS[client_id as usize][index as usize].executed = true;
         }
@@ -144,10 +144,10 @@ impl DepGraph {
                 let (client_id, index) = get_txnid(tid);
                 let mut node = TXNS[client_id as usize].get_mut(index as usize).unwrap();
 
-                println!(
-                    "find scc {},{}, dfn{}, low{}",
-                    client_id, index, node.dfn, node.low
-                );
+                // println!(
+                //     "find scc {},{}, dfn{}, low{}",
+                //     client_id, index, node.dfn, node.low
+                // );
                 if node.low < 0 {
                     self.index += 1;
                     node.dfn = self.index;
@@ -166,11 +166,12 @@ impl DepGraph {
                         if TXNS[dep_clientid as usize][dep_index as usize].executed {
                             continue;
                         }
-                        let next = &TXNS[dep_clientid as usize][dep_index as usize];
+                        let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
                         // check if next in the stack
                         if next.dfn < 0 {
                             // not in stack
-                            println!("push into stack {}, {}", dep_clientid, dep_index);
+                            // println!("push into stack {}, {}", dep_clientid, dep_index);
+                            next.dfn = 0;
                             self.stack.push(dep);
                             self.visit += 1;
                         } else {
