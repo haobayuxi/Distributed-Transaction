@@ -108,19 +108,19 @@ impl Executor {
             node.committed = true;
             // self.dep_graph.send(txnid);
 
-            let mut result = JanusMsg {
-                txn_id: txnid,
-                read_set: Vec::new(),
-                write_set: Vec::new(),
-                op: TxnOp::CommitRes.into(),
-                from: self.server_id,
-                deps: Vec::new(),
-                txn_type: None,
-            };
-            // reply to coordinator
-            if commit.txn.from % 3 == self.server_id {
-                node.callback.take().unwrap().send(Ok(result)).await;
-            }
+            // let mut result = JanusMsg {
+            //     txn_id: txnid,
+            //     read_set: Vec::new(),
+            //     write_set: Vec::new(),
+            //     op: TxnOp::CommitRes.into(),
+            //     from: self.server_id,
+            //     deps: Vec::new(),
+            //     txn_type: None,
+            // };
+            // // reply to coordinator
+            // if commit.txn.from % 3 == self.server_id {
+            //     node.callback.take().unwrap().send(Ok(result)).await;
+            // }
         }
     }
 
