@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use common::get_txnid;
+use common::{get_client_id, get_txnid};
 use rpc::{
     common::{ReadStruct, TxnOp},
     janus::JanusMsg,
@@ -13,24 +13,27 @@ use tokio::sync::{
     RwLock,
 };
 
-use crate::{JanusMeta, Msg};
+use crate::{
+    dep_graph::{Node, TXNS},
+    JanusMeta, Msg,
+};
 
 pub struct Executor {
     server_id: u32,
     // memory
-    mem: HashMap<i64, RwLock<(JanusMeta, String)>>,
+    mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
     // txns
-    txns: HashMap<u64, JanusMsg>,
+    // txns: Arc<HashMap<u64, JanusMsg>>,
     //
     // recv: UnboundedReceiver<Msg>,
 }
 
 impl Executor {
-    pub fn new(server_id: u32, mem: HashMap<i64, RwLock<(JanusMeta, String)>>) -> Self {
+    pub fn new(server_id: u32, mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>) -> Self {
         Self {
             server_id,
             mem,
-            txns: HashMap::new(),
+            // txns: HashMap::new(),
             // recv,
         }
     }
@@ -40,7 +43,7 @@ impl Executor {
             TxnOp::ReadOnly => self.handle_prepare(msg).await,
             TxnOp::Prepare => self.handle_prepare(msg).await,
             TxnOp::Accept => self.handle_accept(msg).await,
-            TxnOp::Commit => self.handle_execute(msg).await,
+            TxnOp::Commit => {}
             TxnOp::ReadOnlyRes => {}
             TxnOp::PrepareRes => {}
             TxnOp::AcceptRes => {}
@@ -85,41 +88,6 @@ impl Executor {
     //     msg.callback.send(Ok(result)).await;
     // }
 
-    async fn handle_execute(&mut self, msg: Msg) {
-        let txnid = msg.txn.txn_id;
-        println!("execute txn {:?}", get_txnid(txnid));
-
-        let txn = self.txns.remove(&txnid).unwrap();
-        // execute
-        let mut result = JanusMsg {
-            txn_id: txnid,
-            read_set: Vec::new(),
-            write_set: Vec::new(),
-            op: TxnOp::CommitRes.into(),
-            from: self.server_id,
-            deps: Vec::new(),
-            txn_type: None,
-        };
-
-        for read in txn.read_set {
-            let read_result = ReadStruct {
-                key: read.key.clone(),
-                value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
-                timestamp: None,
-            };
-            result.read_set.push(read_result);
-        }
-
-        for write in txn.write_set {
-            self.mem.get(&write.key).unwrap().write().await.1 = write.value;
-        }
-
-        // reply to coordinator
-        if msg.txn.from % 3 == self.server_id {
-            msg.callback.send(Ok(result)).await;
-        }
-    }
-
     async fn handle_prepare(&mut self, msg: Msg) {
         // println!("prepare txn {:?}", get_txnid(msg.txn.txn_id));
         let mut result = JanusMsg {
@@ -153,7 +121,13 @@ impl Executor {
         }
 
         result.deps.sort();
-        self.txns.insert(msg.txn.txn_id, msg.txn);
+        unsafe {
+            let txnid = msg.txn.txn_id;
+            let node = Node::new(msg.txn);
+            let client_id = get_client_id(txnid);
+            TXNS[client_id as usize].push(node);
+        }
+        // self.txns.insert(msg.txn.txn_id, msg.txn);
         // reply to coordinator
         msg.callback.send(Ok(result)).await;
         // println!("send back prepareok {:?}", result);

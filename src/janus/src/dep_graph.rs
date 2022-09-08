@@ -6,31 +6,38 @@ use std::{
 };
 
 use common::{get_client_id, get_txnid, CID_LEN};
+use rpc::janus::JanusMsg;
 use tokio::{
     sync::{
-        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
         Notify, RwLock,
     },
     time::sleep,
 };
+use tonic::Status;
 
 use crate::Msg;
 
-static mut TXNS: Vec<Vec<Node>> = Vec::new();
+pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 
-struct Node {
+pub struct Node {
     executed: bool,
-    msg: Msg,
+    committed: bool,
+    // msg: Msg,
+    pub txn: JanusMsg,
+    pub callback: Option<Sender<Result<JanusMsg, Status>>>,
     // tarjan
     dfn: i32,
     low: i32,
 }
 
 impl Node {
-    fn new(msg: Msg) -> Self {
+    pub fn new(txn: JanusMsg) -> Self {
         Self {
             executed: false,
-            msg,
+            committed: false,
+            txn,
+            callback: None,
             dfn: -1,
             low: -1,
         }
@@ -46,7 +53,7 @@ pub struct DepGraph {
     wait_list: UnboundedReceiver<u64>,
     // recv: UnboundedReceiver<Msg>,
     // job senders
-    executor: UnboundedSender<Msg>,
+    apply: UnboundedSender<u64>,
 
     // stack for tarjan
     stack: Vec<u64>,
@@ -56,7 +63,7 @@ pub struct DepGraph {
 
 impl DepGraph {
     pub fn new(
-        executor: UnboundedSender<Msg>,
+        apply: UnboundedSender<u64>,
         recv: UnboundedReceiver<Msg>,
         client_num: usize,
     ) -> Self {
@@ -77,9 +84,10 @@ impl DepGraph {
                     match recv.recv().await {
                         Some(commit) => {
                             let txnid = commit.txn.txn_id;
-                            let node = Node::new(commit);
-                            let client_id = get_client_id(txnid);
-                            TXNS[client_id as usize].push(node);
+                            let (clientid, index) = get_txnid(txnid);
+                            let node = &mut TXNS[clientid as usize][index as usize];
+                            node.callback = Some(commit.callback);
+                            node.txn.deps = commit.txn.deps;
                             waitlist_sender.send(txnid);
                         }
                         None => continue,
@@ -88,7 +96,7 @@ impl DepGraph {
             }
         });
         Self {
-            executor,
+            apply,
             wait_list: waitlist_receiver,
             // recv,
             stack: Vec::new(),
@@ -108,14 +116,12 @@ impl DepGraph {
         }
     }
 
-    fn apply(&mut self, txn: Msg) {
-        let txnid = txn.txn.txn_id;
-        let (client_id, index) = get_txnid(txnid);
-        // println!("send execute {:?}", get_txnid(txnid));
+    fn apply(&mut self, txnid: u64) {
         unsafe {
+            let (client_id, index) = get_txnid(txnid);
             TXNS[client_id as usize][index as usize].executed = true;
         }
-        self.executor.send(txn);
+        self.apply.send(txnid);
     }
 
     async fn execute_txn(&mut self, txnid: u64) {
@@ -152,14 +158,14 @@ impl DepGraph {
                     self.index += 1;
                     node.dfn = self.index;
                     node.low = self.index;
-                    for dep in node.msg.txn.deps.clone() {
+                    for dep in node.txn.deps.clone() {
                         if dep == 0 {
                             continue;
                         }
                         // let dep_index = dep >> CID_LEN;
                         // let dep_clientid = get_client_id(dep);
                         let (dep_clientid, dep_index) = get_txnid(dep);
-                        while dep_index >= TXNS[dep_clientid as usize].len() as u64 {
+                        while !TXNS[dep_clientid as usize][dep_index as usize].committed {
                             // not committed
                             sleep(Duration::from_nanos(10)).await;
                         }
@@ -183,25 +189,26 @@ impl DepGraph {
                 } else {
                     // get scc . pop & exec
                     if node.dfn == node.low {
-                        let mut to_execute: Vec<Msg> = Vec::new();
+                        let mut to_execute: Vec<u64> = Vec::new();
                         loop {
                             let tid = self.stack.pop().unwrap();
                             // to_execute.push(self.graph.remove(&tid).unwrap().txn);
-                            let (client_id, index) = get_txnid(tid);
-                            to_execute.push(TXNS[client_id as usize][index as usize].msg.clone());
+                            // let (client_id, index) = get_txnid(tid);
+                            to_execute.push(tid);
                             self.visit -= 1;
                             if tid == txnid {
                                 break;
                             }
                         }
                         // to execute
-                        to_execute.sort_by(|x, y| {
-                            if x.txn.txn_id < y.txn.txn_id {
-                                Ordering::Greater
-                            } else {
-                                Ordering::Less
-                            }
-                        });
+                        to_execute.sort();
+                        // _by(|x, y| {
+                        //     if x.txn.txn_id < y.txn.txn_id {
+                        //         Ordering::Greater
+                        //     } else {
+                        //         Ordering::Less
+                        //     }
+                        // });
                         // execute & update last_executed
                         for msg in to_execute {
                             // send txn to executor

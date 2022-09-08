@@ -5,6 +5,7 @@ use rpc::janus::JanusMsg;
 use tokio::sync::mpsc::Sender;
 use tonic::Status;
 
+mod apply;
 pub mod coordinator;
 pub mod dep_graph;
 pub mod executor;
