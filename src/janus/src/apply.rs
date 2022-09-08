@@ -59,6 +59,8 @@ impl Apply {
                 let mut data = META[*index].1.write().await;
                 *data = write.value.clone();
             }
+            let (clientid, index) = get_txnid(result.txn_id);
+            TXNS[clientid as usize][index as usize].committed = true;
 
             // reply to coordinator
             if self.is_reply {
