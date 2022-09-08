@@ -84,7 +84,7 @@ impl Executor {
 
     async fn handle_execute(&mut self, msg: Msg) {
         let txnid = msg.txn.txn_id;
-        println!("execute txn {:?}", get_txnid(txnid));
+        // println!("execute txn {:?}", get_txnid(txnid));
         let txn = self.txns.remove(&txnid).unwrap();
         // execute
         let mut result = JanusMsg {
