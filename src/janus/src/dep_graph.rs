@@ -1,14 +1,9 @@
-use std::time::Duration;
+use std::{sync::mpsc::Receiver, thread::sleep, time::Duration};
 
 use common::{get_client_id, get_txnid, CID_LEN};
 use rpc::janus::JanusMsg;
-use tokio::{
-    sync::{
-        mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
-        Notify, RwLock,
-    },
-    time::sleep,
-};
+
+use tokio::sync::mpsc::{Sender, UnboundedSender};
 use tonic::Status;
 
 pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
@@ -43,7 +38,7 @@ pub struct DepGraph {
     // dep graph
     // graph: Arc<RwLock<HashMap<i64, Node>>>,
     // wait list
-    wait_list: UnboundedReceiver<u64>,
+    wait_list: Receiver<u64>,
     // job senders
     apply: UnboundedSender<u64>,
 
@@ -54,11 +49,7 @@ pub struct DepGraph {
 }
 
 impl DepGraph {
-    pub fn new(
-        apply: UnboundedSender<u64>,
-        wait_list: UnboundedReceiver<u64>,
-        client_num: usize,
-    ) -> Self {
+    pub fn new(apply: UnboundedSender<u64>, wait_list: Receiver<u64>, client_num: usize) -> Self {
         // init TXNS
         unsafe {
             for i in 0..client_num {
@@ -78,11 +69,13 @@ impl DepGraph {
 
     pub async fn run(&mut self) {
         loop {
-            match self.wait_list.recv().await {
-                Some(txnid) => {
+            match self.wait_list.try_recv() {
+                Ok(txnid) => {
                     self.execute_txn(txnid).await;
                 }
-                None => continue,
+                Err(e) => {
+                    sleep(Duration::from_nanos(100));
+                }
             }
         }
     }
@@ -141,7 +134,7 @@ impl DepGraph {
                             || !TXNS[dep_clientid as usize][dep_index as usize].committed
                         {
                             // not committed
-                            sleep(Duration::from_micros(10)).await;
+                            sleep(Duration::from_nanos(100));
                         }
                         if TXNS[dep_clientid as usize][dep_index as usize].executed {
                             continue;

@@ -1,12 +1,18 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{mpsc::channel, Arc},
+};
 
 use common::{config::Config, convert_ip_addr, get_txnid, ycsb::init_ycsb};
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use tokio::sync::{
-    mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-    RwLock,
+use tokio::{
+    sync::{
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        RwLock,
+    },
+    task::spawn_blocking,
 };
 
 use crate::{
@@ -52,12 +58,12 @@ impl Peer {
             }
         }
 
-        let (dep_sender, dep_receiver) = unbounded_channel::<u64>();
+        let (dep_sender, dep_receiver) = channel::<u64>();
         let (apply_sender, apply_receiver) = unbounded_channel::<u64>();
 
         let mut dep_graph = DepGraph::new(apply_sender, dep_receiver, config.client_num as usize);
-        tokio::spawn(async move {
-            dep_graph.run().await;
+        spawn_blocking(move || {
+            dep_graph.run();
         });
         // self.init_dep(apply_sender, dep_receiver, self.config.client_num as usize)
         //     .await;

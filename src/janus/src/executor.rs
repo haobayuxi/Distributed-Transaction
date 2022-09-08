@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{mpsc::Sender, Arc},
 };
 
 use common::{get_client_id, get_txnid};
@@ -9,7 +9,7 @@ use rpc::{
     janus::JanusMsg,
 };
 use tokio::sync::{
-    mpsc::{Sender, UnboundedReceiver, UnboundedSender},
+    mpsc::{UnboundedReceiver, UnboundedSender},
     RwLock,
 };
 
@@ -27,14 +27,14 @@ pub struct Executor {
     // txns: Arc<HashMap<u64, JanusMsg>>,
     //
     recv: UnboundedReceiver<Msg>,
-    dep_graph: UnboundedSender<u64>,
+    dep_graph: Sender<u64>,
 }
 
 impl Executor {
     pub fn new(
         server_id: u32,
         meta_index: Arc<HashMap<i64, usize>>,
-        dep_graph: UnboundedSender<u64>,
+        dep_graph: Sender<u64>,
         recv: UnboundedReceiver<Msg>,
     ) -> Self {
         Self {
