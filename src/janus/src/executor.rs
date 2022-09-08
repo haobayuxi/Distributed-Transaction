@@ -141,9 +141,9 @@ impl Executor {
             for read in msg.txn.read_set.iter() {
                 let index = self.meta_index.get(&read.key).unwrap();
                 // let meta = self.meta.get_mut(&read.key).unwrap();
-                let mut meta = META[*index].write().await;
+                let mut meta = META[*index].read().await;
                 let dep = meta.last_visited_txnid;
-                meta.last_visited_txnid = msg.txn.txn_id;
+                // meta.last_visited_txnid = msg.txn.txn_id;
                 // result.deps.push(dep);
                 result_dep.insert(dep);
             }
