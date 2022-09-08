@@ -17,7 +17,7 @@ use tokio::{
 
 use crate::{
     apply::Apply,
-    dep_graph::DepGraph,
+    dep_graph::{DepGraph, TXNS},
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
     JanusMeta, Msg,
@@ -45,7 +45,11 @@ pub struct Peer {
 impl Peer {
     pub fn new(server_id: u32, config: Config) -> Self {
         // init data
-
+        unsafe {
+            for i in 0..config.client_num {
+                TXNS.push(vec![]);
+            }
+        }
         // self.mem = Arc::new(mem);
         let data = init_ycsb();
         let mut meta = HashMap::new();
