@@ -128,7 +128,7 @@ impl Peer {
             //     IN_MEMORY_MQ.push(queue);
             // }
             // println!("init executor {}", i);
-            let (sender, receiver) = channel::<Msg>(1000);
+            let (sender, receiver) = channel::<Msg>(10000);
             self.executor_senders.insert(i, sender);
             let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
             tokio::spawn(async move {

@@ -68,6 +68,7 @@ impl Executor {
             match self.recv.recv().await {
                 Some(msg) => {
                     self.handle_msg(msg).await;
+
                     // i += 1;
                     // unsafe {
                     //     println!("handle msg {} {} ", i, COUNT);
@@ -120,7 +121,9 @@ impl Executor {
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // just wait for the earlier txn to be executed
-
+        let reply = YuxiMsg::default();
+        msg.callback.send(Ok(reply)).await;
+        return;
         let mut txn = msg.tmsg.clone();
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
@@ -196,6 +199,9 @@ impl Executor {
         //     msg.tmsg.from,
         //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
         // );
+        let reply = YuxiMsg::default();
+        msg.callback.send(Ok(reply)).await;
+        return;
         let mut prepare_response = YuxiMsg {
             txn_id: msg.tmsg.txn_id,
             read_set: Vec::new(),
@@ -311,8 +317,12 @@ impl Executor {
         } else {
             false
         };
-        println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
-        // println!("check write {},{:?}", tid, write_ts_in_waitlist);
+        if isreply {
+            let reply = YuxiMsg::default();
+            msg.callback.send(Ok(reply)).await;
+        }
+        return;
+        // println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
         for (write, write_ts) in write_ts_in_waitlist.into_iter() {
             let key = write.key;
 
@@ -321,15 +331,6 @@ impl Executor {
             if tuple.0.maxts < final_ts {
                 tuple.0.maxts = final_ts
             }
-
-            // modify the wait list
-            // println!(
-            //     "tuple remove {:?} ,{},{}, {:?}",
-            //     get_txnid(tid),
-            //     key,
-            //     *write_ts,
-            //     tuple.0.waitlist
-            // );
 
             if let Some(mut execution_context) = tuple.0.waitlist.remove(&write_ts) {
                 execution_context.committed = true;
