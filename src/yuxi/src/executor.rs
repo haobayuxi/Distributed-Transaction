@@ -311,12 +311,7 @@ impl Executor {
         } else {
             false
         };
-        // println!(
-        //     "commit txid {},{},{}",
-        //     self.executor_id,
-        //     msg.tmsg.from,
-        //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-        // );
+        println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
         // println!("check write {},{:?}", tid, write_ts_in_waitlist);
         for (write, write_ts) in write_ts_in_waitlist.into_iter() {
             let key = write.key;
