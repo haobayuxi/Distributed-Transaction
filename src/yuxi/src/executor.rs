@@ -226,7 +226,7 @@ impl Executor {
                     meta.smallest_wait_ts = meta.maxts;
                 }
                 let wait_ts = meta.maxts;
-
+                println!("insert waitlist {},{}", key, wait_ts);
                 meta.waitlist.insert(wait_ts, execute_context);
                 write_ts_in_waitlist.push((write.clone(), wait_ts));
             }
