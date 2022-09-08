@@ -62,24 +62,18 @@ impl Executor {
     }
 
     pub async fn run(&mut self) {
-        let mut i = 0;
+        // let mut i = 0;
         loop {
             match self.recv.recv().await {
                 Some(msg) => {
                     self.handle_msg(msg).await;
-                    i += 1;
-                    unsafe {
-                        println!("handle msg {} {} ", i, COUNT);
-                    }
+                    // i += 1;
+                    // unsafe {
+                    //     println!("handle msg {} {} ", i, COUNT);
+                    // }
                 }
                 None => {
-                    unsafe {
-                        println!("{},{}", i, COUNT);
-                        if i < COUNT {
-                            println!("recv none error");
-                        }
-                    }
-                    sleep(Duration::from_millis(20)).await;
+                    sleep(Duration::from_millis(2)).await;
                 }
             }
             // }
@@ -136,25 +130,23 @@ impl Executor {
             let key = read.key;
             let mut tuple = self.index.get(&key).unwrap().write();
 
-            {
-                let meta = &mut tuple.0;
-                if meta.maxts < final_ts {
-                    meta.maxts = final_ts
-                }
+            let meta = &mut tuple.0;
+            if meta.maxts < final_ts {
+                meta.maxts = final_ts
+            }
 
-                if final_ts > meta.smallest_wait_ts {
-                    waiting_for_read_result += 1;
-                    // insert a read task
-                    let execution_context = ExecuteContext {
-                        committed: true,
-                        read: true,
-                        value: None,
-                        call_back: Some(sender.clone()),
-                    };
-                    // let mut wait_list = tuple.1.write().await;
-                    meta.waitlist.insert(final_ts, execution_context);
-                    continue;
-                }
+            if final_ts > meta.smallest_wait_ts {
+                waiting_for_read_result += 1;
+                // insert a read task
+                let execution_context = ExecuteContext {
+                    committed: true,
+                    read: true,
+                    value: None,
+                    call_back: Some(sender.clone()),
+                };
+                // let mut wait_list = tuple.1.write().await;
+                meta.waitlist.insert(final_ts, execution_context);
+                continue;
             }
 
             let version_data = &tuple.1;

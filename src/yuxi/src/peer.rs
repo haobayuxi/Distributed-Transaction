@@ -120,13 +120,13 @@ impl Peer {
         // self.executor_num = config.executor_num;
         self.executor_num = config.executor_num;
         for i in 0..self.executor_num {
-            unsafe {
-                let mut queue: Vec<Option<Msg>> = Vec::new();
-                for j in 0..1000 {
-                    queue.push(None);
-                }
-                IN_MEMORY_MQ.push(queue);
-            }
+            // unsafe {
+            //     let mut queue: Vec<Option<Msg>> = Vec::new();
+            //     for j in 0..1000 {
+            //         queue.push(None);
+            //     }
+            //     IN_MEMORY_MQ.push(queue);
+            // }
             // println!("init executor {}", i);
             let (sender, receiver) = channel::<Msg>(1000);
             self.executor_senders.insert(i, sender);
