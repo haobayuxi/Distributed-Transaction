@@ -226,11 +226,16 @@ impl Executor {
                     meta.smallest_wait_ts = meta.maxts;
                 }
                 let wait_ts = meta.maxts;
-                println!("insert waitlist {},{}", key, wait_ts);
+                // println!("insert waitlist {},{}", key, wait_ts);
                 meta.waitlist.insert(wait_ts, execute_context);
                 write_ts_in_waitlist.push((write.clone(), wait_ts));
             }
         }
+
+        println!(
+            "wait list tid{},{:?}",
+            msg.tmsg.txn_id, write_ts_in_waitlist
+        );
         self.txns
             .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
         for read in msg.tmsg.read_set.iter() {
@@ -305,6 +310,7 @@ impl Executor {
         //     msg.tmsg.from,
         //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
         // );
+        println!("check write {},{:?}", tid, write_ts_in_waitlist);
         for (write, write_ts) in write_ts_in_waitlist.iter() {
             let key = write.key;
 
@@ -319,7 +325,6 @@ impl Executor {
                 // modify the wait list
                 println!("tuple remove {},{}", key, *write_ts);
                 let mut execution_context = tuple.0.waitlist.remove(write_ts).unwrap();
-                println!("tuple remove  success {},{}", key, *write_ts);
                 execution_context.committed = true;
                 tuple.0.waitlist.insert(final_ts, execution_context);
                 // check pending txns execute the context if the write is committed
