@@ -310,8 +310,6 @@ impl Executor {
         // commit final version and execute
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;
-        // get write_ts in waitlist to erase
-        let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
         let isreply = if self.server_id == (tid as u32) % 3 {
             true
         } else {
@@ -322,6 +320,9 @@ impl Executor {
             msg.callback.send(Ok(reply)).await;
         }
         return;
+        // get write_ts in waitlist to erase
+        let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
+
         // println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
         for (write, write_ts) in write_ts_in_waitlist.into_iter() {
             let key = write.key;
