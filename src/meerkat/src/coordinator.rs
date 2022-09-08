@@ -133,6 +133,9 @@ impl MeerkatCoordinator {
         // wait for result
         let result = self.recv.recv().await.unwrap();
         self.txn.read_set = result.read_set;
+        for read in self.txn.read_set.iter_mut() {
+            read.value = None;
+        }
         self.txn.op = TxnOp::Prepare.into();
         // validate phase
         // prepare, prepare will send to all the server in the shard
