@@ -13,7 +13,7 @@ use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use tokio::sync::mpsc::{unbounded_channel, Receiver, Sender};
+use tokio::sync::mpsc::{channel, unbounded_channel, Receiver, Sender};
 use tokio::time::sleep;
 // use tokio::time::Duration;
 
@@ -168,12 +168,13 @@ impl Executor {
             // spawn a new task for this
             tokio::spawn(async move {
                 while waiting_for_read_result > 0 {
-                    let (key, value) = receiver.recv().await.unwrap();
-                    txn.read_set.push(ReadStruct {
-                        key,
-                        value: Some(value),
-                        timestamp: None,
-                    });
+                    if let Some((key, value)) = receiver.recv().await {
+                        txn.read_set.push(ReadStruct {
+                            key,
+                            value: Some(value),
+                            timestamp: None,
+                        });
+                    }
                     waiting_for_read_result -= 1;
                 }
                 msg.callback.send(Ok(txn)).await;
@@ -323,7 +324,7 @@ impl Executor {
                 // check pending txns execute the context if the write is committed
                 loop {
                     match tuple.0.waitlist.pop_first() {
-                        Some((ts, context)) => {
+                        Some((ts, mut context)) => {
                             if context.committed {
                                 if context.read {
                                     // execute the read
@@ -334,7 +335,8 @@ impl Executor {
                                         index -= 1;
                                     }
                                     let data = version_data[index].data.to_string();
-                                    context.call_back.unwrap().send((ts as i64, data));
+                                    let callback = context.call_back.take().unwrap();
+                                    callback.send((ts as i64, data));
                                 } else {
                                     // execute the write
                                     let datas = &mut tuple.1;
