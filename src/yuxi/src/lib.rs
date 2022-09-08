@@ -20,7 +20,10 @@ pub struct VersionData {
     end_ts: u64,
     data: Data,
 }
+
+#[derive(Debug)]
 pub struct ExecuteContext {
+    txnid: u64,
     committed: bool,
     read: bool,
     value: Option<String>,

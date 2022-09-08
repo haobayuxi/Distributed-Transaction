@@ -143,6 +143,7 @@ impl Executor {
                     read: true,
                     value: None,
                     call_back: Some(sender.clone()),
+                    txnid: txn.txn_id,
                 };
                 // let mut wait_list = tuple.1.write().await;
                 meta.waitlist.insert(final_ts, execution_context);
@@ -221,6 +222,7 @@ impl Executor {
                     read: false,
                     value: Some(write.value.clone()),
                     call_back: None,
+                    txnid: msg.tmsg.txn_id,
                 };
                 if meta.smallest_wait_ts > meta.maxts {
                     meta.smallest_wait_ts = meta.maxts;
@@ -323,8 +325,9 @@ impl Executor {
                 }
 
                 // modify the wait list
-                println!("tuple remove {},{}", key, *write_ts);
+                println!("tuple remove {},{}, {:?}", key, *write_ts, tuple.0.waitlist);
                 let mut execution_context = tuple.0.waitlist.remove(write_ts).unwrap();
+                // match tuple.0.waitlist
                 execution_context.committed = true;
                 tuple.0.waitlist.insert(final_ts, execution_context);
                 // check pending txns execute the context if the write is committed
@@ -411,6 +414,7 @@ impl Executor {
                             read: true,
                             value: None,
                             call_back: Some(sender.clone()),
+                            txnid: tid,
                         };
                         // let mut wait_list = tuple.1.write().await;
                         meta.waitlist.insert(final_ts, execution_context);
