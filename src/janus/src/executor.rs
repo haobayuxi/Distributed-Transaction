@@ -84,7 +84,7 @@ impl Executor {
 
     async fn handle_execute(&mut self, msg: Msg) {
         let txnid = msg.txn.txn_id;
-        // println!("execute txn {:?}", get_txnid(txnid));
+        println!("execute txn {:?}", get_txnid(txnid));
 
         let txn = self.txns.remove(&txnid).unwrap();
         // execute
@@ -118,7 +118,7 @@ impl Executor {
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        // println!("prepare txn {:?}", get_txnid(msg.txn.txn_id));
+        println!("prepare txn {:?}", get_txnid(msg.txn.txn_id));
         let mut result = JanusMsg {
             txn_id: msg.txn.txn_id,
             read_set: Vec::new(),
