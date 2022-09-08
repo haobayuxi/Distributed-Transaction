@@ -16,6 +16,7 @@ pub struct ConfigInFile {
     pub read_perc: i32,
     pub txns_per_client: i32,
     pub is_ycsb: bool,
+    pub zipf: f64,
 }
 
 #[derive(Clone)]

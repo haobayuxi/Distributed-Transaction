@@ -37,13 +37,14 @@ impl MeerkatCoordinator {
         read_perc: i32,
         txns_per_client: i32,
         recv: Receiver<MeerkatMsg>,
+        zipf_theta: f64,
     ) -> Self {
         Self {
             id,
             txn_id: (id as u64) << CID_LEN,
             txn: MeerkatMsg::default(),
             servers: HashMap::new(),
-            workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
+            workload: YcsbQuery::new(zipf_theta, config.req_per_query as i32, read_perc),
             config,
             txns_per_client,
             recv,

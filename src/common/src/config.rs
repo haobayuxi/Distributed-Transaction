@@ -10,7 +10,7 @@ pub struct Config {
     pub client_num: u32,
     pub req_per_query: usize,
     pub table_size: u32,
-    pub zipf_theta: f64,
+    // pub zipf_theta: f64,
     // dast config
     pub manager_ids: Vec<u32>,
     pub propose_addrs: HashMap<u32, String>,
@@ -42,7 +42,7 @@ impl Default for Config {
             executor_num: 32,
             req_per_query: 8,
             table_size: 1000,
-            zipf_theta: 0.0,
+            // zipf_theta: 0.0,
             manager_ids: vec![0, 1, 2],
             propose_addrs,
             client_num: 900,

@@ -29,6 +29,7 @@ impl ProposeClient {
         id: u32,
         txns_per_client: i32,
         is_ycsb: bool,
+        zipf_theta: f64,
     ) -> Self {
         let server_id = id % 3;
         let addr_to_connect = config.propose_addrs.get(&server_id).unwrap().clone();
@@ -42,7 +43,7 @@ impl ProposeClient {
                         txn_id: (id as u64) << CID_LEN,
                         txn: DastMsg::default(),
                         workload: YcsbQuery::new(
-                            config.zipf_theta,
+                            zipf_theta,
                             config.req_per_query as i32,
                             read_perc,
                         ),
@@ -123,6 +124,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         id,
         config_in_file.txns_per_client,
         config_in_file.is_ycsb,
+        config_in_file.zipf,
     )
     .await;
     client.run_transaction().await;

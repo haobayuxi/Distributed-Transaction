@@ -21,6 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         client_config.read_perc,
         client_config.txns_per_client,
         receiver,
+        client_config.zipf,
     );
     client.init_run(sender).await;
     Ok(())

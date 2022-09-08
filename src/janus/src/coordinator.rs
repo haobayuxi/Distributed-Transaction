@@ -36,6 +36,7 @@ impl JanusCoordinator {
         txns_per_client: i32,
         read_perc: i32,
         recv: Receiver<JanusMsg>,
+        zipf_theta: f64,
     ) -> Self {
         Self {
             // read_optimize,
@@ -43,7 +44,7 @@ impl JanusCoordinator {
             txn_id: (id as u64) << CID_LEN,
             txn: JanusMsg::default(),
             servers: HashMap::new(),
-            workload: YcsbQuery::new(config.zipf_theta, config.req_per_query as i32, read_perc),
+            workload: YcsbQuery::new(zipf_theta, config.req_per_query as i32, read_perc),
             config,
             txns_per_client,
             recv,

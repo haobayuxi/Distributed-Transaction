@@ -83,11 +83,11 @@ def increase_zipf():
     content = []
     with open('config.yml', "r") as f:
         content = yaml.load(f, Loader=yaml.RoundTripLoader)
-        x = content['conflict']
+        x = content['zipf']
         if x == 1:
-            content['conflict'] = 0.5
+            content['zipf'] = 0.5
         else:
-            content['conflict'] = x + 0.1
+            content['zipf'] = x + 0.1
     with open('config.yml', "w") as f:
         yaml.dump(content, f, Dumper=yaml.RoundTripDumper)
 
