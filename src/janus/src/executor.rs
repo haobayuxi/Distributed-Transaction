@@ -177,9 +177,8 @@ impl Executor {
 
             result.deps.sort();
             let txnid = msg.txn.txn_id;
-            let node = Node::new(msg.txn);
-            let client_id = get_client_id(txnid);
-            TXNS[client_id as usize].push(node);
+            let (client_id, index) = get_txnid(txnid);
+            TXNS[client_id as usize][index as usize] = Node::new(msg.txn);
         }
         // self.txns.insert(msg.txn.txn_id, msg.txn);
         // reply to coordinator

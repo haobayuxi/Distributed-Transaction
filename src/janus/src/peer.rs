@@ -17,7 +17,7 @@ use tokio::{
 
 use crate::{
     apply::Apply,
-    dep_graph::{DepGraph, TXNS},
+    dep_graph::{DepGraph, Node, TXNS},
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
     JanusMeta, Msg,
@@ -47,7 +47,7 @@ impl Peer {
         // init data
         unsafe {
             for i in 0..config.client_num {
-                TXNS.push(vec![]);
+                TXNS.push(vec![Node::default(); 500]);
             }
         }
         // self.mem = Arc::new(mem);

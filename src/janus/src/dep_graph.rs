@@ -8,6 +8,7 @@ use tonic::Status;
 
 pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 
+#[derive(Debug, Clone)]
 pub struct Node {
     pub executed: bool,
     pub committed: bool,
@@ -25,6 +26,16 @@ impl Node {
             executed: false,
             committed: false,
             txn,
+            callback: None,
+            dfn: -1,
+            low: -1,
+        }
+    }
+    pub fn default() -> Self {
+        Self {
+            executed: false,
+            committed: false,
+            txn: JanusMsg::default(),
             callback: None,
             dfn: -1,
             low: -1,
