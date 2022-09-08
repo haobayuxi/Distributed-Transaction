@@ -111,8 +111,8 @@ impl YuxiCoordinator {
     }
 
     async fn run_readonly(&mut self) {
-        // let server_id = self.id % 3;
-        let server_id = 0;
+        let server_id = self.id % 3;
+        // let server_id = ;
         let time = (Local::now().timestamp_nanos() / 1000) as u64;
         self.txn.timestamp = time;
         self.servers
