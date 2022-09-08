@@ -199,9 +199,9 @@ impl Executor {
         //     msg.tmsg.from,
         //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50)
         // );
-        let reply = YuxiMsg::default();
-        msg.callback.send(Ok(reply)).await;
-        return;
+        // let reply = YuxiMsg::default();
+        // msg.callback.send(Ok(reply)).await;
+        // return;
         let mut prepare_response = YuxiMsg {
             txn_id: msg.tmsg.txn_id,
             read_set: Vec::new(),
@@ -235,12 +235,12 @@ impl Executor {
                     call_back: None,
                     txnid: msg.tmsg.txn_id,
                 };
-                if meta.smallest_wait_ts > meta.maxts {
-                    meta.smallest_wait_ts = meta.maxts;
-                }
+                // if meta.smallest_wait_ts > meta.maxts {
+                //     meta.smallest_wait_ts = meta.maxts;
+                // }
                 let wait_ts = meta.maxts;
                 // println!("insert waitlist {},{}", key, wait_ts);
-                meta.waitlist.insert(wait_ts, execute_context);
+                // meta.waitlist.insert(wait_ts, execute_context);
                 write_ts_in_waitlist.push((write.clone(), wait_ts));
             }
         }
