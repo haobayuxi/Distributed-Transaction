@@ -71,7 +71,8 @@ impl DepGraph {
         loop {
             match self.wait_list.try_recv() {
                 Ok(txnid) => {
-                    self.execute_txn(txnid);
+                    // self.execute_txn(txnid);
+                    self.apply(txnid);
                 }
                 Err(e) => {
                     sleep(Duration::from_nanos(100));
