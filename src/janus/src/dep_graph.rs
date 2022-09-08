@@ -1,9 +1,4 @@
-use std::{
-    cmp::{min, Ordering},
-    collections::HashMap,
-    sync::Arc,
-    time::Duration,
-};
+use std::time::Duration;
 
 use common::{get_client_id, get_txnid, CID_LEN};
 use rpc::janus::JanusMsg;
@@ -15,8 +10,6 @@ use tokio::{
     time::sleep,
 };
 use tonic::Status;
-
-use crate::Msg;
 
 pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 
