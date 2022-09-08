@@ -22,7 +22,7 @@ pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 
 pub struct Node {
     executed: bool,
-    committed: bool,
+    pub committed: bool,
     // msg: Msg,
     pub txn: JanusMsg,
     pub callback: Option<Sender<Result<JanusMsg, Status>>>,
@@ -51,7 +51,6 @@ pub struct DepGraph {
     // graph: Arc<RwLock<HashMap<i64, Node>>>,
     // wait list
     wait_list: UnboundedReceiver<u64>,
-    // recv: UnboundedReceiver<Msg>,
     // job senders
     apply: UnboundedSender<u64>,
 
@@ -64,7 +63,7 @@ pub struct DepGraph {
 impl DepGraph {
     pub fn new(
         apply: UnboundedSender<u64>,
-        recv: UnboundedReceiver<Msg>,
+        wait_list: UnboundedReceiver<u64>,
         client_num: usize,
     ) -> Self {
         // init TXNS
@@ -75,32 +74,24 @@ impl DepGraph {
             // TXNS.reserve(client_num);
         }
 
-        let (waitlist_sender, waitlist_receiver) = unbounded_channel::<u64>();
+        // let (waitlist_sender, waitlist_receiver) = unbounded_channel::<u64>();
         // let graph_clone = graph.clone();
-        tokio::spawn(async move {
-            unsafe {
-                let mut recv = recv;
-                loop {
-                    match recv.recv().await {
-                        Some(commit) => {
-                            let txnid = commit.txn.txn_id;
-                            // println!("recv commit {:?}", get_txnid(txnid));
-                            let (clientid, index) = get_txnid(txnid);
-                            let node = &mut TXNS[clientid as usize][index as usize];
-                            node.callback = Some(commit.callback);
-                            node.txn.deps = commit.txn.deps;
-                            node.committed = true;
-                            waitlist_sender.send(txnid);
-                        }
-                        None => continue,
-                    }
-                }
-            }
-        });
+        // tokio::spawn(async move {
+        //     unsafe {
+        //         let mut recv = recv;
+        //         loop {
+        //             match recv.recv().await {
+        //                 Some(commit) => {
+
+        //                 }
+        //                 None => continue,
+        //             }
+        //         }
+        //     }
+        // });
         Self {
             apply,
-            wait_list: waitlist_receiver,
-            // recv,
+            wait_list,
             stack: Vec::new(),
             index: 0,
             visit: 0,

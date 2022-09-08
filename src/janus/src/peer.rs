@@ -44,7 +44,21 @@ impl Peer {
             kv.insert(key, RwLock::new((JanusMeta::default(), value)));
         }
         let mem = Arc::new(kv);
-        let executor = Executor::new(server_id, mem.clone());
+
+        let (dep_sender, dep_receiver) = unbounded_channel::<u64>();
+        let (apply_sender, apply_receiver) = unbounded_channel::<u64>();
+
+        let mut dep_graph = DepGraph::new(apply_sender, dep_receiver, config.client_num as usize);
+        tokio::spawn(async move {
+            dep_graph.run().await;
+        });
+        // self.init_dep(apply_sender, dep_receiver, self.config.client_num as usize)
+        //     .await;
+        let mut apply = Apply::new(apply_receiver, mem.clone(), server_id);
+        tokio::spawn(async move {
+            apply.run().await;
+        });
+        let executor = Executor::new(server_id, mem.clone(), dep_sender);
 
         Self {
             server_id,
@@ -59,44 +73,19 @@ impl Peer {
         let (dispatcher_sender, dispatcher_receiver) = unbounded_channel::<Msg>();
         // self.init_data();
         println!("init data done");
-        let (dep_sender, dep_receiver) = unbounded_channel::<Msg>();
-        let (apply_sender, apply_receiver) = unbounded_channel::<u64>();
-        self.init_dep(apply_sender, dep_receiver, self.config.client_num as usize)
-            .await;
-        let mut apply = Apply::new(apply_receiver, self.mem.clone(), self.server_id);
-        tokio::spawn(async move {
-            apply.run().await;
-        });
+
         // self.init_executors(self.config.clone());
-        self.init_rpc(self.config.clone(), dispatcher_sender, dep_sender)
-            .await;
+        self.init_rpc(self.config.clone(), dispatcher_sender).await;
         println!("init rpc done");
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    async fn init_dep(
-        &mut self,
-        sender: UnboundedSender<u64>,
-        recv: UnboundedReceiver<Msg>,
-        client_num: usize,
-    ) {
-        let mut dep_graph = DepGraph::new(sender, recv, client_num);
-        tokio::spawn(async move {
-            dep_graph.run().await;
-        });
-    }
-
-    async fn init_rpc(
-        &mut self,
-        config: Config,
-        sender: UnboundedSender<Msg>,
-        send_to_dep_graph: UnboundedSender<Msg>,
-    ) {
+    async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
         // start server for client to connect
         let mut listen_ip = config.server_addrs.get(&self.server_id).unwrap().clone();
         listen_ip = convert_ip_addr(listen_ip, false);
         println!("server listen ip {}", listen_ip);
-        let server = RpcServer::new(listen_ip, sender, send_to_dep_graph);
+        let server = RpcServer::new(listen_ip, sender);
         tokio::spawn(async move {
             run_rpc_server(server).await;
         });

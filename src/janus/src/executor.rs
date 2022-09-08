@@ -9,7 +9,7 @@ use rpc::{
     janus::JanusMsg,
 };
 use tokio::sync::{
-    mpsc::{Sender, UnboundedReceiver},
+    mpsc::{Sender, UnboundedReceiver, UnboundedSender},
     RwLock,
 };
 
@@ -26,15 +26,19 @@ pub struct Executor {
     // txns: Arc<HashMap<u64, JanusMsg>>,
     //
     // recv: UnboundedReceiver<Msg>,
+    dep_graph: UnboundedSender<u64>,
 }
 
 impl Executor {
-    pub fn new(server_id: u32, mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>) -> Self {
+    pub fn new(
+        server_id: u32,
+        mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
+        dep_graph: UnboundedSender<u64>,
+    ) -> Self {
         Self {
             server_id,
             mem,
-            // txns: HashMap::new(),
-            // recv,
+            dep_graph,
         }
     }
 
@@ -87,6 +91,19 @@ impl Executor {
     //     // reply to coordinator
     //     msg.callback.send(Ok(result)).await;
     // }
+
+    async fn handle_commit(&mut self, commit: Msg) {
+        let txnid = commit.txn.txn_id;
+        // println!("recv commit {:?}", get_txnid(txnid));
+        unsafe {
+            let (clientid, index) = get_txnid(txnid);
+            let node = &mut TXNS[clientid as usize][index as usize];
+            node.callback = Some(commit.callback);
+            node.txn.deps = commit.txn.deps;
+            node.committed = true;
+            self.dep_graph.send(txnid);
+        }
+    }
 
     async fn handle_prepare(&mut self, msg: Msg) {
         // println!("prepare txn {:?}", get_txnid(msg.txn.txn_id));

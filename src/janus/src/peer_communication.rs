@@ -23,18 +23,12 @@ use crate::Msg;
 pub struct RpcServer {
     addr_to_listen: String,
     sender: UnboundedSender<Msg>,
-    send_to_dep_graph: UnboundedSender<Msg>,
 }
 
 impl RpcServer {
-    pub fn new(
-        addr_to_listen: String,
-        sender: UnboundedSender<Msg>,
-        send_to_dep_graph: UnboundedSender<Msg>,
-    ) -> Self {
+    pub fn new(addr_to_listen: String, sender: UnboundedSender<Msg>) -> Self {
         Self {
             sender,
-            send_to_dep_graph,
             addr_to_listen,
         }
     }
@@ -60,32 +54,35 @@ impl Janus for RpcServer {
         let (callback_sender, mut receiver) = channel::<Result<JanusMsg, Status>>(100);
         let mut in_stream = request.into_inner();
         let sender = self.sender.clone();
-        let send_to_dep_graph = self.send_to_dep_graph.clone();
         tokio::spawn(async move {
             while let Some(result) = in_stream.next().await {
                 match result {
                     Ok(txn) => {
-                        match txn.op() {
-                            TxnOp::Commit => {
-                                // commit msg only contains executor ids
-                                let msg = Msg {
-                                    txn,
-                                    callback: callback_sender.clone(),
-                                };
-                                send_to_dep_graph.send(msg);
-                                // let mut msg = receiver.recv().await.unwrap();
-                                // result.read_set = msg.read_set;
-                            }
-                            _ => {
-                                let msg = Msg {
-                                    txn,
-                                    callback: callback_sender.clone(),
-                                };
-                                sender.send(msg);
-                                // result = receiver.recv().await.unwrap();
-                            }
-                        }
-                        // sender.send(msg);
+                        let msg = Msg {
+                            txn,
+                            callback: callback_sender.clone(),
+                        };
+                        // match txn.op() {
+                        //     TxnOp::Commit => {
+                        //         // commit msg only contains executor ids
+                        //         let msg = Msg {
+                        //             txn,
+                        //             callback: callback_sender.clone(),
+                        //         };
+                        //         send_to_dep_graph.send(msg);
+                        //         // let mut msg = receiver.recv().await.unwrap();
+                        //         // result.read_set = msg.read_set;
+                        //     }
+                        //     _ => {
+                        //         let msg = Msg {
+                        //             txn,
+                        //             callback: callback_sender.clone(),
+                        //         };
+                        //         sender.send(msg);
+                        //         // result = receiver.recv().await.unwrap();
+                        //     }
+                        // }
+                        sender.send(msg);
                     }
                     Err(_) => {
                         break;
