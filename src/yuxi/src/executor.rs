@@ -121,9 +121,9 @@ impl Executor {
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // just wait for the earlier txn to be executed
-        let reply = YuxiMsg::default();
-        msg.callback.send(Ok(reply)).await;
-        return;
+        // let reply = YuxiMsg::default();
+        // msg.callback.send(Ok(reply)).await;
+        // return;
         let mut txn = msg.tmsg.clone();
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
