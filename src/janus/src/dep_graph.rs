@@ -109,6 +109,11 @@ impl DepGraph {
     }
 
     fn apply(&mut self, txn: Msg) {
+        let txnid = txn.txn.txn_id;
+        let (client_id, index) = get_txnid(txnid);
+        unsafe {
+            TXNS[client_id as usize][index as usize].executed = true;
+        }
         self.executor.send(txn);
     }
 
@@ -152,6 +157,9 @@ impl DepGraph {
                         while dep_index >= TXNS[dep_clientid as usize].len() as u64 {
                             // not committed
                             sleep(Duration::from_nanos(10)).await;
+                        }
+                        if TXNS[dep_clientid as usize][dep_index as usize].executed {
+                            continue;
                         }
                         let next = &TXNS[dep_clientid as usize][dep_index as usize];
                         // check if next in the stack
