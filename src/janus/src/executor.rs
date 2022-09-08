@@ -15,30 +15,33 @@ use tokio::sync::{
 
 use crate::{
     dep_graph::{Node, TXNS},
+    peer::META,
     JanusMeta, Msg,
 };
 
 pub struct Executor {
     server_id: u32,
     // memory
-    meta: HashMap<i64, JanusMeta>,
+    meta_index: Arc<HashMap<i64, usize>>,
     // txns
     // txns: Arc<HashMap<u64, JanusMsg>>,
     //
-    // recv: UnboundedReceiver<Msg>,
+    recv: UnboundedReceiver<Msg>,
     dep_graph: UnboundedSender<u64>,
 }
 
 impl Executor {
     pub fn new(
         server_id: u32,
-        meta: HashMap<i64, JanusMeta>,
+        meta_index: Arc<HashMap<i64, usize>>,
         dep_graph: UnboundedSender<u64>,
+        recv: UnboundedReceiver<Msg>,
     ) -> Self {
         Self {
             server_id,
-            meta,
+            meta_index,
             dep_graph,
+            recv,
         }
     }
 
@@ -56,14 +59,16 @@ impl Executor {
         }
     }
 
-    // async fn run(&mut self) {
-    //     loop {
-    //         match self.recv.recv().await {
-    //             Some(msg) =>
-    //             None => continue,
-    //         }
-    //     }
-    // }
+    async fn run(&mut self) {
+        loop {
+            match self.recv.recv().await {
+                Some(msg) => {
+                    self.handle_msg(msg).await;
+                }
+                None => continue,
+            }
+        }
+    }
 
     // async fn handle_read_only(&mut self, msg: Msg) {
     //     let txnid = msg.txn.txn_id;
@@ -130,29 +135,33 @@ impl Executor {
             deps: Vec::new(),
             txn_type: None,
         };
-        let mut result_dep = HashSet::new();
-        // get the dep
-        for read in msg.txn.read_set.iter() {
-            let meta = self.meta.get_mut(&read.key).unwrap();
-            let dep = meta.last_visited_txnid;
-            meta.last_visited_txnid = msg.txn.txn_id;
-            // result.deps.push(dep);
-            result_dep.insert(dep);
-        }
-
-        for write in msg.txn.write_set.iter() {
-            let meta = self.meta.get_mut(&write.key).unwrap();
-            let dep = meta.last_visited_txnid;
-            meta.last_visited_txnid = msg.txn.txn_id;
-            // result.deps.push(dep);
-            result_dep.insert(dep);
-        }
-        for iter in result_dep.into_iter() {
-            result.deps.push(iter);
-        }
-
-        result.deps.sort();
         unsafe {
+            let mut result_dep = HashSet::new();
+            // get the dep
+            for read in msg.txn.read_set.iter() {
+                let index = self.meta_index.get(&read.key).unwrap();
+                // let meta = self.meta.get_mut(&read.key).unwrap();
+                let mut meta = META[*index].write().await;
+                let dep = meta.last_visited_txnid;
+                meta.last_visited_txnid = msg.txn.txn_id;
+                // result.deps.push(dep);
+                result_dep.insert(dep);
+            }
+
+            for write in msg.txn.write_set.iter() {
+                let index = self.meta_index.get(&write.key).unwrap();
+                // let meta = self.meta.get_mut(&read.key).unwrap();
+                let mut meta = META[*index].write().await;
+                let dep = meta.last_visited_txnid;
+                meta.last_visited_txnid = msg.txn.txn_id;
+                // result.deps.push(dep);
+                result_dep.insert(dep);
+            }
+            for iter in result_dep.into_iter() {
+                result.deps.push(iter);
+            }
+
+            result.deps.sort();
             let txnid = msg.txn.txn_id;
             let node = Node::new(msg.txn);
             let client_id = get_client_id(txnid);

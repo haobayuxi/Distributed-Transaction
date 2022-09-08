@@ -22,15 +22,18 @@ struct ConfigPerServer {
     id: i32,
 }
 
+pub static mut META: Vec<RwLock<JanusMeta>> = Vec::new();
+
 pub struct Peer {
     server_id: u32,
 
     // memory
     // mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
     // dispatcher
-    // executor_senders: HashMap<i32, UnboundedSender<Msg>>,
-    executor: Executor,
+    executor_senders: HashMap<u32, UnboundedSender<Msg>>,
+    // executor: Executor,
     config: Config,
+    executor_num: u32,
 }
 
 impl Peer {
@@ -40,8 +43,13 @@ impl Peer {
         // self.mem = Arc::new(mem);
         let data = init_ycsb();
         let mut meta = HashMap::new();
-        for (id, value) in data.iter() {
-            meta.insert(*id, JanusMeta::default());
+        unsafe {
+            let mut index: usize = 0;
+            for (id, value) in data.iter() {
+                META.push(RwLock::new(JanusMeta::default()));
+                meta.insert(*id, index);
+                index += 1;
+            }
         }
 
         let (dep_sender, dep_receiver) = unbounded_channel::<u64>();
@@ -57,13 +65,21 @@ impl Peer {
         tokio::spawn(async move {
             apply.run().await;
         });
-        let executor = Executor::new(server_id, meta, dep_sender);
+        let arc_meta = Arc::new(meta);
+        let mut exec_senders = HashMap::new();
+        for i in 0..config.executor_num {
+            let (exec_sender, exec_recv) = unbounded_channel::<Msg>();
+            let executor =
+                Executor::new(server_id, arc_meta.clone(), dep_sender.clone(), exec_recv);
+            exec_senders.insert(i, exec_sender);
+        }
 
         Self {
             server_id,
             // executor_senders: HashMap::new(),
+            executor_num: config.executor_num,
             config,
-            executor,
+            executor_senders: exec_senders,
         }
     }
 
@@ -107,10 +123,10 @@ impl Peer {
             match recv.recv().await {
                 Some(msg) => {
                     // println!("handle msg {:?}", get_txnid(msg.txn.txn_id));
-                    self.executor.handle_msg(msg).await;
-                    // let executor_id = (msg.txn.txn_id as i32) % self.executor_num;
+                    // self.executor.handle_msg(msg).await;
+                    let executor_id = (msg.txn.txn_id as u32) % self.executor_num;
                     // // send to executor
-                    // self.executor_senders.get(&executor_id).unwrap().send(msg);
+                    self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }
                 None => continue,
             }
