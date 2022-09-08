@@ -45,7 +45,7 @@ impl Default for Config {
             // zipf_theta: 0.0,
             manager_ids: vec![0, 1, 2],
             propose_addrs,
-            client_num: 900,
+            client_num: 1500,
             // local_nodes: todo!(),
         }
     }
