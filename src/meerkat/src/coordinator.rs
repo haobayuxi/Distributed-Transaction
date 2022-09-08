@@ -139,29 +139,20 @@ impl MeerkatCoordinator {
         self.txn.op = TxnOp::Prepare.into();
         // validate phase
         // prepare, prepare will send to all the server in the shard
-        // self.broadcast(self.txn.clone()).await;
-        // // for (id, server) in self.servers.iter() {
-        // //     let mut server_client = server.clone();
-        // //     let validate = self.txn.clone();
-        // //     let sender = result_sender.clone();
-        // //     tokio::spawn(async move {
-        // //         let result = server_client.txn_msg(validate).await.unwrap().into_inner();
-        // //         sender.send(result);
-        // //     });
-        // // }
+        self.broadcast(self.txn.clone()).await;
 
-        // // handle prepare response
-        // let mut abort = false;
-        // for i in 0..3 {
-        //     let prepare_res = self.recv.recv().await.unwrap();
-        //     if prepare_res.op() == TxnOp::Abort.into() {
-        //         // abort all the txn
-        //         abort = true;
-        //     }
-        // }
-        // if abort {
-        //     return false;
-        // }
+        // handle prepare response
+        let mut abort = false;
+        for i in 0..3 {
+            let prepare_res = self.recv.recv().await.unwrap();
+            if prepare_res.op() == TxnOp::Abort.into() {
+                // abort all the txn
+                abort = true;
+            }
+        }
+        if abort {
+            return false;
+        }
         // txn success
         // broadcast commit
         self.txn.write_set.clear();
