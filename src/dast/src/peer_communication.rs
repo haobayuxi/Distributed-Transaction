@@ -142,7 +142,10 @@ impl ClientService for ProposeServer {
         }));
 
         // reply to client
-        let result = callback_recv.recv().await.unwrap();
-        Ok(Response::new(result))
+        let mut reply = DastMsg::default();
+        if let Some(result) = callback_recv.recv().await {
+            reply = result;
+        }
+        Ok(Response::new(reply))
     }
 }
