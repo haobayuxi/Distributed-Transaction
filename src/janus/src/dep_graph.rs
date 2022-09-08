@@ -166,6 +166,7 @@ impl DepGraph {
                         // check if next in the stack
                         if next.dfn < 0 {
                             // not in stack
+                            println!("push into stack {}, {}", dep_clientid, dep_index);
                             self.stack.push(dep);
                             self.visit += 1;
                         } else {
