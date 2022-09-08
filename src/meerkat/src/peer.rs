@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
 use parking_lot::RwLock;
+use rpc::{common::TxnOp, meerkat::MeerkatMsg};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
@@ -88,9 +89,13 @@ impl Peer {
             match recv.recv().await {
                 Some(msg) => {
                     // println!("txnid = {}", msg.tmsg.txn_id);
-                    let executor_id = (msg.tmsg.from as u32) % self.executor_num;
-                    // send to executor
-                    self.executor_senders.get(&executor_id).unwrap().send(msg);
+                    let reply = MeerkatMsg::default();
+                    if msg.tmsg.op() != TxnOp::Commit.into() {
+                        msg.callback.send(Ok(reply)).await;
+                    }
+                    // let executor_id = (msg.tmsg.from as u32) % self.executor_num;
+                    // // send to executor
+                    // self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }
                 None => continue,
             }
