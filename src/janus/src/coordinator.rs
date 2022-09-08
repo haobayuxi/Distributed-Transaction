@@ -54,7 +54,7 @@ impl JanusCoordinator {
     async fn run_transaction(&mut self) -> bool {
         // prepare
 
-        // println!("prepare");
+        println!("prepare");
         self.txn.deps.clear();
         self.txn.read_set = self.workload.read_set.clone();
         self.txn.write_set = self.workload.write_set.clone();
@@ -80,7 +80,7 @@ impl JanusCoordinator {
         self.txn.deps = result.deps;
         if !fast_commit {
             // accept
-            // println!("accept");
+            println!("accept");
             let mut accept = self.txn.clone();
             accept.read_set.clear();
             accept.write_set.clear();
@@ -91,7 +91,7 @@ impl JanusCoordinator {
             }
         }
         // txn success
-        // println!("commit ");
+        println!("commit ");
         let mut commit = self.txn.clone();
         commit.op = TxnOp::Commit.into();
         self.broadcast(commit).await;
@@ -121,7 +121,7 @@ impl JanusCoordinator {
             self.run_transaction().await;
             self.txn_id += 1;
             let end_time = start.elapsed().as_micros();
-            // println!("latency time = {}", end_time);
+            println!("latency time = {}", end_time);
             latency_result.push(end_time);
         }
         let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
