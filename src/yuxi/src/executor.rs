@@ -9,12 +9,14 @@ use common::{
     tatp::{AccessInfo, CallForwarding, Subscriber},
     Data,
 };
-use parking_lot::RwLock;
 use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use tokio::sync::mpsc::{channel, unbounded_channel, Receiver, Sender};
+use tokio::sync::{
+    mpsc::{channel, unbounded_channel, Receiver, Sender},
+    RwLock,
+};
 use tokio::time::sleep;
 // use tokio::time::Duration;
 
@@ -129,7 +131,7 @@ impl Executor {
         txn.read_set.clear();
         for read in read_set.iter_mut() {
             let key = read.key;
-            let mut tuple = self.index.get(&key).unwrap().write();
+            let mut tuple = self.index.get(&key).unwrap().write().await;
 
             let meta = &mut tuple.0;
             if meta.maxts < final_ts {
@@ -206,7 +208,7 @@ impl Executor {
         let mut write_ts_in_waitlist = Vec::new();
         for write in msg.tmsg.write_set.iter() {
             let key = write.key;
-            let mut tuple = self.index.get(&key).unwrap().write();
+            let mut tuple = self.index.get(&key).unwrap().write().await;
             {
                 let meta = &mut tuple.0;
                 if ts > meta.maxts {
@@ -245,7 +247,7 @@ impl Executor {
             let key = read.key;
             // find and update the ts
             {
-                let mut tuple = self.index.get(&key).unwrap().write();
+                let mut tuple = self.index.get(&key).unwrap().write().await;
                 let meta = &mut tuple.0;
                 if ts > meta.maxts {
                     meta.maxts = ts;
@@ -317,82 +319,79 @@ impl Executor {
         for (write, write_ts) in write_ts_in_waitlist.iter() {
             let key = write.key;
 
-            // let tuple = &IN_MEMORY_DATA[*index];
-            {
-                let mut tuple = self.index.get(&key).unwrap().write();
-                // let meta = &mut tuple.0;
-                if tuple.0.maxts < final_ts {
-                    tuple.0.maxts = final_ts
-                }
+            let mut tuple = self.index.get(&key).unwrap().write().await;
+            // let meta = &mut tuple.0;
+            if tuple.0.maxts < final_ts {
+                tuple.0.maxts = final_ts
+            }
 
-                // modify the wait list
-                println!(
-                    "tuple remove {:?} ,{},{}, {:?}",
-                    get_txnid(tid),
-                    key,
-                    *write_ts,
-                    tuple.0.waitlist
-                );
-                let mut execution_context = tuple.0.waitlist.remove(write_ts).unwrap();
-                // tuple.0.waitlist.
-                // match tuple.0.waitlist
-                execution_context.committed = true;
-                tuple.0.waitlist.insert(final_ts, execution_context);
-                // check pending txns execute the context if the write is committed
-                loop {
-                    match tuple.0.waitlist.pop_first() {
-                        Some((ts, mut context)) => {
-                            if context.committed {
-                                if context.read {
-                                    // execute the read
-                                    // get data
-                                    let version_data = &tuple.1;
-                                    let mut index = version_data.len() - 1;
-                                    while final_ts < version_data[index].start_ts {
-                                        index -= 1;
-                                    }
-                                    let data = version_data[index].data.to_string();
-                                    let callback = context.call_back.take().unwrap();
-                                    callback.send((ts as i64, data));
-                                } else {
-                                    // execute the write
-                                    let datas = &mut tuple.1;
-                                    match datas.last_mut() {
-                                        Some(last_data) => {
-                                            last_data.end_ts = ts;
-                                        }
-                                        None => {}
-                                    }
-                                    let mut version_data = VersionData {
-                                        start_ts: ts,
-                                        end_ts: MaxTs,
-                                        data: Data::default(),
-                                    };
-                                    match txn.txn_type() {
-                                        rpc::common::TxnType::TatpGetSubscriberData => {}
-                                        rpc::common::TxnType::TatpGetNewDestination => {}
-                                        rpc::common::TxnType::TatpGetAccessData => {}
-                                        rpc::common::TxnType::TatpUpdateSubscriberData => {}
-                                        rpc::common::TxnType::TatpUpdateLocation => {}
-                                        rpc::common::TxnType::TatpInsertCallForwarding => {}
-                                        rpc::common::TxnType::Ycsb => {
-                                            version_data.data = Data::Ycsb(write.value.clone());
-                                        }
-                                    }
-                                    datas.push(version_data);
+            // modify the wait list
+            println!(
+                "tuple remove {:?} ,{},{}, {:?}",
+                get_txnid(tid),
+                key,
+                *write_ts,
+                tuple.0.waitlist
+            );
+            let mut execution_context = tuple.0.waitlist.remove(write_ts).unwrap();
+            // tuple.0.waitlist.
+            // match tuple.0.waitlist
+            execution_context.committed = true;
+            tuple.0.waitlist.insert(final_ts, execution_context);
+            // check pending txns execute the context if the write is committed
+            loop {
+                match tuple.0.waitlist.pop_first() {
+                    Some((ts, mut context)) => {
+                        if context.committed {
+                            if context.read {
+                                // execute the read
+                                // get data
+                                let version_data = &tuple.1;
+                                let mut index = version_data.len() - 1;
+                                while final_ts < version_data[index].start_ts {
+                                    index -= 1;
                                 }
+                                let data = version_data[index].data.to_string();
+                                let callback = context.call_back.take().unwrap();
+                                callback.send((ts as i64, data));
                             } else {
-                                tuple.0.waitlist.insert(ts, context);
-                                if tuple.0.smallest_wait_ts < ts {
-                                    tuple.0.smallest_wait_ts = ts;
+                                // execute the write
+                                let datas = &mut tuple.1;
+                                match datas.last_mut() {
+                                    Some(last_data) => {
+                                        last_data.end_ts = ts;
+                                    }
+                                    None => {}
                                 }
-                                break;
+                                let mut version_data = VersionData {
+                                    start_ts: ts,
+                                    end_ts: MaxTs,
+                                    data: Data::default(),
+                                };
+                                match txn.txn_type() {
+                                    rpc::common::TxnType::TatpGetSubscriberData => {}
+                                    rpc::common::TxnType::TatpGetNewDestination => {}
+                                    rpc::common::TxnType::TatpGetAccessData => {}
+                                    rpc::common::TxnType::TatpUpdateSubscriberData => {}
+                                    rpc::common::TxnType::TatpUpdateLocation => {}
+                                    rpc::common::TxnType::TatpInsertCallForwarding => {}
+                                    rpc::common::TxnType::Ycsb => {
+                                        version_data.data = Data::Ycsb(write.value.clone());
+                                    }
+                                }
+                                datas.push(version_data);
                             }
-                        }
-                        None => {
-                            tuple.0.smallest_wait_ts = MaxTs;
+                        } else {
+                            tuple.0.waitlist.insert(ts, context);
+                            if tuple.0.smallest_wait_ts < ts {
+                                tuple.0.smallest_wait_ts = ts;
+                            }
                             break;
                         }
+                    }
+                    None => {
+                        tuple.0.smallest_wait_ts = MaxTs;
+                        break;
                     }
                 }
             }
@@ -407,7 +406,7 @@ impl Executor {
         for read in read_set.iter_mut() {
             let key = read.key;
             {
-                let mut tuple = self.index.get(&key).unwrap().write();
+                let mut tuple = self.index.get(&key).unwrap().write().await;
                 let meta = &mut tuple.0;
                 if meta.maxts < final_ts {
                     meta.maxts = final_ts
