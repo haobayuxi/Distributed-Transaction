@@ -47,7 +47,7 @@ impl Executor {
             TxnOp::ReadOnly => self.handle_prepare(msg).await,
             TxnOp::Prepare => self.handle_prepare(msg).await,
             TxnOp::Accept => self.handle_accept(msg).await,
-            TxnOp::Commit => {}
+            TxnOp::Commit => self.handle_commit(msg).await,
             TxnOp::ReadOnlyRes => {}
             TxnOp::PrepareRes => {}
             TxnOp::AcceptRes => {}
