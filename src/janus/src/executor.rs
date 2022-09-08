@@ -84,40 +84,42 @@ impl Executor {
 
     async fn handle_execute(&mut self, msg: Msg) {
         let txnid = msg.txn.txn_id;
-        println!("execute txn {:?}", get_txnid(txnid));
-        let txn = self.txns.remove(&txnid).unwrap();
-        // execute
-        let mut result = JanusMsg {
-            txn_id: txnid,
-            read_set: Vec::new(),
-            write_set: Vec::new(),
-            op: TxnOp::CommitRes.into(),
-            from: self.server_id,
-            deps: Vec::new(),
-            txn_type: None,
-        };
+        // println!("execute txn {:?}", get_txnid(txnid));
 
-        for read in txn.read_set {
-            let read_result = ReadStruct {
-                key: read.key.clone(),
-                value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
-                timestamp: None,
+        if let Some(txn) = self.txns.remove(&txnid) {
+            // execute
+            let mut result = JanusMsg {
+                txn_id: txnid,
+                read_set: Vec::new(),
+                write_set: Vec::new(),
+                op: TxnOp::CommitRes.into(),
+                from: self.server_id,
+                deps: Vec::new(),
+                txn_type: None,
             };
-            result.read_set.push(read_result);
-        }
 
-        for write in txn.write_set {
-            self.mem.get(&write.key).unwrap().write().await.1 = write.value;
-        }
+            for read in txn.read_set {
+                let read_result = ReadStruct {
+                    key: read.key.clone(),
+                    value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
+                    timestamp: None,
+                };
+                result.read_set.push(read_result);
+            }
 
-        // reply to coordinator
-        if msg.txn.from % 3 == self.server_id {
-            msg.callback.send(Ok(result)).await;
+            for write in txn.write_set {
+                self.mem.get(&write.key).unwrap().write().await.1 = write.value;
+            }
+
+            // reply to coordinator
+            if msg.txn.from % 3 == self.server_id {
+                msg.callback.send(Ok(result)).await;
+            }
         }
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        println!("prepare txn {:?}", get_txnid(msg.txn.txn_id));
+        // println!("prepare txn {:?}", get_txnid(msg.txn.txn_id));
         let mut result = JanusMsg {
             txn_id: msg.txn.txn_id,
             read_set: Vec::new(),
