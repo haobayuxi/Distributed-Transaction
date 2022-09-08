@@ -319,6 +319,7 @@ impl Executor {
                 // modify the wait list
                 println!("tuple remove {},{}", key, *write_ts);
                 let mut execution_context = tuple.0.waitlist.remove(write_ts).unwrap();
+                println!("tuple remove  success {},{}", key, *write_ts);
                 execution_context.committed = true;
                 tuple.0.waitlist.insert(final_ts, execution_context);
                 // check pending txns execute the context if the write is committed
