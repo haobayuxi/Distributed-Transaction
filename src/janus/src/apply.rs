@@ -63,6 +63,7 @@ impl Apply {
 
                 // reply to coordinator
                 if self.is_reply {
+                    println!("execute {:?}", get_txnid(result.txn_id));
                     self.msg.callback.send(Ok(result)).await;
                 }
             }
