@@ -5,12 +5,11 @@ use std::{
 
 use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
-use parking_lot::RwLock;
 use rpc::yuxi::YuxiMsg;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
     mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
-    Mutex,
+    Mutex, RwLock,
 };
 
 use crate::{
