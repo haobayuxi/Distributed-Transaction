@@ -86,35 +86,34 @@ impl Executor {
         let txnid = msg.txn.txn_id;
         // println!("execute txn {:?}", get_txnid(txnid));
 
-        if let Some(txn) = self.txns.remove(&txnid) {
-            // execute
-            let mut result = JanusMsg {
-                txn_id: txnid,
-                read_set: Vec::new(),
-                write_set: Vec::new(),
-                op: TxnOp::CommitRes.into(),
-                from: self.server_id,
-                deps: Vec::new(),
-                txn_type: None,
+        let txn = self.txns.remove(&txnid).unwrap();
+        // execute
+        let mut result = JanusMsg {
+            txn_id: txnid,
+            read_set: Vec::new(),
+            write_set: Vec::new(),
+            op: TxnOp::CommitRes.into(),
+            from: self.server_id,
+            deps: Vec::new(),
+            txn_type: None,
+        };
+
+        for read in txn.read_set {
+            let read_result = ReadStruct {
+                key: read.key.clone(),
+                value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
+                timestamp: None,
             };
+            result.read_set.push(read_result);
+        }
 
-            for read in txn.read_set {
-                let read_result = ReadStruct {
-                    key: read.key.clone(),
-                    value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
-                    timestamp: None,
-                };
-                result.read_set.push(read_result);
-            }
+        for write in txn.write_set {
+            self.mem.get(&write.key).unwrap().write().await.1 = write.value;
+        }
 
-            for write in txn.write_set {
-                self.mem.get(&write.key).unwrap().write().await.1 = write.value;
-            }
-
-            // reply to coordinator
-            if msg.txn.from % 3 == self.server_id {
-                msg.callback.send(Ok(result)).await;
-            }
+        // reply to coordinator
+        if msg.txn.from % 3 == self.server_id {
+            msg.callback.send(Ok(result)).await;
         }
     }
 
