@@ -99,84 +99,84 @@ impl Executor {
 
     async fn handle_prepare(&mut self, msg: Msg) {
         // println!("handle prepare {:?}", get_txnid(msg.tmsg.txn_id));
-        // check read sets
-        let mut abort = false;
-        for read in msg.tmsg.read_set.iter() {
-            // match self.mem.get(&read.key).unwrap().try_read() {
-            //     Ok(read_guard) => {}
-            //     Err(_) => {
-            //         // abort the txn
-            //         let abort_msg = MeerkatMsg {
-            //             txn_id: msg.tmsg.txn_id,
-            //             read_set: Vec::new(),
-            //             write_set: Vec::new(),
-            //             executor_id: self.id,
-            //             op: TxnOp::TAbort.into(),
-            //             from: self.server_id,
-            //             timestamp: 0,
-            //         };
-            //         // send back to client
-            //         msg.callback.send(abort_msg).await;
-            //         return;
-            //     }
-            // }
-            let key = read.key;
-            let mut guard = self.mem.get(&key).unwrap().write();
-            if read.timestamp.unwrap() < guard.0.version
-                || (guard.0.prepared_write.len() > 0
-                    && read.timestamp.unwrap() < *guard.0.prepared_write.iter().min().unwrap())
-            {
-                // abort the txn
-                abort = true;
-                break;
-                // send back to client
-                // msg.callback.send(Ok(abort_msg)).await;
-                // return;
-            }
-            // insert ts to prepared read
-            guard.0.prepared_read.insert(msg.tmsg.timestamp);
-        }
-        if !abort {
-            for write in msg.tmsg.write_set.iter() {
-                let mut guard = self.mem.get(&write.key).unwrap().write();
-                if msg.tmsg.timestamp < guard.0.version
-                    || (guard.0.prepared_read.len() > 0
-                        && msg.tmsg.timestamp < *guard.0.prepared_read.iter().last().unwrap())
-                {
-                    // abort the txn
-                    abort = true;
-                    break;
-                    // let abort_msg = MeerkatMsg {
-                    //     txn_id: msg.tmsg.txn_id,
-                    //     read_set: Vec::new(),
-                    //     write_set: Vec::new(),
-                    //     executor_id: self.id,
-                    //     op: TxnOp::Abort.into(),
-                    //     from: self.server_id,
-                    //     timestamp: 0,
-                    //     txn_type: None,
-                    // };
-                    // // send back to client
-                    // let callback = msg.callback.clone();
-                    // callback.send(Ok(abort_msg)).await;
-                    // return;
-                }
-                guard.0.prepared_write.insert(msg.tmsg.timestamp);
-            }
-        }
-        // validate write set
-        let op = if abort {
-            TxnOp::Abort.into()
-        } else {
-            TxnOp::PrepareRes.into()
-        };
+        // // check read sets
+        // let mut abort = false;
+        // for read in msg.tmsg.read_set.iter() {
+        //     // match self.mem.get(&read.key).unwrap().try_read() {
+        //     //     Ok(read_guard) => {}
+        //     //     Err(_) => {
+        //     //         // abort the txn
+        //     //         let abort_msg = MeerkatMsg {
+        //     //             txn_id: msg.tmsg.txn_id,
+        //     //             read_set: Vec::new(),
+        //     //             write_set: Vec::new(),
+        //     //             executor_id: self.id,
+        //     //             op: TxnOp::TAbort.into(),
+        //     //             from: self.server_id,
+        //     //             timestamp: 0,
+        //     //         };
+        //     //         // send back to client
+        //     //         msg.callback.send(abort_msg).await;
+        //     //         return;
+        //     //     }
+        //     // }
+        //     let key = read.key;
+        //     let mut guard = self.mem.get(&key).unwrap().write();
+        //     if read.timestamp.unwrap() < guard.0.version
+        //         || (guard.0.prepared_write.len() > 0
+        //             && read.timestamp.unwrap() < *guard.0.prepared_write.iter().min().unwrap())
+        //     {
+        //         // abort the txn
+        //         abort = true;
+        //         break;
+        //         // send back to client
+        //         // msg.callback.send(Ok(abort_msg)).await;
+        //         // return;
+        //     }
+        //     // insert ts to prepared read
+        //     guard.0.prepared_read.insert(msg.tmsg.timestamp);
+        // }
+        // if !abort {
+        //     for write in msg.tmsg.write_set.iter() {
+        //         let mut guard = self.mem.get(&write.key).unwrap().write();
+        //         if msg.tmsg.timestamp < guard.0.version
+        //             || (guard.0.prepared_read.len() > 0
+        //                 && msg.tmsg.timestamp < *guard.0.prepared_read.iter().last().unwrap())
+        //         {
+        //             // abort the txn
+        //             abort = true;
+        //             break;
+        //             // let abort_msg = MeerkatMsg {
+        //             //     txn_id: msg.tmsg.txn_id,
+        //             //     read_set: Vec::new(),
+        //             //     write_set: Vec::new(),
+        //             //     executor_id: self.id,
+        //             //     op: TxnOp::Abort.into(),
+        //             //     from: self.server_id,
+        //             //     timestamp: 0,
+        //             //     txn_type: None,
+        //             // };
+        //             // // send back to client
+        //             // let callback = msg.callback.clone();
+        //             // callback.send(Ok(abort_msg)).await;
+        //             // return;
+        //         }
+        //         guard.0.prepared_write.insert(msg.tmsg.timestamp);
+        //     }
+        // }
+        // // validate write set
+        // let op = if abort {
+        //     TxnOp::Abort.into()
+        // } else {
+        //     TxnOp::PrepareRes.into()
+        // };
         // return prepare ok
         let prepare_ok = MeerkatMsg {
             txn_id: msg.tmsg.txn_id,
             read_set: Vec::new(),
             write_set: Vec::new(),
             executor_id: self.id,
-            op,
+            op: TxnOp::Prepare.into(),
             from: self.server_id,
             timestamp: 0,
             txn_type: None,

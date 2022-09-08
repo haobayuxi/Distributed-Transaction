@@ -164,10 +164,9 @@ impl MeerkatCoordinator {
         }
         // txn success
         // broadcast commit
+        self.txn.write_set.clear();
+        self.txn.read_set.clear();
         self.txn.op = TxnOp::Commit.into();
-        for read in self.txn.read_set.iter_mut() {
-            read.value = None;
-        }
         self.broadcast(self.txn.clone()).await;
         return true;
     }
