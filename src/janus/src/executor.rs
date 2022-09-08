@@ -104,23 +104,23 @@ impl Executor {
         unsafe {
             let (clientid, index) = get_txnid(txnid);
             let node = &mut TXNS[clientid as usize][index as usize];
-            // node.callback = Some(commit.callback);
-            // node.txn.deps = commit.txn.deps;
+            node.callback = Some(commit.callback);
+            node.txn.deps = commit.txn.deps;
             node.committed = true;
-            let is_reply = if commit.txn.from % 3 == self.server_id {
-                true
-            } else {
-                false
-            };
-            let apply = Apply {
-                mem_index: self.meta_index.clone(),
-                msg: commit,
-                is_reply,
-            };
-            tokio::spawn(async move {
-                apply.run().await;
-            });
-            // self.dep_graph.send(txnid);
+            // let is_reply = if commit.txn.from % 3 == self.server_id {
+            //     true
+            // } else {
+            //     false
+            // };
+            // let apply = Apply {
+            //     mem_index: self.meta_index.clone(),
+            //     msg: commit,
+            //     is_reply,
+            // };
+            // tokio::spawn(async move {
+            //     apply.run().await;
+            // });
+            self.dep_graph.send(txnid);
 
             // let mut result = JanusMsg {
             //     txn_id: txnid,

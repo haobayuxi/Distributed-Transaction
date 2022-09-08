@@ -55,9 +55,12 @@ impl Peer {
         let mut meta = HashMap::new();
         unsafe {
             let mut index: usize = 0;
-            for (id, value) in data.into_iter() {
-                META.push((RwLock::new(JanusMeta::default()), RwLock::new(value)));
-                meta.insert(id, index);
+            for (id, value) in data.iter() {
+                META.push((
+                    RwLock::new(JanusMeta::default()),
+                    RwLock::new(value.clone()),
+                ));
+                meta.insert(*id, index);
                 index += 1;
             }
         }
@@ -65,16 +68,16 @@ impl Peer {
         let (dep_sender, dep_receiver) = channel::<u64>();
         let (apply_sender, apply_receiver) = unbounded_channel::<u64>();
 
-        // let mut dep_graph = DepGraph::new(apply_sender, dep_receiver, config.client_num as usize);
-        // spawn_blocking(move || {
-        //     dep_graph.run();
-        // });
+        let mut dep_graph = DepGraph::new(apply_sender, dep_receiver, config.client_num as usize);
+        spawn_blocking(move || {
+            dep_graph.run();
+        });
         // self.init_dep(apply_sender, dep_receiver, self.config.client_num as usize)
         //     .await;
-        // let mut apply = Apply::new(apply_receiver, data, server_id);
-        // tokio::spawn(async move {
-        //     apply.run().await;
-        // });
+        let mut apply = Apply::new(apply_receiver, data, server_id);
+        tokio::spawn(async move {
+            apply.run().await;
+        });
         let arc_meta = Arc::new(meta);
         let mut exec_senders = HashMap::new();
         for i in 0..config.executor_num {
