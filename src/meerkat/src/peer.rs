@@ -2,11 +2,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{
-    mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-    RwLock,
-};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::{
     executor::Executor,

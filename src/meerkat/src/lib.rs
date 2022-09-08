@@ -2,7 +2,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use rpc::meerkat::MeerkatMsg;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Sender, UnboundedSender};
 use tonic::Status;
 
 pub mod coordinator;

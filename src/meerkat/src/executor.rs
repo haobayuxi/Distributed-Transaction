@@ -4,11 +4,12 @@ use common::{
     get_txnid,
     tatp::{AccessInfo, CallForwarding, Subscriber},
 };
+use parking_lot::RwLock;
 use rpc::{
     common::{ReadStruct, TxnOp},
     meerkat::MeerkatMsg,
 };
-use tokio::sync::{mpsc::UnboundedReceiver, OwnedRwLockWriteGuard, RwLock};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{MeerkatMeta, Msg};
 
@@ -73,7 +74,7 @@ impl Executor {
         let mut result_read_set = Vec::new();
         for read in msg.tmsg.read_set.iter() {
             let key = read.key;
-            let read_guard = mem.get(&key).unwrap().read().await;
+            let read_guard = mem.get(&key).unwrap().read();
             let result = ReadStruct {
                 key,
                 value: Some(read_guard.1.clone()),
@@ -98,7 +99,7 @@ impl Executor {
 
     async fn handle_prepare(&mut self, msg: Msg) {
         // println!("handle prepare {:?}", get_txnid(msg.tmsg.txn_id));
-        // check read set
+        // check read sets
         for read in msg.tmsg.read_set.iter() {
             // match self.mem.get(&read.key).unwrap().try_read() {
             //     Ok(read_guard) => {}
@@ -119,7 +120,7 @@ impl Executor {
             //     }
             // }
             let key = read.key;
-            let mut guard = self.mem.get(&key).unwrap().write().await;
+            let mut guard = self.mem.get(&key).unwrap().write();
             if read.timestamp.unwrap() < guard.0.version
                 || (guard.0.prepared_write.len() > 0
                     && read.timestamp.unwrap() < *guard.0.prepared_write.iter().min().unwrap())
@@ -136,7 +137,7 @@ impl Executor {
                     txn_type: None,
                 };
                 // send back to client
-                msg.callback.send(Ok(abort_msg)).await.unwrap();
+                msg.callback.send(Ok(abort_msg)).await;
                 return;
             }
             // insert ts to prepared read
@@ -144,27 +145,7 @@ impl Executor {
         }
         // validate write set
         for write in msg.tmsg.write_set.iter() {
-            // match self.mem.get(&write.key).unwrap().clone().try_write_owned() {
-            //     Ok(write_gurad) => {
-            //         self.guards.insert(write.key.clone(), write_gurad);
-            //     }
-            //     Err(_) => {
-            //         // abort
-            //         let abort_msg = MeerkatMsg {
-            //             txn_id: msg.tmsg.txn_id,
-            //             read_set: Vec::new(),
-            //             write_set: Vec::new(),
-            //             executor_id: self.id,
-            //             op: TxnOp::TAbort.into(),
-            //             from: self.server_id,
-            //             timestamp: 0,
-            //         };
-            //         // send back to client
-            //         msg.callback.send(abort_msg).await;
-            //         return;
-            //     }
-            // }
-            let mut guard = self.mem.get(&write.key).unwrap().write().await;
+            let mut guard = self.mem.get(&write.key).unwrap().write();
             if msg.tmsg.timestamp < guard.0.version
                 || (guard.0.prepared_read.len() > 0
                     && msg.tmsg.timestamp < *guard.0.prepared_read.iter().last().unwrap())
@@ -181,7 +162,8 @@ impl Executor {
                     txn_type: None,
                 };
                 // send back to client
-                msg.callback.send(Ok(abort_msg)).await;
+                let callback = msg.callback.clone();
+                callback.send(Ok(abort_msg)).await;
                 return;
             }
             guard.0.prepared_write.insert(msg.tmsg.timestamp);
@@ -207,7 +189,7 @@ impl Executor {
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {
             let key = read.key;
-            let mut guard = self.mem.get(&key).unwrap().write().await;
+            let mut guard = self.mem.get(&key).unwrap().write();
             guard.0.prepared_read.remove(&msg.tmsg.timestamp);
         }
 
@@ -216,7 +198,7 @@ impl Executor {
             // guard.0 = msg.tmsg.txn_id;
             // guard.1 = write.value.clone();
             // update value
-            let mut guard = self.mem.get(&write.key).unwrap().write().await;
+            let mut guard = self.mem.get(&write.key).unwrap().write();
             guard.1 = write.value;
             guard.0.prepared_write.remove(&msg.tmsg.timestamp);
         }
@@ -226,7 +208,7 @@ impl Executor {
         // release the prepare  read & prepare write
         for read in msg.tmsg.read_set.iter() {
             let key = read.key;
-            let mut guard = self.mem.get(&key).unwrap().write().await;
+            let mut guard = self.mem.get(&key).unwrap().write();
             guard.0.prepared_read.remove(&msg.tmsg.timestamp);
         }
 
@@ -235,7 +217,7 @@ impl Executor {
             // guard.0 = msg.tmsg.txn_id;
             // guard.1 = write.value.clone();
             // update value
-            let mut guard = self.mem.get(&write.key).unwrap().write().await;
+            let mut guard = self.mem.get(&write.key).unwrap().write();
             guard.0.prepared_write.remove(&msg.tmsg.timestamp);
         }
     }
