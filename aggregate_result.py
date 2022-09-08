@@ -43,8 +43,8 @@ def read_latency_results(RequestPerClient, ClientNum):
 
 
 if __name__ == "__main__":
-    type = sys.argv[1]
-    servertype = sys.argv[2]
-    if type == "t":
-        print("aggregate throughput")
-        read_throughput_results(servertype)
+    # type = sys.argv[1]
+    servertype = sys.argv[1]
+    # if type == "t":
+    print("aggregate throughput")
+    read_throughput_results(servertype)
