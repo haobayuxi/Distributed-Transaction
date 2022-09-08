@@ -84,6 +84,7 @@ impl DepGraph {
                     match recv.recv().await {
                         Some(commit) => {
                             let txnid = commit.txn.txn_id;
+                            println!("recv commit {:?}", get_txnid(txnid));
                             let (clientid, index) = get_txnid(txnid);
                             let node = &mut TXNS[clientid as usize][index as usize];
                             node.callback = Some(commit.callback);
@@ -119,6 +120,7 @@ impl DepGraph {
     fn apply(&mut self, txnid: u64) {
         unsafe {
             let (client_id, index) = get_txnid(txnid);
+            println!("send to apply {:?}", get_txnid(txnid));
             TXNS[client_id as usize][index as usize].executed = true;
         }
         self.apply.send(txnid);
