@@ -69,9 +69,12 @@ impl Peer {
         let mut exec_senders = HashMap::new();
         for i in 0..config.executor_num {
             let (exec_sender, exec_recv) = unbounded_channel::<Msg>();
-            let executor =
+            let mut executor =
                 Executor::new(server_id, arc_meta.clone(), dep_sender.clone(), exec_recv);
             exec_senders.insert(i, exec_sender);
+            tokio::spawn(async move {
+                executor.run().await;
+            });
         }
 
         Self {

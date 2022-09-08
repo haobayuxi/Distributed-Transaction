@@ -59,7 +59,7 @@ impl Executor {
         }
     }
 
-    async fn run(&mut self) {
+    pub async fn run(&mut self) {
         loop {
             match self.recv.recv().await {
                 Some(msg) => {
