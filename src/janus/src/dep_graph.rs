@@ -67,21 +67,6 @@ impl DepGraph {
             // TXNS.reserve(client_num);
         }
 
-        // let (waitlist_sender, waitlist_receiver) = unbounded_channel::<u64>();
-        // let graph_clone = graph.clone();
-        // tokio::spawn(async move {
-        //     unsafe {
-        //         let mut recv = recv;
-        //         loop {
-        //             match recv.recv().await {
-        //                 Some(commit) => {
-
-        //                 }
-        //                 None => continue,
-        //             }
-        //         }
-        //     }
-        // });
         Self {
             apply,
             wait_list,
@@ -156,7 +141,7 @@ impl DepGraph {
                             || !TXNS[dep_clientid as usize][dep_index as usize].committed
                         {
                             // not committed
-                            sleep(Duration::from_nanos(10)).await;
+                            sleep(Duration::from_micros(10)).await;
                         }
                         if TXNS[dep_clientid as usize][dep_index as usize].executed {
                             continue;
