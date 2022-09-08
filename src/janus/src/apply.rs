@@ -11,16 +11,12 @@ use crate::{dep_graph::TXNS, JanusMeta, Msg};
 
 pub struct Apply {
     recv: UnboundedReceiver<u64>,
-    mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
+    mem: HashMap<i64, String>,
     server_id: u32,
 }
 
 impl Apply {
-    pub fn new(
-        recv: UnboundedReceiver<u64>,
-        mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
-        server_id: u32,
-    ) -> Self {
+    pub fn new(recv: UnboundedReceiver<u64>, mem: HashMap<i64, String>, server_id: u32) -> Self {
         Self {
             recv,
             mem,
@@ -58,14 +54,14 @@ impl Apply {
             for read in node.txn.read_set.iter() {
                 let read_result = ReadStruct {
                     key: read.key.clone(),
-                    value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
+                    value: Some(self.mem.get(&read.key).unwrap().clone()),
                     timestamp: None,
                 };
                 result.read_set.push(read_result);
             }
 
             for write in node.txn.write_set.iter() {
-                self.mem.get(&write.key).unwrap().write().await.1 = write.value.clone();
+                self.mem.insert(write.key, write.value.clone());
             }
 
             // reply to coordinator

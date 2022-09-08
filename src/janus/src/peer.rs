@@ -26,7 +26,7 @@ pub struct Peer {
     server_id: u32,
 
     // memory
-    mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
+    // mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
     // dispatcher
     // executor_senders: HashMap<i32, UnboundedSender<Msg>>,
     executor: Executor,
@@ -37,13 +37,12 @@ impl Peer {
     pub fn new(server_id: u32, config: Config) -> Self {
         // init data
 
-        let mut kv = HashMap::new();
         // self.mem = Arc::new(mem);
         let data = init_ycsb();
-        for (key, value) in data {
-            kv.insert(key, RwLock::new((JanusMeta::default(), value)));
+        let mut meta = HashMap::new();
+        for (id, value) in data.iter() {
+            meta.insert(*id, JanusMeta::default());
         }
-        let mem = Arc::new(kv);
 
         let (dep_sender, dep_receiver) = unbounded_channel::<u64>();
         let (apply_sender, apply_receiver) = unbounded_channel::<u64>();
@@ -54,15 +53,14 @@ impl Peer {
         });
         // self.init_dep(apply_sender, dep_receiver, self.config.client_num as usize)
         //     .await;
-        let mut apply = Apply::new(apply_receiver, mem.clone(), server_id);
+        let mut apply = Apply::new(apply_receiver, data, server_id);
         tokio::spawn(async move {
             apply.run().await;
         });
-        let executor = Executor::new(server_id, mem.clone(), dep_sender);
+        let executor = Executor::new(server_id, meta, dep_sender);
 
         Self {
             server_id,
-            mem,
             // executor_senders: HashMap::new(),
             config,
             executor,

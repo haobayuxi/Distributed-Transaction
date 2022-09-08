@@ -21,7 +21,7 @@ use crate::{
 pub struct Executor {
     server_id: u32,
     // memory
-    mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
+    meta: HashMap<i64, JanusMeta>,
     // txns
     // txns: Arc<HashMap<u64, JanusMsg>>,
     //
@@ -32,12 +32,12 @@ pub struct Executor {
 impl Executor {
     pub fn new(
         server_id: u32,
-        mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
+        meta: HashMap<i64, JanusMeta>,
         dep_graph: UnboundedSender<u64>,
     ) -> Self {
         Self {
             server_id,
-            mem,
+            meta,
             dep_graph,
         }
     }
@@ -119,17 +119,17 @@ impl Executor {
         let mut result_dep = HashSet::new();
         // get the dep
         for read in msg.txn.read_set.iter() {
-            let mut guard = self.mem.get(&read.key).unwrap().write().await;
-            let dep = guard.0.last_visited_txnid;
-            guard.0.last_visited_txnid = msg.txn.txn_id;
+            let meta = self.meta.get_mut(&read.key).unwrap();
+            let dep = meta.last_visited_txnid;
+            meta.last_visited_txnid = msg.txn.txn_id;
             // result.deps.push(dep);
             result_dep.insert(dep);
         }
 
         for write in msg.txn.write_set.iter() {
-            let mut guard = self.mem.get(&write.key).unwrap().write().await;
-            let dep = guard.0.last_visited_txnid;
-            guard.0.last_visited_txnid = msg.txn.txn_id;
+            let meta = self.meta.get_mut(&write.key).unwrap();
+            let dep = meta.last_visited_txnid;
+            meta.last_visited_txnid = msg.txn.txn_id;
             // result.deps.push(dep);
             result_dep.insert(dep);
         }
