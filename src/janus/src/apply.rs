@@ -21,51 +21,49 @@ pub struct Apply {
 impl Apply {
     pub async fn run(&self) {
         unsafe {
-            loop {
-                for dep in self.msg.txn.deps.iter() {
-                    if *dep == 0 {
-                        continue;
-                    }
-                    let (dep_clientid, dep_index) = get_txnid(*dep);
-                    while TXNS[dep_clientid as usize].len() <= dep_index as usize
-                        || !TXNS[dep_clientid as usize][dep_index as usize].executed
-                    {
-                        // not executed
-                        sleep(Duration::from_nanos(1000));
-                    }
+            for dep in self.msg.txn.deps.iter() {
+                if *dep == 0 {
+                    continue;
                 }
-                // execute
-                let mut result = JanusMsg {
-                    txn_id: self.msg.txn.txn_id,
-                    read_set: Vec::new(),
-                    write_set: Vec::new(),
-                    op: TxnOp::CommitRes.into(),
-                    from: 0,
-                    deps: Vec::new(),
-                    txn_type: None,
+                let (dep_clientid, dep_index) = get_txnid(*dep);
+                while TXNS[dep_clientid as usize].len() <= dep_index as usize
+                    || !TXNS[dep_clientid as usize][dep_index as usize].executed
+                {
+                    // not executed
+                    sleep(Duration::from_nanos(1000));
+                }
+            }
+            // execute
+            let mut result = JanusMsg {
+                txn_id: self.msg.txn.txn_id,
+                read_set: Vec::new(),
+                write_set: Vec::new(),
+                op: TxnOp::CommitRes.into(),
+                from: 0,
+                deps: Vec::new(),
+                txn_type: None,
+            };
+
+            for read in self.msg.txn.read_set.iter() {
+                let index = self.mem_index.get(&read.key).unwrap();
+                let read_result = ReadStruct {
+                    key: read.key.clone(),
+                    value: Some(META[*index].1.read().await.clone()),
+                    timestamp: None,
                 };
+                result.read_set.push(read_result);
+            }
 
-                for read in self.msg.txn.read_set.iter() {
-                    let index = self.mem_index.get(&read.key).unwrap();
-                    let read_result = ReadStruct {
-                        key: read.key.clone(),
-                        value: Some(META[*index].1.read().await.clone()),
-                        timestamp: None,
-                    };
-                    result.read_set.push(read_result);
-                }
+            for write in self.msg.txn.write_set.iter() {
+                let index = self.mem_index.get(&write.key).unwrap();
+                let mut data = META[*index].1.write().await;
+                *data = write.value.clone();
+            }
 
-                for write in self.msg.txn.write_set.iter() {
-                    let index = self.mem_index.get(&write.key).unwrap();
-                    let mut data = META[*index].1.write().await;
-                    *data = write.value.clone();
-                }
-
-                // reply to coordinator
-                if self.is_reply {
-                    println!("execute {:?}", get_txnid(result.txn_id));
-                    self.msg.callback.send(Ok(result)).await;
-                }
+            // reply to coordinator
+            if self.is_reply {
+                println!("execute {:?}", get_txnid(result.txn_id));
+                self.msg.callback.send(Ok(result)).await;
             }
         }
     }
