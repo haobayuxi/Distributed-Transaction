@@ -9,14 +9,12 @@ use common::{
     tatp::{AccessInfo, CallForwarding, Subscriber},
     Data,
 };
+use parking_lot::RwLock;
 use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
 };
-use tokio::sync::{
-    mpsc::{channel, unbounded_channel, Receiver, Sender},
-    RwLock,
-};
+use tokio::sync::mpsc::{channel, unbounded_channel, Receiver, Sender};
 use tokio::time::sleep;
 // use tokio::time::Duration;
 
@@ -131,7 +129,7 @@ impl Executor {
         txn.read_set.clear();
         for read in read_set.iter_mut() {
             let key = read.key;
-            let mut tuple = self.index.get(&key).unwrap().write().await;
+            let mut tuple = self.index.get(&key).unwrap().write();
 
             let meta = &mut tuple.0;
             if meta.maxts < final_ts {
@@ -208,7 +206,7 @@ impl Executor {
         let mut write_ts_in_waitlist = Vec::new();
         for write in msg.tmsg.write_set.iter() {
             let key = write.key;
-            let mut tuple = self.index.get(&key).unwrap().write().await;
+            let mut tuple = self.index.get(&key).unwrap().write();
             {
                 let meta = &mut tuple.0;
                 if ts > meta.maxts {
@@ -247,7 +245,7 @@ impl Executor {
             let key = read.key;
             // find and update the ts
             {
-                let mut tuple = self.index.get(&key).unwrap().write().await;
+                let mut tuple = self.index.get(&key).unwrap().write();
                 let meta = &mut tuple.0;
                 if ts > meta.maxts {
                     meta.maxts = ts;
@@ -319,25 +317,25 @@ impl Executor {
         for (write, write_ts) in write_ts_in_waitlist.iter() {
             let key = write.key;
 
-            let mut tuple = self.index.get(&key).unwrap().write().await;
+            let mut tuple = self.index.get(&key).unwrap().write();
             // let meta = &mut tuple.0;
             if tuple.0.maxts < final_ts {
                 tuple.0.maxts = final_ts
             }
 
             // modify the wait list
-            println!(
-                "tuple remove {:?} ,{},{}, {:?}",
-                get_txnid(tid),
-                key,
-                *write_ts,
-                tuple.0.waitlist
-            );
-            let mut execution_context = tuple.0.waitlist.remove(write_ts).unwrap();
-            // tuple.0.waitlist.
-            // match tuple.0.waitlist
-            execution_context.committed = true;
-            tuple.0.waitlist.insert(final_ts, execution_context);
+            // println!(
+            //     "tuple remove {:?} ,{},{}, {:?}",
+            //     get_txnid(tid),
+            //     key,
+            //     *write_ts,
+            //     tuple.0.waitlist
+            // );
+
+            if let Some(mut execution_context) = tuple.0.waitlist.remove(write_ts) {
+                execution_context.committed = true;
+                tuple.0.waitlist.insert(final_ts, execution_context);
+            }
             // check pending txns execute the context if the write is committed
             loop {
                 match tuple.0.waitlist.pop_first() {
@@ -406,7 +404,7 @@ impl Executor {
         for read in read_set.iter_mut() {
             let key = read.key;
             {
-                let mut tuple = self.index.get(&key).unwrap().write().await;
+                let mut tuple = self.index.get(&key).unwrap().write();
                 let meta = &mut tuple.0;
                 if meta.maxts < final_ts {
                     meta.maxts = final_ts
