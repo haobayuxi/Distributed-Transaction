@@ -50,17 +50,21 @@ impl Executor {
     pub async fn run(&mut self) {
         loop {
             match self.recv.recv().await {
-                Some(msg) => match msg.tmsg.op() {
-                    TxnOp::Abort => self.handle_abort(msg).await,
-                    TxnOp::ReadOnly => self.handle_read(msg).await,
-                    TxnOp::Commit => self.handle_commit(msg).await,
-                    TxnOp::Prepare => self.handle_prepare(msg).await,
-                    TxnOp::PrepareRes => {}
-                    TxnOp::ReadOnlyRes => {}
-                    TxnOp::Accept => {}
-                    TxnOp::AcceptRes => {}
-                    TxnOp::CommitRes => {}
-                },
+                Some(msg) => {
+                    let reply = MeerkatMsg::default();
+                    msg.callback.send(Ok(reply)).await;
+                    // match msg.tmsg.op() {
+                    //     TxnOp::Abort => self.handle_abort(msg).await,
+                    //     TxnOp::ReadOnly => self.handle_read(msg).await,
+                    //     TxnOp::Commit => self.handle_commit(msg).await,
+                    //     TxnOp::Prepare => self.handle_prepare(msg).await,
+                    //     TxnOp::PrepareRes => {}
+                    //     TxnOp::ReadOnlyRes => {}
+                    //     TxnOp::Accept => {}
+                    //     TxnOp::AcceptRes => {}
+                    //     TxnOp::CommitRes => {}
+                    // }
+                }
                 None => {}
             }
         }
