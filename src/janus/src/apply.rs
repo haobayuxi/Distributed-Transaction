@@ -36,7 +36,7 @@ impl Apply {
     }
 
     async fn handle_execute(&mut self, txnid: u64) {
-        println!("execute txn {:?}", get_txnid(txnid));
+        // println!("execute txn {:?}", get_txnid(txnid));
         let (clientid, index) = get_txnid(txnid);
         unsafe {
             let node = &mut TXNS[clientid as usize][index as usize];
