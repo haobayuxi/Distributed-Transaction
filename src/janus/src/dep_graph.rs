@@ -111,6 +111,7 @@ impl DepGraph {
     fn apply(&mut self, txn: Msg) {
         let txnid = txn.txn.txn_id;
         let (client_id, index) = get_txnid(txnid);
+        println!("send execute {:?}", get_client_id(txnid));
         unsafe {
             TXNS[client_id as usize][index as usize].executed = true;
         }
