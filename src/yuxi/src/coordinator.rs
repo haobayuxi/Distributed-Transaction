@@ -1,7 +1,7 @@
 use chrono::Local;
 use std::{collections::HashMap, time::Duration};
 
-use common::{config::Config, ycsb::YcsbQuery};
+use common::{config::Config, ycsb::YcsbQuery, CID_LEN};
 use rpc::{common::TxnOp, yuxi::YuxiMsg};
 use tokio::{
     fs::OpenOptions,
@@ -41,7 +41,7 @@ impl YuxiCoordinator {
         Self {
             is_ycsb: true,
             id,
-            txn_id: (id as u64) << 50,
+            txn_id: (id as u64) << CID_LEN,
             txn: YuxiMsg::default(),
             servers: HashMap::new(),
             recv,

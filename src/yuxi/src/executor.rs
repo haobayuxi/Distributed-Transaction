@@ -5,6 +5,7 @@ use crate::{
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
+    get_txnid,
     tatp::{AccessInfo, CallForwarding, Subscriber},
     Data,
 };
@@ -234,10 +235,10 @@ impl Executor {
             }
         }
 
-        println!(
-            "wait list tid{},{:?}",
-            msg.tmsg.txn_id, write_ts_in_waitlist
-        );
+        // println!(
+        //     "wait list tid{},{:?}",
+        //     msg.tmsg.txn_id, write_ts_in_waitlist
+        // );
         self.txns
             .insert(msg.tmsg.txn_id, (msg.tmsg.clone(), write_ts_in_waitlist));
         for read in msg.tmsg.read_set.iter() {
@@ -312,7 +313,7 @@ impl Executor {
         //     msg.tmsg.from,
         //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
         // );
-        println!("check write {},{:?}", tid, write_ts_in_waitlist);
+        // println!("check write {},{:?}", tid, write_ts_in_waitlist);
         for (write, write_ts) in write_ts_in_waitlist.iter() {
             let key = write.key;
 
@@ -325,8 +326,15 @@ impl Executor {
                 }
 
                 // modify the wait list
-                println!("tuple remove {},{}, {:?}", key, *write_ts, tuple.0.waitlist);
+                println!(
+                    "tuple remove {:?} ,{},{}, {:?}",
+                    get_txnid(tid),
+                    key,
+                    *write_ts,
+                    tuple.0.waitlist
+                );
                 let mut execution_context = tuple.0.waitlist.remove(write_ts).unwrap();
+                // tuple.0.waitlist.
                 // match tuple.0.waitlist
                 execution_context.committed = true;
                 tuple.0.waitlist.insert(final_ts, execution_context);
