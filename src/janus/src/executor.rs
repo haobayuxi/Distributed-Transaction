@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use common::get_txnid;
 use rpc::{
@@ -118,7 +121,7 @@ impl Executor {
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        println!("prepare txn {:?}", get_txnid(msg.txn.txn_id));
+        // println!("prepare txn {:?}", get_txnid(msg.txn.txn_id));
         let mut result = JanusMsg {
             txn_id: msg.txn.txn_id,
             read_set: Vec::new(),
@@ -128,19 +131,25 @@ impl Executor {
             deps: Vec::new(),
             txn_type: None,
         };
+        let mut result_dep = HashSet::new();
         // get the dep
         for read in msg.txn.read_set.iter() {
             let mut guard = self.mem.get(&read.key).unwrap().write().await;
             let dep = guard.0.last_visited_txnid;
             guard.0.last_visited_txnid = msg.txn.txn_id;
-            result.deps.push(dep);
+            // result.deps.push(dep);
+            result_dep.insert(dep);
         }
 
         for write in msg.txn.write_set.iter() {
             let mut guard = self.mem.get(&write.key).unwrap().write().await;
             let dep = guard.0.last_visited_txnid;
             guard.0.last_visited_txnid = msg.txn.txn_id;
-            result.deps.push(dep);
+            // result.deps.push(dep);
+            result_dep.insert(dep);
+        }
+        for iter in result_dep.into_iter() {
+            result.deps.push(iter);
         }
 
         result.deps.sort();
