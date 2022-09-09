@@ -128,6 +128,7 @@ impl Apply {
 
             // reply to coordinator
             if node.txn.from % 3 == self.server_id {
+                println!("execute {:?}", get_txnid(txnid));
                 node.callback.take().unwrap().send(Ok(result)).await;
             }
         }
