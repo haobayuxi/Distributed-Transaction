@@ -63,6 +63,7 @@ impl ProposeClient {
         let total_start = Instant::now();
         for i in 0..self.txns_per_client {
             self.workload.generate();
+            println!("{}", i);
             self.txn_id += 1;
             self.txn = DastMsg {
                 txn_id: self.txn_id,

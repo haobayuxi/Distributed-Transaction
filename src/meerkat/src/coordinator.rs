@@ -72,7 +72,7 @@ impl MeerkatCoordinator {
                 j += 1;
             }
             let end_time = start.elapsed().as_micros();
-            // println!("latency time = {}", end_time);
+            println!("latency time = {}", end_time);
             latency_result.push(end_time);
         }
         let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
