@@ -71,7 +71,6 @@ impl Peer {
     }
 
     fn init_executors(&mut self, config: Config) {
-        // self.executor_num = config.executor_num;
         self.executor_num = config.executor_num;
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<Msg>();
