@@ -58,13 +58,13 @@ impl YuxiCoordinator {
         // run transactions
         let mut latency_result = Vec::new();
         self.txn.from = self.id;
-        println!("start exec txns {}", self.txns_per_client);
+        // println!("start exec txns {}", self.txns_per_client);
         let total_start = Instant::now();
 
         for i in 0..self.txns_per_client {
-            println!("{}", i);
+            // println!("{}", i);
             self.workload.generate();
-            println!("{}", i);
+            // println!("{}", i);
             self.txn.txn_id = self.txn_id;
             self.txn.read_set = self.workload.read_set.clone();
             self.txn.write_set = self.workload.write_set.clone();

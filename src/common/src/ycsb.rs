@@ -65,15 +65,14 @@ impl YcsbQuery {
         for _ in 0..self.req_per_query {
             let op = f64_rand(0.0, 1.0, 0.01);
 
-            let mut key = self.zipf(self.table_size as u64, self.theta);
-            loop {
-                if keys.contains(&key) {
-                    key = self.zipf(self.table_size as u64, self.theta);
-                } else {
-                    keys.push(key);
-                    break;
-                }
+            let key = self.zipf(self.table_size as u64, self.theta);
+
+            if keys.contains(&key) {
+                continue;
+            } else {
+                keys.push(key);
             }
+
             if op * 100.0 <= self.read_perc as f64 {
                 self.read_set.push(ReadStruct {
                     key: key as i64,
