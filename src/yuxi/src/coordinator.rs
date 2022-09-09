@@ -63,7 +63,7 @@ impl YuxiCoordinator {
 
         for i in 0..self.txns_per_client {
             self.workload.generate();
-            // println!("{},{}", self.txns_per_client, i);
+            println!("{}", i);
             self.txn.txn_id = self.txn_id;
             self.txn.read_set = self.workload.read_set.clone();
             self.txn.write_set = self.workload.write_set.clone();
