@@ -47,7 +47,7 @@ def read_local_throughput_results(startid, ClientNum):
         result += float(line.strip('\n'))
         f.close()
         latency_file = open(latency_name)
-        latency = latency_file.read_line()
+        latency = latency_file.readline()
         result_latency_file.write(str(latency)+"\n")
         latency_file.close()
         os.remove(file_name)
@@ -91,7 +91,7 @@ def increase_zipf():
     with open('config.yml', "r") as f:
         content = yaml.load(f, Loader=yaml.RoundTripLoader)
         x = content['zipf']
-        if x == 1:
+        if x >= 1:
             content['zipf'] = 0.5
         else:
             content['zipf'] = x + 0.1
@@ -109,7 +109,9 @@ def main():
     send_result(IP, str(startid)+"throughput")
     send_result(IP, str(startid)+"latency")
     file_name = str(startid)+"throughput"
+    latency_file_name = str(startid)+"latency"
     os.remove(file_name)
+    os.remove(latency_file_name)
     # vim config
     increase_zipf()
     logger.info("done")
