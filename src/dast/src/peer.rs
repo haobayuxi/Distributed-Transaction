@@ -371,6 +371,7 @@ impl Peer {
             match &txn_in_memory.callback {
                 Some(callback) => {
                     //
+                    println!("execute {:?}", get_txnid(reply.txn_id));
                     callback.send(reply).await;
                 }
                 None => continue,
