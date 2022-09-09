@@ -107,34 +107,22 @@ impl Executor {
             node.callback = Some(commit.callback);
             node.txn.deps = commit.txn.deps;
             node.committed = true;
-            // let is_reply = if commit.txn.from % 3 == self.server_id {
-            //     true
-            // } else {
-            //     false
-            // };
-            // let apply = Apply {
-            //     mem_index: self.meta_index.clone(),
-            //     msg: commit,
-            //     is_reply,
-            // };
-            // tokio::spawn(async move {
-            //     apply.run().await;
-            // });
-            self.dep_graph.send(txnid);
 
-            // let mut result = JanusMsg {
-            //     txn_id: txnid,
-            //     read_set: Vec::new(),
-            //     write_set: Vec::new(),
-            //     op: TxnOp::CommitRes.into(),
-            //     from: self.server_id,
-            //     deps: Vec::new(),
-            //     txn_type: None,
-            // };
-            // // reply to coordinator
-            // if commit.txn.from % 3 == self.server_id {
-            //     node.callback.take().unwrap().send(Ok(result)).await;
-            // }
+            // self.dep_graph.send(txnid);
+
+            let mut result = JanusMsg {
+                txn_id: txnid,
+                read_set: Vec::new(),
+                write_set: Vec::new(),
+                op: TxnOp::CommitRes.into(),
+                from: self.server_id,
+                deps: Vec::new(),
+                txn_type: None,
+            };
+            // reply to coordinator
+            if commit.txn.from % 3 == self.server_id {
+                node.callback.take().unwrap().send(Ok(result)).await;
+            }
         }
     }
 
