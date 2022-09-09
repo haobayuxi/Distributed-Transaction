@@ -36,6 +36,8 @@ def read_local_throughput_results(startid, ClientNum):
     result = 0.0
     result_file_name = str(startid)+"throughput"
     result_file = open(result_file_name, 'w')
+    result_latency_file_name = str(startid)+"latency"
+    result_latency_file = open(result_latency_file_name, 'w')
     i = startid
     while i < ClientNum + startid:
         file_name = str(i)+"throughput.data"
@@ -44,11 +46,16 @@ def read_local_throughput_results(startid, ClientNum):
         line = f.readline()
         result += float(line.strip('\n'))
         f.close()
+        latency_file = open(latency_name)
+        latency = latency_file.read_line()
+        result_latency_file.write(str(latency)+"\n")
+        latency_file.close()
         os.remove(file_name)
         os.remove(latency_name)
         i += 1
     result_file.write(str(result)+"\n")
     result_file.close()
+    result_latency_file.close()
 
 
 def run_clients(start_client_id, client_num):
@@ -100,6 +107,7 @@ def main():
     run_clients(startid, num)
     read_local_throughput_results(startid, num)
     send_result(IP, str(startid)+"throughput")
+    send_result(IP, str(startid)+"latency")
     file_name = str(startid)+"throughput"
     os.remove(file_name)
     # vim config
