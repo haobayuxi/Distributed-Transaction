@@ -62,8 +62,7 @@ impl YuxiCoordinator {
 
         for i in 0..self.txns_per_client {
             self.workload.generate();
-            self.txn_id += 1;
-            println!("{},{}", self.txns_per_client, i);
+            // println!("{},{}", self.txns_per_client, i);
             self.txn.txn_id = self.txn_id;
             self.txn.read_set = self.workload.read_set.clone();
             self.txn.write_set = self.workload.write_set.clone();
@@ -77,8 +76,10 @@ impl YuxiCoordinator {
             }
 
             let end_time = start.elapsed().as_micros();
-            // println!("latency time = {}", end_time);
+            println!("latency time = {}", end_time);
             latency_result.push(end_time);
+
+            self.txn_id += 1;
         }
 
         let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
@@ -113,6 +114,7 @@ impl YuxiCoordinator {
     async fn run_readonly(&mut self) {
         let server_id = self.id % 3;
         // let server_id = ;
+        println!("read only");
         let time = (Local::now().timestamp_nanos() / 1000) as u64;
         self.txn.timestamp = time;
         self.servers
@@ -126,6 +128,7 @@ impl YuxiCoordinator {
 
     async fn run_transaction(&mut self) -> bool {
         // init ts
+        println!("txn");
         let timestamp = (Local::now().timestamp_nanos() / 1000) as u64;
 
         // prepare, prepare will send to all the server
