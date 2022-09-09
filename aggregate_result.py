@@ -14,10 +14,12 @@ def read_throughput_results(type):
         if "throughput" in file_name:
             f = open(file_name)
             line = f.readline()
+            print(float(line.strip('\n')))
             result += float(line.strip('\n'))
+            print(result)
             f.close()
             os.remove(file_name)
-    file_name = "final/" + type
+    file_name = type + "/throughput"
     result_file = open(file_name, 'a')
     result_file.write(str(result)+'\n')
     result_file.close()
