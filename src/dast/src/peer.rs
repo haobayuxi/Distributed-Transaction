@@ -218,33 +218,33 @@ impl Peer {
         //     txn.timestamp,
         //     get_txnid(txn.txn_id)
         // );
-        let mut txn_in_memory = self
-            .readyq
-            .get_mut(&txn.timestamp)
-            .unwrap()
-            .as_mut()
-            .unwrap();
-        txn_in_memory.reply_num += 1;
-        if txn_in_memory.reply_num == self.majority_size {
-            // commit
-            txn_in_memory.committed = true;
-            let commit = DastMsg {
-                txn_id: txn.txn_id,
-                read_set: Vec::new(),
-                write_set: Vec::new(),
-                op: TxnOp::Commit.into(),
-                from: self.id,
-                timestamp: txn.timestamp,
-                txn_type: txn.txn_type,
-                notified_txn_ts: Vec::new(),
-                maxts: self.maxTs[self.id as usize],
-            };
+        match self.readyq.get_mut(&txn.timestamp) {
+            Some(txn_im_memory_option) => {
+                let mut txn_in_memory = txn_im_memory_option.as_mut().unwrap();
+                txn_in_memory.reply_num += 1;
+                if txn_in_memory.reply_num == self.majority_size {
+                    // commit
+                    txn_in_memory.committed = true;
+                    let commit = DastMsg {
+                        txn_id: txn.txn_id,
+                        read_set: Vec::new(),
+                        write_set: Vec::new(),
+                        op: TxnOp::Commit.into(),
+                        from: self.id,
+                        timestamp: txn.timestamp,
+                        txn_type: txn.txn_type,
+                        notified_txn_ts: Vec::new(),
+                        maxts: self.maxTs[self.id as usize],
+                    };
 
-            self.broadcast(commit).await;
-            // execute
+                    self.broadcast(commit).await;
+                    // execute
 
-            let to_execute = self.check_txn();
-            self.execute_txn(to_execute).await;
+                    let to_execute = self.check_txn();
+                    self.execute_txn(to_execute).await;
+                }
+            }
+            None => return,
         }
     }
 

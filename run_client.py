@@ -76,7 +76,7 @@ def increase_zipf():
     with open('config.yml', "r") as f:
         content = yaml.load(f, Loader=yaml.RoundTripLoader)
         x = content['zipf']
-        if x >= 1:
+        if x >= 0.95:
             content['zipf'] = 0.5
         else:
             content['zipf'] = x + 0.1
