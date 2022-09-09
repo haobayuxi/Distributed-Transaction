@@ -48,7 +48,7 @@ def read_local_throughput_results(startid, ClientNum):
         f.close()
         latency_file = open(latency_name)
         latency = latency_file.readline()
-        result_latency_file.write(str(latency)+"\n")
+        result_latency_file.write(str(latency))
         latency_file.close()
         os.remove(file_name)
         os.remove(latency_name)
@@ -56,21 +56,6 @@ def read_local_throughput_results(startid, ClientNum):
     result_file.write(str(result)+"\n")
     result_file.close()
     result_latency_file.close()
-
-
-def run_clients(start_client_id, client_num):
-    client_id = start_client_id
-    process = []
-    while client_id < start_client_id + client_num:
-        cmd = ["./dast_client " + str(client_id)]
- #       cmd.extend([client_id])
-        logger.info("running client %d", client_id)
-        p = subprocess.Popen(
-            cmd, shell=True, stdout=subprocess.PIPE)
-        process.append(p)
-        client_id += 1
-    for p in process:
-        p.wait()
 
 
 def increase_conflict():
@@ -97,6 +82,21 @@ def increase_zipf():
             content['zipf'] = x + 0.1
     with open('config.yml', "w") as f:
         yaml.dump(content, f, Dumper=yaml.RoundTripDumper)
+
+
+def run_clients(start_client_id, client_num):
+    client_id = start_client_id
+    process = []
+    while client_id < start_client_id + client_num:
+        cmd = ["./dast_client " + str(client_id)]
+ #       cmd.extend([client_id])
+        logger.info("running client %d", client_id)
+        p = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE)
+        process.append(p)
+        client_id += 1
+    for p in process:
+        p.wait()
 
 
 def main():
