@@ -58,6 +58,7 @@ impl YuxiCoordinator {
         // run transactions
         let mut latency_result = Vec::new();
         self.txn.from = self.id;
+        println!("start exec txns {}", self.txns_per_client);
         let total_start = Instant::now();
 
         for i in 0..self.txns_per_client {
