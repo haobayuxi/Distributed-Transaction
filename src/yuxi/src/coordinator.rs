@@ -55,6 +55,11 @@ impl YuxiCoordinator {
         // self.init_workload();
         self.init_rpc(sender).await;
         println!("init rpc done");
+        // let workloads = Vec::new();
+        // for i in 0..self.txns_per_client {
+        //     self.workload.generate();
+        //     workloads.push()
+        // }
         // run transactions
         let mut latency_result = Vec::new();
         self.txn.from = self.id;
