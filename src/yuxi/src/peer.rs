@@ -30,10 +30,6 @@ pub struct Meta {
     pub smallest_wait_ts: TS,
 }
 
-// msg queue
-pub static mut IN_MEMORY_MQ: Vec<Vec<Option<Msg>>> = Vec::new();
-pub static mut COUNT: usize = 0;
-
 pub struct Peer {
     server_id: u32,
 
@@ -156,7 +152,6 @@ impl Peer {
                         //     self.msg_queue_index[executor_id as usize],
                         //     COUNT
                         // );
-                        COUNT += 1;
                         self.executor_senders
                             .get(&executor_id)
                             .unwrap()

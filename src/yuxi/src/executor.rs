@@ -1,9 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use crate::{
-    peer::{Meta, COUNT, IN_MEMORY_MQ},
-    ExecuteContext, MaxTs, Msg, VersionData, TS,
-};
+use crate::{peer::Meta, ExecuteContext, MaxTs, Msg, VersionData, TS};
 use common::{
     get_txnid,
     tatp::{AccessInfo, CallForwarding, Subscriber},
@@ -24,9 +21,7 @@ pub struct Executor {
 
     replica_num: u32,
     recv: Receiver<Msg>,
-    // sender: Sender<Msg>,
     // cache the txn in memory
-    msg_queue_index: usize,
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
     // ycsb
@@ -43,7 +38,6 @@ impl Executor {
         executor_id: u32,
         server_id: u32,
         recv: Receiver<Msg>,
-        // sender: Sender<Msg>,
         index: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
     ) -> Self {
         Self {
@@ -51,7 +45,6 @@ impl Executor {
             server_id,
             replica_num: 3,
             recv,
-            msg_queue_index: 0,
             // sender,
             txns: HashMap::new(),
             index,
@@ -68,11 +61,6 @@ impl Executor {
             match self.recv.recv().await {
                 Some(msg) => {
                     self.handle_msg(msg).await;
-
-                    // i += 1;
-                    // unsafe {
-                    //     println!("handle msg {} {} ", i, COUNT);
-                    // }
                 }
                 None => {
                     sleep(Duration::from_millis(2)).await;

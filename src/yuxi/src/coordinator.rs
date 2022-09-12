@@ -136,7 +136,7 @@ impl YuxiCoordinator {
     async fn run_transaction(&mut self) -> bool {
         // init ts
         println!("txn");
-        let timestamp = (Local::now().timestamp_nanos() / 1000) as u64 + 150;
+        let timestamp = (Local::now().timestamp_nanos() / 1000) as u64 + 200;
 
         // prepare, prepare will send to all the server
         self.txn.timestamp = timestamp;
