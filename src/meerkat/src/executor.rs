@@ -98,7 +98,7 @@ impl Executor {
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        println!("handle prepare {:?}", get_txnid(msg.tmsg.txn_id));
+        // println!("handle prepare {:?}", get_txnid(msg.tmsg.txn_id));
         // check read sets
         let mut abort = false;
         for read in msg.tmsg.read_set.iter() {
