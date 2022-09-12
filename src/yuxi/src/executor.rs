@@ -6,7 +6,7 @@ use common::{
     tatp::{AccessInfo, CallForwarding, Subscriber},
     Data,
 };
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
@@ -23,7 +23,7 @@ pub struct Executor {
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
     // ycsb
-    index: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
+    index: Arc<HashMap<i64, Mutex<(Meta, Vec<VersionData>)>>>,
     // tatp
     subscriber: Arc<HashMap<u64, usize>>,
     access_info: Arc<HashMap<u64, usize>>,
@@ -36,7 +36,7 @@ impl Executor {
         executor_id: u32,
         server_id: u32,
         recv: Receiver<Msg>,
-        index: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
+        index: Arc<HashMap<i64, Mutex<(Meta, Vec<VersionData>)>>>,
     ) -> Self {
         Self {
             executor_id,
@@ -116,7 +116,7 @@ impl Executor {
         txn.read_set.clear();
         for read in read_set.iter_mut() {
             let key = read.key;
-            let mut tuple = self.index.get(&key).unwrap().write();
+            let mut tuple = self.index.get(&key).unwrap().lock();
 
             let meta = &mut tuple.0;
             if meta.maxts < final_ts {
@@ -193,7 +193,7 @@ impl Executor {
         let mut write_ts_in_waitlist = Vec::new();
         for write in msg.tmsg.write_set.iter() {
             let key = write.key;
-            let mut tuple = self.index.get(&key).unwrap().write();
+            let mut tuple = self.index.get(&key).unwrap().lock();
             {
                 let meta = &mut tuple.0;
                 if ts > meta.maxts {
@@ -232,7 +232,7 @@ impl Executor {
             let key = read.key;
             // find and update the ts
 
-            let mut tuple = self.index.get(&key).unwrap().write();
+            let mut tuple = self.index.get(&key).unwrap().lock();
             let meta = &mut tuple.0;
             if ts > meta.maxts {
                 meta.maxts = ts;
@@ -298,7 +298,7 @@ impl Executor {
         for (write, write_ts) in write_ts_in_waitlist.into_iter() {
             let key = write.key;
 
-            let mut tuple = self.index.get(&key).unwrap().write();
+            let mut tuple = self.index.get(&key).unwrap().lock();
             // let meta = &mut tuple.0;
             if tuple.0.maxts < final_ts {
                 tuple.0.maxts = final_ts
@@ -376,7 +376,7 @@ impl Executor {
         for read in read_set.iter_mut() {
             let key = read.key;
             {
-                let mut tuple = self.index.get(&key).unwrap().write();
+                let mut tuple = self.index.get(&key).unwrap().lock();
                 let meta = &mut tuple.0;
                 if meta.maxts < final_ts {
                     meta.maxts = final_ts

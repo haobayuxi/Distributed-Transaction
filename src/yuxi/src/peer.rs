@@ -5,13 +5,10 @@ use std::{
 
 use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
-use parking_lot::RwLock;
+use parking_lot::Mutex;
 use rpc::yuxi::YuxiMsg;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{
-    mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
-    Mutex,
-};
+use tokio::sync::mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender};
 
 use crate::{
     executor::Executor,
@@ -63,7 +60,7 @@ impl Peer {
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    fn init_data(&mut self) -> HashMap<i64, RwLock<(Meta, Vec<VersionData>)>> {
+    fn init_data(&mut self) -> HashMap<i64, Mutex<(Meta, Vec<VersionData>)>> {
         // init
         unsafe {
             let mut indexs = HashMap::new();
@@ -80,7 +77,7 @@ impl Peer {
                 };
                 indexs.insert(
                     key,
-                    RwLock::new((
+                    Mutex::new((
                         Meta {
                             maxts: 0,
                             waitlist: BTreeMap::new(),
@@ -111,7 +108,7 @@ impl Peer {
     fn init_executors(
         &mut self,
         config: Config,
-        indexs: Arc<HashMap<i64, RwLock<(Meta, Vec<VersionData>)>>>,
+        indexs: Arc<HashMap<i64, Mutex<(Meta, Vec<VersionData>)>>>,
     ) {
         // self.executor_num = config.executor_num;
         self.executor_num = config.executor_num;
