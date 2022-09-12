@@ -121,7 +121,7 @@ impl YuxiCoordinator {
     async fn run_readonly(&mut self) {
         let server_id = self.id % 3;
         // let server_id = ;
-        println!("read only");
+        // println!("read only");
         let time = (Local::now().timestamp_nanos() / 1000) as u64;
         self.txn.timestamp = time;
         self.servers
@@ -135,8 +135,8 @@ impl YuxiCoordinator {
 
     async fn run_transaction(&mut self) -> bool {
         // init ts
-        println!("txn");
-        let timestamp = (Local::now().timestamp_nanos() / 1000) as u64 + 200;
+        // println!("txn");
+        let timestamp = (Local::now().timestamp_nanos() / 1000) as u64 + 600;
 
         // prepare, prepare will send to all the server
         self.txn.timestamp = timestamp;

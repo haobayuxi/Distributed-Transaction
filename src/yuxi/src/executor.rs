@@ -18,8 +18,6 @@ use tokio::time::sleep;
 pub struct Executor {
     executor_id: u32,
     server_id: u32,
-
-    replica_num: u32,
     recv: Receiver<Msg>,
     // cache the txn in memory
     // Vec<TS> is used to index the write in waitlist
@@ -43,7 +41,6 @@ impl Executor {
         Self {
             executor_id,
             server_id,
-            replica_num: 3,
             recv,
             // sender,
             txns: HashMap::new(),
@@ -56,7 +53,6 @@ impl Executor {
     }
 
     pub async fn run(&mut self) {
-        // let mut i = 0;
         loop {
             match self.recv.recv().await {
                 Some(msg) => {
@@ -295,11 +291,6 @@ impl Executor {
         } else {
             false
         };
-        // if isreply {
-        //     let reply = YuxiMsg::default();
-        //     msg.callback.send(Ok(reply)).await;
-        // }
-        // return;
         // get write_ts in waitlist to erase
         let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
 

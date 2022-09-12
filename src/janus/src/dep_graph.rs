@@ -135,13 +135,13 @@ impl DepGraph {
                     self.index += 1;
                     node.dfn = self.index;
                     node.low = self.index;
-                    for dep in node.txn.deps.clone() {
-                        if dep == 0 {
+                    for dep in node.txn.deps.iter() {
+                        if *dep == 0 {
                             continue;
                         }
                         // let dep_index = dep >> CID_LEN;
                         // let dep_clientid = get_client_id(dep);
-                        let (dep_clientid, dep_index) = get_txnid(dep);
+                        let (dep_clientid, dep_index) = get_txnid(*dep);
                         while TXNS[dep_clientid as usize].len() <= dep_index as usize
                             || !TXNS[dep_clientid as usize][dep_index as usize].committed
                         {
@@ -158,7 +158,7 @@ impl DepGraph {
                             // not in stack
                             // println!("push into stack {}, {}", dep_clientid, dep_index);
                             next.dfn = 0;
-                            self.stack.push(dep);
+                            self.stack.push(*dep);
                             self.visit += 1;
                         } else {
                             if node.low > next.dfn {

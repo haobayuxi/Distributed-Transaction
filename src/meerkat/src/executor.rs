@@ -68,13 +68,13 @@ impl Executor {
 
     async fn handle_read(&mut self, msg: Msg) {
         // perform read & return read ts
-        let mem = self.mem.clone();
+        // let mem = self.mem.clone();
         let server_id = self.server_id;
         // tokio::spawn(async move {
         let mut result_read_set = Vec::new();
         for read in msg.tmsg.read_set.iter() {
             let key = read.key;
-            let read_guard = mem.get(&key).unwrap().read();
+            let read_guard = self.mem.get(&key).unwrap().read();
             let result = ReadStruct {
                 key,
                 value: Some(read_guard.1.clone()),
