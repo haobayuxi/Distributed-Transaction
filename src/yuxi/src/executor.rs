@@ -158,11 +158,11 @@ impl Executor {
             }
         }
 
-        // println!("wait for {}", waiting_for_read_result);
         if waiting_for_read_result == 0 {
             // reply to coordinator
             msg.callback.send(Ok(txn)).await;
         } else {
+            println!("wait for {}", waiting_for_read_result);
             // spawn a new task for this
             tokio::spawn(async move {
                 while waiting_for_read_result > 0 {
