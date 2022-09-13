@@ -82,7 +82,6 @@ impl Executor {
             result_read_set.push(result);
         }
         // send result back
-        // println!("read set {:?}", result_read_set);
         let read_back = MeerkatMsg {
             txn_id: msg.tmsg.txn_id,
             read_set: result_read_set,
@@ -108,6 +107,11 @@ impl Executor {
                     && msg.tmsg.timestamp < *guard.0.prepared_write.iter().min().unwrap())
             {
                 abort = true;
+                println!(
+                    "read ts {}, prepare write {}",
+                    read.timestamp(),
+                    *guard.0.prepared_write.iter().min().unwrap()
+                );
                 break;
             }
             // insert ts to prepared read
@@ -166,9 +170,6 @@ impl Executor {
         }
 
         for write in msg.tmsg.write_set {
-            // let mut guard = self.guards.remove(&write.key).unwrap();
-            // guard.0 = msg.tmsg.txn_id;
-            // guard.1 = write.value.clone();
             // update value
             let mut guard = self.mem.get(&write.key).unwrap().write();
             guard.1 = write.value;
@@ -188,10 +189,6 @@ impl Executor {
         }
 
         for write in msg.write_set {
-            // let mut guard = self.guards.remove(&write.key).unwrap();
-            // guard.0 = msg.tmsg.txn_id;
-            // guard.1 = write.value.clone();
-            // update value
             let mut guard = self.mem.get(&write.key).unwrap().write();
             guard.0.prepared_write.remove(&msg.timestamp);
         }

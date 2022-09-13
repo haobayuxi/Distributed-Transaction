@@ -11,11 +11,10 @@ use tokio::{
     sync::mpsc::{channel, unbounded_channel, Receiver, Sender},
     time::{sleep, Instant},
 };
-use tonic::transport::Channel;
 
 use crate::peer_communication::RpcClient;
 
-static RETRY: i32 = 20;
+static RETRY: i32 = 10;
 
 pub struct MeerkatCoordinator {
     config: Config,
@@ -59,19 +58,17 @@ impl MeerkatCoordinator {
         let mut latency_result = Vec::new();
         // send msgs
         let total_start = Instant::now();
-        for i in 0..self.txns_per_client {
+        for _ in 0..self.txns_per_client {
             self.txn_id += 1;
             self.txn.txn_id = self.txn_id;
             self.workload.generate();
             self.txn.read_set = self.workload.read_set.clone();
             self.txn.write_set = self.workload.write_set.clone();
             let start = Instant::now();
-            let mut j = 0;
-            while j < RETRY {
+            for _ in 0..RETRY {
                 if self.run_transaction().await {
                     break;
                 }
-                j += 1;
             }
             let end_time = start.elapsed().as_micros();
             println!("latency time = {}", end_time);
