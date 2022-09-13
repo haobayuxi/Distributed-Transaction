@@ -63,6 +63,8 @@ impl MeerkatCoordinator {
             self.txn_id += 1;
             self.txn.txn_id = self.txn_id;
             self.workload.generate();
+            self.txn.read_set = self.workload.read_set.clone();
+            self.txn.write_set = self.workload.write_set.clone();
             let start = Instant::now();
             let mut j = 0;
             while j < RETRY {

@@ -92,13 +92,15 @@ impl DepGraph {
         }
     }
 
-    fn apply(&mut self, txnid: u64) {
+    fn apply(&mut self, txnids: Vec<u64>) {
         unsafe {
-            let (client_id, index) = get_txnid(txnid);
-            // println!("send to apply {:?}", get_txnid(txnid));
-            TXNS[client_id as usize][index as usize].executed = true;
+            for txnid in txnids {
+                let (client_id, index) = get_txnid(txnid);
+                // println!("send to apply {:?}", get_txnid(txnid));
+                TXNS[client_id as usize][index as usize].executed = true;
+                self.apply.send(txnid);
+            }
         }
-        self.apply.send(txnid);
     }
 
     fn execute_txn(&mut self, txnid: u64) {
@@ -190,10 +192,10 @@ impl DepGraph {
                         //     }
                         // });
                         // execute & update last_executed
-                        for msg in to_execute {
-                            // send txn to executor
-                            self.apply(msg);
-                        }
+                        // for msg in to_execute {
+                        // send txn to executor
+                        self.apply(to_execute);
+                        // }
                     } else {
                         self.visit -= 1;
                     }
