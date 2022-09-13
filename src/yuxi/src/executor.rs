@@ -129,6 +129,7 @@ impl Executor {
                 }
 
                 if final_ts > meta.smallest_wait_ts {
+                    println!("final ts {}, wait for {}", final_ts, meta.smallest_wait_ts);
                     waiting_for_read_result += 1;
                     // insert a read task
                     let execution_context = ExecuteContext {
@@ -162,7 +163,7 @@ impl Executor {
             // reply to coordinator
             msg.callback.send(Ok(txn)).await;
         } else {
-            println!("wait for {}", waiting_for_read_result);
+            // println!("wait for {}", waiting_for_read_result);
             // spawn a new task for this
             tokio::spawn(async move {
                 while waiting_for_read_result > 0 {
