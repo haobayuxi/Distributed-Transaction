@@ -54,7 +54,7 @@ impl JanusCoordinator {
     async fn run_transaction(&mut self) -> bool {
         // prepare
 
-        // println!("prepare");
+        println!("prepare");
         self.txn.deps.clear();
         self.txn.read_set = self.workload.read_set.clone();
         self.txn.write_set = self.workload.write_set.clone();
@@ -78,6 +78,7 @@ impl JanusCoordinator {
             }
         }
         self.txn.deps = result.deps;
+        println!("deps {:?}", self.txn.deps);
         if !fast_commit {
             // accept
             // println!("accept");
@@ -91,11 +92,12 @@ impl JanusCoordinator {
             }
         }
         // txn success
-        // println!("commit ");
+        println!("commit ");
         let mut commit = self.txn.clone();
         commit.op = TxnOp::Commit.into();
         self.broadcast(commit).await;
         self.recv.recv().await;
+        println!("get recv");
         return true;
     }
 
