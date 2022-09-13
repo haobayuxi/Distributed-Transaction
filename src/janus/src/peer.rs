@@ -68,7 +68,11 @@ impl Peer {
         let (dep_sender, dep_receiver) = channel::<u64>();
         let (apply_sender, apply_receiver) = unbounded_channel::<u64>();
 
-        let mut dep_graph = DepGraph::new(apply_sender, dep_receiver, config.client_num as usize);
+        let mut dep_graph = DepGraph::new(
+            apply_sender.clone(),
+            dep_receiver,
+            config.client_num as usize,
+        );
         spawn_blocking(move || {
             dep_graph.run();
         });
@@ -82,8 +86,13 @@ impl Peer {
         let mut exec_senders = HashMap::new();
         for i in 0..config.executor_num {
             let (exec_sender, exec_recv) = unbounded_channel::<Msg>();
-            let mut executor =
-                Executor::new(server_id, arc_meta.clone(), dep_sender.clone(), exec_recv);
+            let mut executor = Executor::new(
+                server_id,
+                arc_meta.clone(),
+                dep_sender.clone(),
+                exec_recv,
+                apply_sender.clone(),
+            );
             exec_senders.insert(i, exec_sender);
             tokio::spawn(async move {
                 executor.run().await;

@@ -29,6 +29,7 @@ pub struct Executor {
     //
     recv: UnboundedReceiver<Msg>,
     dep_graph: Sender<u64>,
+    apply: UnboundedSender<u64>,
 }
 
 impl Executor {
@@ -37,12 +38,14 @@ impl Executor {
         meta_index: Arc<HashMap<i64, usize>>,
         dep_graph: Sender<u64>,
         recv: UnboundedReceiver<Msg>,
+        apply: UnboundedSender<u64>,
     ) -> Self {
         Self {
             server_id,
             meta_index,
             dep_graph,
             recv,
+            apply,
         }
     }
 
@@ -109,6 +112,36 @@ impl Executor {
             node.callback = Some(commit.callback);
             node.txn.deps = commit.txn.deps;
             node.committed = true;
+
+            let mut executed = true;
+            for dep in node.txn.deps.iter() {
+                if *dep == 0 {
+                    continue;
+                }
+                let (dep_clientid, dep_index) = get_txnid(*dep);
+                while TXNS[dep_clientid as usize].len() <= dep_index as usize
+                    || !TXNS[dep_clientid as usize][dep_index as usize].committed
+                {
+                    // not committed
+                    executed = false;
+                    break;
+                }
+                if executed {
+                    let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
+                    if next.executed {
+                        continue;
+                    } else {
+                        executed = false;
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            if executed {
+                node.executed = true;
+                self.apply.send(txnid);
+            }
 
             // let mut result = JanusMsg {
             //     txn_id: txnid,
