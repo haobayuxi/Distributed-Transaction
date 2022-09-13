@@ -117,6 +117,7 @@ impl MeerkatCoordinator {
 
     async fn run_transaction(&mut self) -> bool {
         let timestamp = get_local_time(self.id);
+        self.txn.timestamp = timestamp;
         // get the read set from server
         // execute phase
         let read_server_index = self.id % 3;
