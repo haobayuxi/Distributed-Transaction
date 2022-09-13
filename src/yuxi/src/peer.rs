@@ -5,16 +5,21 @@ use std::{
 
 use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use rpc::yuxi::YuxiMsg;
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender};
+use tokio::sync::{
+    mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
+    Mutex,
+};
 
 use crate::{
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
     MaxTs, Msg, VersionData, WaitList, TS,
 };
+
+pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfigPerServer {
@@ -60,7 +65,7 @@ impl Peer {
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    fn init_data(&mut self) -> HashMap<i64, Mutex<(Meta, Vec<VersionData>)>> {
+    fn init_data(&mut self) -> HashMap<i64, (RwLock<Meta>, usize)> {
         // init
         unsafe {
             let mut indexs = HashMap::new();
@@ -68,23 +73,24 @@ impl Peer {
             let data = init_ycsb();
 
             // IN_MEMORY_DATA.reserve(data.len());
-            let mut index = 0;
+            let mut index: usize = 0;
             for (key, value) in data {
                 let version_data = VersionData {
                     start_ts: 0,
                     end_ts: MaxTs,
                     data: common::Data::Ycsb(value),
                 };
+                DATA.push(vec![version_data]);
                 indexs.insert(
                     key,
-                    Mutex::new((
-                        Meta {
+                    (
+                        RwLock::new(Meta {
                             maxts: 0,
                             waitlist: BTreeMap::new(),
                             smallest_wait_ts: MaxTs,
-                        },
-                        vec![version_data],
-                    )),
+                        }),
+                        index,
+                    ),
                 );
 
                 index += 1;
@@ -105,11 +111,7 @@ impl Peer {
         });
     }
 
-    fn init_executors(
-        &mut self,
-        config: Config,
-        indexs: Arc<HashMap<i64, Mutex<(Meta, Vec<VersionData>)>>>,
-    ) {
+    fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<i64, (RwLock<Meta>, usize)>>) {
         // self.executor_num = config.executor_num;
         self.executor_num = config.executor_num;
         for i in 0..self.executor_num {

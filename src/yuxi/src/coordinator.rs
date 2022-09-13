@@ -83,7 +83,7 @@ impl YuxiCoordinator {
             }
 
             let end_time = start.elapsed().as_micros();
-            println!("latency time = {}", end_time);
+            // println!("latency time = {}", end_time);
             latency_result.push(end_time);
 
             self.txn_id += 1;
@@ -135,7 +135,6 @@ impl YuxiCoordinator {
 
     async fn run_transaction(&mut self) -> bool {
         // init ts
-        // println!("txn");
         let timestamp = (Local::now().timestamp_nanos() / 1000) as u64 + 600;
 
         // prepare, prepare will send to all the server

@@ -1,12 +1,15 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use crate::{peer::Meta, ExecuteContext, MaxTs, Msg, VersionData, TS};
+use crate::{
+    peer::{Meta, DATA},
+    ExecuteContext, MaxTs, Msg, VersionData, TS,
+};
 use common::{
     get_txnid,
     tatp::{AccessInfo, CallForwarding, Subscriber},
     Data,
 };
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use rpc::{
     common::{ReadStruct, TxnOp, WriteStruct},
     yuxi::YuxiMsg,
@@ -23,7 +26,7 @@ pub struct Executor {
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
     // ycsb
-    index: Arc<HashMap<i64, Mutex<(Meta, Vec<VersionData>)>>>,
+    index: Arc<HashMap<i64, (RwLock<Meta>, usize)>>,
     // tatp
     subscriber: Arc<HashMap<u64, usize>>,
     access_info: Arc<HashMap<u64, usize>>,
@@ -36,7 +39,7 @@ impl Executor {
         executor_id: u32,
         server_id: u32,
         recv: Receiver<Msg>,
-        index: Arc<HashMap<i64, Mutex<(Meta, Vec<VersionData>)>>>,
+        index: Arc<HashMap<i64, (RwLock<Meta>, usize)>>,
     ) -> Self {
         Self {
             executor_id,
@@ -108,6 +111,7 @@ impl Executor {
         // let reply = YuxiMsg::default();
         // msg.callback.send(Ok(reply)).await;
         // return;
+
         let mut txn = msg.tmsg.clone();
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
@@ -116,39 +120,42 @@ impl Executor {
         txn.read_set.clear();
         for read in read_set.iter_mut() {
             let key = read.key;
-            let mut tuple = self.index.get(&key).unwrap().lock();
 
-            let meta = &mut tuple.0;
-            if meta.maxts < final_ts {
-                meta.maxts = final_ts
-            }
+            let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
+            {
+                let meta = &mut meta_rwlock.write();
+                if meta.maxts < final_ts {
+                    meta.maxts = final_ts;
+                }
 
-            if final_ts > meta.smallest_wait_ts {
-                waiting_for_read_result += 1;
-                // insert a read task
-                let execution_context = ExecuteContext {
-                    committed: true,
-                    read: true,
-                    value: None,
-                    call_back: Some(sender.clone()),
-                    txnid: txn.txn_id,
-                };
-                // let mut wait_list = tuple.1.write().await;
-                meta.waitlist.insert(final_ts, execution_context);
-                continue;
+                if final_ts > meta.smallest_wait_ts {
+                    waiting_for_read_result += 1;
+                    // insert a read task
+                    let execution_context = ExecuteContext {
+                        committed: true,
+                        read: true,
+                        value: None,
+                        call_back: Some(sender.clone()),
+                        txnid: txn.txn_id,
+                    };
+                    // let mut wait_list = tuple.1.write().await;
+                    meta.waitlist.insert(final_ts, execution_context);
+                    continue;
+                }
             }
-
-            let version_data = &tuple.1;
-            let mut index = version_data.len() - 1;
-            while final_ts < version_data[index].start_ts {
-                index -= 1;
+            unsafe {
+                let version_data = &DATA[*data_index];
+                let mut index = version_data.len() - 1;
+                while final_ts < version_data[index].start_ts {
+                    index -= 1;
+                }
+                let data = version_data[index].data.to_string();
+                txn.read_set.push(ReadStruct {
+                    key,
+                    value: Some(data),
+                    timestamp: None,
+                });
             }
-            let data = version_data[index].data.to_string();
-            txn.read_set.push(ReadStruct {
-                key,
-                value: Some(data),
-                timestamp: None,
-            });
         }
         if waiting_for_read_result == 0 {
             // reply to coordinator
@@ -193,9 +200,10 @@ impl Executor {
         let mut write_ts_in_waitlist = Vec::new();
         for write in msg.tmsg.write_set.iter() {
             let key = write.key;
-            let mut tuple = self.index.get(&key).unwrap().lock();
+
             {
-                let meta = &mut tuple.0;
+                let (meta_rwlock, data) = self.index.get(&key).unwrap();
+                let meta = &mut meta_rwlock.write();
                 if ts > meta.maxts {
                     meta.maxts = ts;
                 } else {
@@ -232,8 +240,8 @@ impl Executor {
             let key = read.key;
             // find and update the ts
 
-            let mut tuple = self.index.get(&key).unwrap().lock();
-            let meta = &mut tuple.0;
+            let (meta_rwlock, data) = self.index.get(&key).unwrap();
+            let meta = &mut meta_rwlock.write();
             if ts > meta.maxts {
                 meta.maxts = ts;
             } else {
@@ -298,69 +306,72 @@ impl Executor {
         for (write, write_ts) in write_ts_in_waitlist.into_iter() {
             let key = write.key;
 
-            let mut tuple = self.index.get(&key).unwrap().lock();
+            let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
+            let meta = &mut meta_rwlock.write();
             // let meta = &mut tuple.0;
-            if tuple.0.maxts < final_ts {
-                tuple.0.maxts = final_ts
+            if meta.maxts < final_ts {
+                meta.maxts = final_ts
             }
 
-            if let Some(mut execution_context) = tuple.0.waitlist.remove(&write_ts) {
+            if let Some(mut execution_context) = meta.waitlist.remove(&write_ts) {
                 execution_context.committed = true;
-                tuple.0.waitlist.insert(final_ts, execution_context);
+                meta.waitlist.insert(final_ts, execution_context);
             }
             // check pending txns execute the context if the write is committed
             loop {
-                match tuple.0.waitlist.pop_first() {
+                match meta.waitlist.pop_first() {
                     Some((ts, mut context)) => {
                         if context.committed {
-                            if context.read {
-                                // execute the read
-                                // get data
-                                let version_data = &tuple.1;
-                                let mut index = version_data.len() - 1;
-                                while final_ts < version_data[index].start_ts {
-                                    index -= 1;
-                                }
-                                let data = version_data[index].data.to_string();
-                                let callback = context.call_back.take().unwrap();
-                                callback.send((ts as i64, data));
-                            } else {
-                                // execute the write
-                                let datas = &mut tuple.1;
-                                match datas.last_mut() {
-                                    Some(last_data) => {
-                                        last_data.end_ts = ts;
+                            unsafe {
+                                if context.read {
+                                    // execute the read
+                                    // get data
+                                    let data = &DATA[*data_index];
+                                    let mut index = data.len() - 1;
+                                    while final_ts < data[index].start_ts {
+                                        index -= 1;
                                     }
-                                    None => {}
-                                }
-                                let mut version_data = VersionData {
-                                    start_ts: ts,
-                                    end_ts: MaxTs,
-                                    data: Data::default(),
-                                };
-                                match txn.txn_type() {
-                                    rpc::common::TxnType::TatpGetSubscriberData => {}
-                                    rpc::common::TxnType::TatpGetNewDestination => {}
-                                    rpc::common::TxnType::TatpGetAccessData => {}
-                                    rpc::common::TxnType::TatpUpdateSubscriberData => {}
-                                    rpc::common::TxnType::TatpUpdateLocation => {}
-                                    rpc::common::TxnType::TatpInsertCallForwarding => {}
-                                    rpc::common::TxnType::Ycsb => {
-                                        version_data.data = Data::Ycsb(write.value.clone());
+                                    let data = data[index].data.to_string();
+                                    let callback = context.call_back.take().unwrap();
+                                    callback.send((ts as i64, data));
+                                } else {
+                                    // execute the write
+                                    let datas = &mut DATA[*data_index];
+                                    match datas.last_mut() {
+                                        Some(last_data) => {
+                                            last_data.end_ts = ts;
+                                        }
+                                        None => {}
                                     }
+                                    let mut version_data = VersionData {
+                                        start_ts: ts,
+                                        end_ts: MaxTs,
+                                        data: Data::default(),
+                                    };
+                                    match txn.txn_type() {
+                                        rpc::common::TxnType::TatpGetSubscriberData => {}
+                                        rpc::common::TxnType::TatpGetNewDestination => {}
+                                        rpc::common::TxnType::TatpGetAccessData => {}
+                                        rpc::common::TxnType::TatpUpdateSubscriberData => {}
+                                        rpc::common::TxnType::TatpUpdateLocation => {}
+                                        rpc::common::TxnType::TatpInsertCallForwarding => {}
+                                        rpc::common::TxnType::Ycsb => {
+                                            version_data.data = Data::Ycsb(write.value.clone());
+                                        }
+                                    }
+                                    datas.push(version_data);
                                 }
-                                datas.push(version_data);
                             }
                         } else {
-                            tuple.0.waitlist.insert(ts, context);
-                            if tuple.0.smallest_wait_ts < ts {
-                                tuple.0.smallest_wait_ts = ts;
+                            meta.waitlist.insert(ts, context);
+                            if meta.smallest_wait_ts < ts {
+                                meta.smallest_wait_ts = ts;
                             }
                             break;
                         }
                     }
                     None => {
-                        tuple.0.smallest_wait_ts = MaxTs;
+                        meta.smallest_wait_ts = MaxTs;
                         break;
                     }
                 }
@@ -376,8 +387,8 @@ impl Executor {
         for read in read_set.iter_mut() {
             let key = read.key;
             {
-                let mut tuple = self.index.get(&key).unwrap().lock();
-                let meta = &mut tuple.0;
+                let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
+                let meta = &mut meta_rwlock.write();
                 if meta.maxts < final_ts {
                     meta.maxts = final_ts
                 }
@@ -397,17 +408,19 @@ impl Executor {
                         meta.waitlist.insert(final_ts, execution_context);
                         continue;
                     }
-                    let version_data = &tuple.1;
-                    let mut index = version_data.len() - 1;
-                    while final_ts < version_data[index].start_ts {
-                        index -= 1;
+                    unsafe {
+                        let version_data = &DATA[*data_index];
+                        let mut index = version_data.len() - 1;
+                        while final_ts < version_data[index].start_ts {
+                            index -= 1;
+                        }
+                        let data = version_data[index].data.to_string();
+                        txn.read_set.push(ReadStruct {
+                            key,
+                            value: Some(data),
+                            timestamp: None,
+                        });
                     }
-                    let data = version_data[index].data.to_string();
-                    txn.read_set.push(ReadStruct {
-                        key,
-                        value: Some(data),
-                        timestamp: None,
-                    });
                 }
             }
         }
