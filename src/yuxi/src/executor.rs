@@ -281,82 +281,7 @@ impl Executor {
         // get write_ts in waitlist to erase
         let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
 
-        // println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
-        for (write, write_ts) in write_ts_in_waitlist.into_iter() {
-            let key = write.key;
-
-            let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
-            let meta = &mut meta_rwlock.write();
-            // let meta = &mut tuple.0;
-            if meta.maxts < final_ts {
-                meta.maxts = final_ts
-            }
-
-            if let Some(mut execution_context) = meta.waitlist.remove(&write_ts) {
-                execution_context.committed = true;
-                meta.waitlist.insert(final_ts, execution_context);
-            }
-            // check pending txns execute the context if the write is committed
-            loop {
-                match meta.waitlist.pop_first() {
-                    Some((ts, mut context)) => {
-                        if context.committed {
-                            unsafe {
-                                if context.read {
-                                    // execute the read
-                                    // get data
-                                    let data = &DATA[*data_index];
-                                    let mut index = data.len() - 1;
-                                    while final_ts < data[index].start_ts {
-                                        index -= 1;
-                                    }
-                                    let data = data[index].data.to_string();
-                                    let callback = context.call_back.take().unwrap();
-                                    callback.send((ts as i64, data));
-                                } else {
-                                    // execute the write
-                                    let datas = &mut DATA[*data_index];
-                                    match datas.last_mut() {
-                                        Some(last_data) => {
-                                            last_data.end_ts = ts;
-                                        }
-                                        None => {}
-                                    }
-                                    let mut version_data = VersionData {
-                                        start_ts: ts,
-                                        end_ts: MaxTs,
-                                        data: Data::default(),
-                                    };
-                                    match txn.txn_type() {
-                                        rpc::common::TxnType::TatpGetSubscriberData => {}
-                                        rpc::common::TxnType::TatpGetNewDestination => {}
-                                        rpc::common::TxnType::TatpGetAccessData => {}
-                                        rpc::common::TxnType::TatpUpdateSubscriberData => {}
-                                        rpc::common::TxnType::TatpUpdateLocation => {}
-                                        rpc::common::TxnType::TatpInsertCallForwarding => {}
-                                        rpc::common::TxnType::Ycsb => {
-                                            version_data.data = Data::Ycsb(write.value.clone());
-                                        }
-                                    }
-                                    datas.push(version_data);
-                                }
-                            }
-                        } else {
-                            meta.waitlist.insert(ts, context);
-                            if meta.smallest_wait_ts < ts {
-                                meta.smallest_wait_ts = ts;
-                            }
-                            break;
-                        }
-                    }
-                    None => {
-                        meta.smallest_wait_ts = MaxTs;
-                        break;
-                    }
-                }
-            }
-        }
-
+        let txn_type = txn.txn_type();
         // execute read
 
         let mut waiting_for_read_result = 0;
@@ -430,6 +355,82 @@ impl Executor {
                     }
                     msg.callback.send(Ok(txn)).await;
                 });
+            }
+        }
+
+        // println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
+        for (write, write_ts) in write_ts_in_waitlist.into_iter() {
+            let key = write.key;
+
+            let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
+            let meta = &mut meta_rwlock.write();
+            // let meta = &mut tuple.0;
+            if meta.maxts < final_ts {
+                meta.maxts = final_ts
+            }
+
+            if let Some(mut execution_context) = meta.waitlist.remove(&write_ts) {
+                execution_context.committed = true;
+                meta.waitlist.insert(final_ts, execution_context);
+            }
+            // check pending txns execute the context if the write is committed
+            loop {
+                match meta.waitlist.pop_first() {
+                    Some((ts, mut context)) => {
+                        if context.committed {
+                            unsafe {
+                                if context.read {
+                                    // execute the read
+                                    // get data
+                                    let data = &DATA[*data_index];
+                                    let mut index = data.len() - 1;
+                                    while final_ts < data[index].start_ts {
+                                        index -= 1;
+                                    }
+                                    let data = data[index].data.to_string();
+                                    let callback = context.call_back.take().unwrap();
+                                    callback.send((ts as i64, data));
+                                } else {
+                                    // execute the write
+                                    let datas = &mut DATA[*data_index];
+                                    match datas.last_mut() {
+                                        Some(last_data) => {
+                                            last_data.end_ts = ts;
+                                        }
+                                        None => {}
+                                    }
+                                    let mut version_data = VersionData {
+                                        start_ts: ts,
+                                        end_ts: MaxTs,
+                                        data: Data::default(),
+                                    };
+                                    match txn_type {
+                                        rpc::common::TxnType::TatpGetSubscriberData => {}
+                                        rpc::common::TxnType::TatpGetNewDestination => {}
+                                        rpc::common::TxnType::TatpGetAccessData => {}
+                                        rpc::common::TxnType::TatpUpdateSubscriberData => {}
+                                        rpc::common::TxnType::TatpUpdateLocation => {}
+                                        rpc::common::TxnType::TatpInsertCallForwarding => {}
+                                        rpc::common::TxnType::Ycsb => {
+                                            version_data.data = Data::Ycsb(write.value.clone());
+                                        }
+                                    }
+                                    datas.push(version_data);
+                                }
+                            }
+                        } else {
+                            meta.waitlist.insert(ts, context);
+                            if meta.smallest_wait_ts < ts {
+                                meta.smallest_wait_ts = ts;
+                            }
+                            break;
+                        }
+                    }
+                    None => {
+                        meta.smallest_wait_ts = MaxTs;
+                        break;
+                    }
+                }
             }
         }
     }
