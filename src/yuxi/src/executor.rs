@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::{
-    peer::{Meta, DATA, WAITING_TXN},
+    peer::{Meta, DATA},
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
@@ -163,29 +163,24 @@ impl Executor {
             // reply to coordinator
             msg.callback.send(Ok(txn)).await;
         } else {
-            unsafe {
-                let wait_txn_index = txn.txn_id % 64;
-                let mut guard = WAITING_TXN[wait_txn_index as usize].write();
-                guard.insert(txn.txn_id, (waiting_for_read_result, msg));
-            }
-            //     // spawn a new task for this
-            //     tokio::spawn(async move {
-            //         while waiting_for_read_result > 0 {
-            //             match receiver.recv().await {
-            //                 Some((key, value)) => {
-            //                     txn.read_set.push(ReadStruct {
-            //                         key,
-            //                         value: Some(value),
-            //                         timestamp: None,
-            //                     });
-            //                 }
-            //                 None => break,
-            //             }
+            // spawn a new task for this
+            tokio::spawn(async move {
+                while waiting_for_read_result > 0 {
+                    match receiver.recv().await {
+                        Some((key, value)) => {
+                            txn.read_set.push(ReadStruct {
+                                key,
+                                value: Some(value),
+                                timestamp: None,
+                            });
+                        }
+                        None => break,
+                    }
 
-            //             waiting_for_read_result -= 1;
-            //         }
-            //         msg.callback.send(Ok(txn)).await;
-            //     });
+                    waiting_for_read_result -= 1;
+                }
+                msg.callback.send(Ok(txn)).await;
+            });
         }
     }
 
@@ -333,24 +328,6 @@ impl Executor {
                         let data = datas[index].data.to_string();
                         let callback = context.call_back.take().unwrap();
                         callback.send((ts as i64, data));
-                        // // unsafe {
-                        // let wait_txn_index = tid % 64;
-                        // let mut guard = WAITING_TXN[wait_txn_index as usize].write();
-                        // let (mut wait, mut msg) = guard.remove(&tid).unwrap();
-                        // msg.tmsg.read_set.push(ReadStruct {
-                        //     key,
-                        //     value: Some(data),
-                        //     timestamp: None,
-                        // });
-                        // if wait != 1 {
-                        //     wait -= 1;
-                        //     guard.insert(tid, (wait, msg));
-                        // } else {
-                        //     let reply = msg.tmsg;
-                        //     let callback = msg.callback.clone();
-                        //     callback.send(Ok(reply)).await;
-                        // }
-                        // }
                     } else {
                         // execute the write
                         let datas = &mut DATA[*data_index];
@@ -448,31 +425,26 @@ impl Executor {
                 // reply to coordinator
                 msg.callback.send(Ok(txn)).await;
             } else {
-                unsafe {
-                    let wait_txn_index = txn.txn_id % 64;
-                    let mut guard = WAITING_TXN[wait_txn_index as usize].write();
-                    guard.insert(txn.txn_id, (waiting_for_read_result, msg));
-                }
                 // spawn a new task for this
-                // tokio::spawn(async move {
-                //     while waiting_for_read_result > 0 {
-                //         match receiver.recv().await {
-                //             Some((key, value)) => {
-                //                 txn.read_set.push(ReadStruct {
-                //                     key,
-                //                     value: Some(value),
-                //                     timestamp: None,
-                //                 });
-                //             }
-                //             None => {
-                //                 break;
-                //             }
-                //         }
+                tokio::spawn(async move {
+                    while waiting_for_read_result > 0 {
+                        match receiver.recv().await {
+                            Some((key, value)) => {
+                                txn.read_set.push(ReadStruct {
+                                    key,
+                                    value: Some(value),
+                                    timestamp: None,
+                                });
+                            }
+                            None => {
+                                break;
+                            }
+                        }
 
-                //         waiting_for_read_result -= 1;
-                //     }
-                //     msg.callback.send(Ok(txn)).await;
-                // });
+                        waiting_for_read_result -= 1;
+                    }
+                    msg.callback.send(Ok(txn)).await;
+                });
             }
         }
 

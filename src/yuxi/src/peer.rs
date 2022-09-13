@@ -21,8 +21,6 @@ use crate::{
 
 pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
 
-pub static mut WAITING_TXN: Vec<RwLock<HashMap<u64, (i32, Msg)>>> = Vec::new();
-
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfigPerServer {
     id: i32,
@@ -114,16 +112,13 @@ impl Peer {
     fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<i64, (RwLock<Meta>, usize)>>) {
         // self.executor_num = config.executor_num;
         self.executor_num = config.executor_num;
-        unsafe {
-            for i in 0..self.executor_num {
-                WAITING_TXN.push(RwLock::new(HashMap::new()));
-                let (sender, receiver) = channel::<Msg>(10000);
-                self.executor_senders.insert(i, sender);
-                let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
-                tokio::spawn(async move {
-                    exec.run().await;
-                });
-            }
+        for i in 0..self.executor_num {
+            let (sender, receiver) = channel::<Msg>(10000);
+            self.executor_senders.insert(i, sender);
+            let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
+            tokio::spawn(async move {
+                exec.run().await;
+            });
         }
     }
 
