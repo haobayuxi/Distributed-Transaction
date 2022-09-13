@@ -22,6 +22,7 @@ pub struct MeerkatMeta {
     pub prepared_read: BTreeSet<u64>,
     pub prepared_write: BTreeSet<u64>,
     pub version: u64,
+    pub rts: u64,
 }
 
 impl Default for MeerkatMeta {
@@ -30,6 +31,7 @@ impl Default for MeerkatMeta {
             prepared_read: BTreeSet::new(),
             prepared_write: BTreeSet::new(),
             version: 0,
+            rts: 0,
         }
     }
 }

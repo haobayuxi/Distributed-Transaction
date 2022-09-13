@@ -70,7 +70,6 @@ impl Executor {
         // perform read & return read ts
         // let mem = self.mem.clone();
         let server_id = self.server_id;
-        // tokio::spawn(async move {
         let mut result_read_set = Vec::new();
         for read in msg.tmsg.read_set.iter() {
             let key = read.key;
@@ -94,7 +93,6 @@ impl Executor {
             txn_type: None,
         };
         msg.callback.send(Ok(read_back)).await.unwrap();
-        // });
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -102,36 +100,14 @@ impl Executor {
         // check read sets
         let mut abort = false;
         for read in msg.tmsg.read_set.iter() {
-            // match self.mem.get(&read.key).unwrap().try_read() {
-            //     Ok(read_guard) => {}
-            //     Err(_) => {
-            //         // abort the txn
-            //         let abort_msg = MeerkatMsg {
-            //             txn_id: msg.tmsg.txn_id,
-            //             read_set: Vec::new(),
-            //             write_set: Vec::new(),
-            //             executor_id: self.id,
-            //             op: TxnOp::TAbort.into(),
-            //             from: self.server_id,
-            //             timestamp: 0,
-            //         };
-            //         // send back to client
-            //         msg.callback.send(abort_msg).await;
-            //         return;
-            //     }
-            // }
             let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write();
-            if read.timestamp.unwrap() < guard.0.version
+            if read.timestamp() < guard.0.version
                 || (guard.0.prepared_write.len() > 0
-                    && read.timestamp.unwrap() < *guard.0.prepared_write.iter().min().unwrap())
+                    && msg.tmsg.timestamp < *guard.0.prepared_write.iter().min().unwrap())
             {
-                // abort the txn
                 abort = true;
                 break;
-                // send back to client
-                // msg.callback.send(Ok(abort_msg)).await;
-                // return;
             }
             // insert ts to prepared read
             guard.0.prepared_read.insert(msg.tmsg.timestamp);
@@ -139,27 +115,13 @@ impl Executor {
         if !abort {
             for write in msg.tmsg.write_set.iter() {
                 let mut guard = self.mem.get(&write.key).unwrap().write();
-                if msg.tmsg.timestamp < guard.0.version
+                if msg.tmsg.timestamp < guard.0.rts
                     || (guard.0.prepared_read.len() > 0
-                        && msg.tmsg.timestamp < *guard.0.prepared_read.iter().last().unwrap())
+                        && msg.tmsg.timestamp < *guard.0.prepared_read.iter().max().unwrap())
                 {
                     // abort the txn
                     abort = true;
                     break;
-                    // let abort_msg = MeerkatMsg {
-                    //     txn_id: msg.tmsg.txn_id,
-                    //     read_set: Vec::new(),
-                    //     write_set: Vec::new(),
-                    //     executor_id: self.id,
-                    //     op: TxnOp::Abort.into(),
-                    //     from: self.server_id,
-                    //     timestamp: 0,
-                    //     txn_type: None,
-                    // };
-                    // // send back to client
-                    // let callback = msg.callback.clone();
-                    // callback.send(Ok(abort_msg)).await;
-                    // return;
                 }
                 guard.0.prepared_write.insert(msg.tmsg.timestamp);
             }
@@ -194,8 +156,8 @@ impl Executor {
             let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write();
             guard.0.prepared_read.remove(&msg.tmsg.timestamp);
-            if guard.0.version < read.timestamp() {
-                guard.0.version = read.timestamp();
+            if guard.0.rts < msg.tmsg.timestamp {
+                guard.0.rts = msg.tmsg.timestamp;
             }
         }
 
