@@ -305,14 +305,14 @@ impl Executor {
                                 if context.read {
                                     // execute the read
                                     // get data
-                                    // let data = &DATA[*data_index];
-                                    // let mut index = data.len() - 1;
-                                    // while final_ts < data[index].start_ts {
-                                    //     index -= 1;
-                                    // }
-                                    // let data = data[index].data.to_string();
-                                    // let callback = context.call_back.take().unwrap();
-                                    // callback.send((ts as i64, data));
+                                    let data = &DATA[*data_index];
+                                    let mut index = data.len() - 1;
+                                    while final_ts < data[index].start_ts {
+                                        index -= 1;
+                                    }
+                                    let data = data[index].data.to_string();
+                                    let callback = context.call_back.take().unwrap();
+                                    callback.send((ts as i64, data));
                                 } else {
                                     // execute the write
                                     let datas = &mut DATA[*data_index];
