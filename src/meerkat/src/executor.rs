@@ -139,6 +139,7 @@ impl Executor {
         };
         // validate write set
         if abort {
+            println!("abort the txn");
             prepare_ok.op = TxnOp::Abort.into();
         } else {
             prepare_ok.op = TxnOp::PrepareRes.into();

@@ -153,7 +153,6 @@ impl MeerkatCoordinator {
             }
         }
         if abort {
-            panic!("abort");
             return false;
         }
         // txn success
