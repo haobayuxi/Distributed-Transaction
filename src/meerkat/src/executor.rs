@@ -25,6 +25,7 @@ pub struct Executor {
     call_forwarding: Arc<HashMap<u64, CallForwarding>>,
     // write lock guard
     recv: UnboundedReceiver<Msg>,
+    txns: HashMap<u64, MeerkatMsg>,
 }
 
 impl Executor {
@@ -44,6 +45,7 @@ impl Executor {
             access_info: Arc::new(HashMap::new()),
             special_facility: Arc::new(HashMap::new()),
             call_forwarding: Arc::new(HashMap::new()),
+            txns: HashMap::new(),
         }
     }
 
@@ -96,7 +98,7 @@ impl Executor {
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
-        // println!("handle prepare {:?}", get_txnid(msg.tmsg.txn_id));
+        self.txns.insert(msg.tmsg.txn_id, msg.tmsg.clone());
         // check read sets
         let mut abort = false;
         for read in msg.tmsg.read_set.iter() {
@@ -146,7 +148,7 @@ impl Executor {
         if abort {
             // println!("abort the txn");
             // clean prepared read write
-            self.handle_abort(msg.tmsg).await;
+            // self.handle_abort(msg.tmsg).await;
             prepare_ok.op = TxnOp::Abort.into();
         } else {
             prepare_ok.op = TxnOp::PrepareRes.into();
@@ -157,40 +159,41 @@ impl Executor {
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
-        // println!("handle commit {:?}", get_txnid(msg.tmsg.txn_id));
+        let txn = self.txns.remove(&msg.tmsg.txn_id).unwrap();
         // update
         // release the prepare  read & prepare write
-        for read in msg.tmsg.read_set.iter() {
+        for read in txn.read_set.iter() {
             let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write();
-            guard.0.prepared_read.remove(&msg.tmsg.timestamp);
-            if guard.0.rts < msg.tmsg.timestamp {
-                guard.0.rts = msg.tmsg.timestamp;
+            guard.0.prepared_read.remove(&txn.timestamp);
+            if guard.0.rts < txn.timestamp {
+                guard.0.rts = txn.timestamp;
             }
         }
 
-        for write in msg.tmsg.write_set {
+        for write in txn.write_set {
             // update value
             let mut guard = self.mem.get(&write.key).unwrap().write();
             guard.1 = write.value;
-            guard.0.prepared_write.remove(&msg.tmsg.timestamp);
-            if guard.0.version < msg.tmsg.timestamp {
-                guard.0.version = msg.tmsg.timestamp
+            guard.0.prepared_write.remove(&txn.timestamp);
+            if guard.0.version < txn.timestamp {
+                guard.0.version = txn.timestamp
             }
         }
     }
 
     async fn handle_abort(&mut self, msg: MeerkatMsg) {
         // release the prepare  read & prepare write
-        for read in msg.read_set.iter() {
+        let txn = self.txns.remove(&msg.txn_id).unwrap();
+        for read in txn.read_set.iter() {
             let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write();
-            guard.0.prepared_read.remove(&msg.timestamp);
+            guard.0.prepared_read.remove(&txn.timestamp);
         }
 
-        for write in msg.write_set {
+        for write in txn.write_set {
             let mut guard = self.mem.get(&write.key).unwrap().write();
-            guard.0.prepared_write.remove(&msg.timestamp);
+            guard.0.prepared_write.remove(&txn.timestamp);
         }
     }
 }

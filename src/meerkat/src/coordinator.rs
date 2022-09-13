@@ -1,5 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
+use chrono::Local;
 use common::{config::Config, get_local_time, ycsb::YcsbQuery, CID_LEN};
 use rpc::{
     common::{ReadStruct, TxnOp, TxnType, WriteStruct},
@@ -135,7 +136,7 @@ impl MeerkatCoordinator {
             read.value = None;
         }
         self.txn.op = TxnOp::Prepare.into();
-        let timestamp = get_local_time(self.id);
+        let timestamp = (Local::now().timestamp_nanos() / 1000) as u64;
         self.txn.timestamp = timestamp;
         // validate phase
         // prepare, prepare will send to all the server in the shard
@@ -151,6 +152,10 @@ impl MeerkatCoordinator {
             }
         }
         if abort {
+            self.txn.read_set.clear();
+            self.txn.write_set.clear();
+            self.txn.op = TxnOp::Abort.into();
+            self.broadcast(self.txn.clone()).await;
             return false;
         }
         // txn success
