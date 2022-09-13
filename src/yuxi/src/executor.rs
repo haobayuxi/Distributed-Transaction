@@ -198,37 +198,37 @@ impl Executor {
 
         let ts = msg.tmsg.timestamp;
         let mut write_ts_in_waitlist = Vec::new();
-        for write in msg.tmsg.write_set.iter() {
-            let key = write.key;
+        // for write in msg.tmsg.write_set.iter() {
+        //     let key = write.key;
 
-            {
-                let (meta_rwlock, data) = self.index.get(&key).unwrap();
-                let meta = &mut meta_rwlock.write();
-                if ts > meta.maxts {
-                    meta.maxts = ts;
-                } else {
-                    meta.maxts += 1;
-                    if prepare_response.timestamp < meta.maxts {
-                        prepare_response.timestamp = meta.maxts;
-                    }
-                }
-                // insert into wait list
-                let execute_context = ExecuteContext {
-                    committed: false,
-                    read: false,
-                    value: Some(write.value.clone()),
-                    call_back: None,
-                    txnid: msg.tmsg.txn_id,
-                };
-                if meta.smallest_wait_ts > meta.maxts {
-                    meta.smallest_wait_ts = meta.maxts;
-                }
-                let wait_ts = meta.maxts;
-                // println!("insert waitlist {},{}", key, wait_ts);
-                meta.waitlist.insert(wait_ts, execute_context);
-                write_ts_in_waitlist.push((write.clone(), wait_ts));
-            }
-        }
+        //     {
+        //         let (meta_rwlock, data) = self.index.get(&key).unwrap();
+        //         let meta = &mut meta_rwlock.write();
+        //         if ts > meta.maxts {
+        //             meta.maxts = ts;
+        //         } else {
+        //             meta.maxts += 1;
+        //             if prepare_response.timestamp < meta.maxts {
+        //                 prepare_response.timestamp = meta.maxts;
+        //             }
+        //         }
+        //         // insert into wait list
+        //         let execute_context = ExecuteContext {
+        //             committed: false,
+        //             read: false,
+        //             value: Some(write.value.clone()),
+        //             call_back: None,
+        //             txnid: msg.tmsg.txn_id,
+        //         };
+        //         if meta.smallest_wait_ts > meta.maxts {
+        //             meta.smallest_wait_ts = meta.maxts;
+        //         }
+        //         let wait_ts = meta.maxts;
+        //         // println!("insert waitlist {},{}", key, wait_ts);
+        //         meta.waitlist.insert(wait_ts, execute_context);
+        //         write_ts_in_waitlist.push((write.clone(), wait_ts));
+        //     }
+        // }
 
         // println!(
         //     "wait list tid{},{:?}",

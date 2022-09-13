@@ -131,31 +131,15 @@ impl Peer {
             match recv.recv().await {
                 Some(msg) => {
                     // println!("txnid {}", msg.tmsg.txn_id);
-                    let executor_id = (msg.tmsg.txn_id as u32) % self.executor_num;
+                    let executor_id = (msg.tmsg.from as u32) % self.executor_num;
                     // send to executor
-                    unsafe {
-                        // println!(
-                        //     "executor id = {}, from {},txnid{}, index{}, {}",
-                        //     executor_id,
-                        //     msg.tmsg.from,
-                        //     msg.tmsg.txn_id - ((msg.tmsg.from as u64) << 50),
-                        //     // msg.tmsg.op()
-                        //     self.msg_queue_index[executor_id as usize],
-                        //     COUNT
-                        // );
-                        self.executor_senders
-                            .get(&executor_id)
-                            .unwrap()
-                            .send(msg)
-                            .await
-                            .unwrap();
-                        // let index = self.msg_queue_index[executor_id as usize];
-                        // IN_MEMORY_MQ[executor_id as usize][index] = Some(msg);
-                        // self.msg_queue_index[executor_id as usize] += 1;
-                        // if self.msg_queue_index[executor_id as usize] == 1000 {
-                        //     self.msg_queue_index[executor_id as usize] = 0;
-                        // }
-                    }
+
+                    self.executor_senders
+                        .get(&executor_id)
+                        .unwrap()
+                        .send(msg)
+                        .await
+                        .unwrap();
                 }
                 None => continue,
             }
