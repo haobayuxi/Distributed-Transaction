@@ -102,6 +102,9 @@ impl Apply {
         let (clientid, index) = get_txnid(txnid);
         unsafe {
             let node = &mut TXNS[clientid as usize][index as usize];
+            if node.executed {
+                return;
+            }
             if node.txn.from % 3 == self.server_id {
                 // execute
                 let mut result = JanusMsg {
