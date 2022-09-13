@@ -157,6 +157,7 @@ impl Executor {
                 });
             }
         }
+        println!("wait for {}", waiting_for_read_result);
         // if waiting_for_read_result == 0 {
         // reply to coordinator
         msg.callback.send(Ok(txn)).await;
