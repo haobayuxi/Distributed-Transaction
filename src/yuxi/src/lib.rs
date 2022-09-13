@@ -10,7 +10,6 @@ pub mod coordinator;
 pub mod executor;
 pub mod peer;
 pub mod peer_communication;
-pub mod waiting;
 
 pub type TS = u64;
 pub type WaitList = BTreeMap<u64, ExecuteContext>;

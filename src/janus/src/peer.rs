@@ -140,7 +140,7 @@ impl Peer {
                 Some(msg) => {
                     // println!("handle msg {:?}", get_txnid(msg.txn.txn_id));
                     // self.executor.handle_msg(msg).await;
-                    let executor_id = (msg.txn.txn_id as u32) % self.executor_num;
+                    let executor_id = (msg.txn.from as u32) % self.executor_num;
                     // // send to executor
                     self.executor_senders.get(&executor_id).unwrap().send(msg);
                 }

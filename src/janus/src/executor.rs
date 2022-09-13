@@ -138,7 +138,7 @@ impl Executor {
             txn_type: None,
         };
         unsafe {
-            let mut result_dep = HashSet::new();
+            // let mut result_dep = HashSet::new();
             // get the dep
             for read in msg.txn.read_set.iter() {
                 let index = self.meta_index.get(&read.key).unwrap();
@@ -146,8 +146,8 @@ impl Executor {
                 let meta = META[*index].0.read().await;
                 let dep = meta.last_visited_txnid;
                 // meta.last_visited_txnid = msg.txn.txn_id;
-                // result.deps.push(dep);
-                result_dep.insert(dep);
+                result.deps.push(dep);
+                // result_dep.insert(dep);
             }
 
             for write in msg.txn.write_set.iter() {
@@ -156,22 +156,17 @@ impl Executor {
                 let mut meta = META[*index].0.write().await;
                 let dep = meta.last_visited_txnid;
                 meta.last_visited_txnid = msg.txn.txn_id;
-                // result.deps.push(dep);
-                result_dep.insert(dep);
-            }
-            for iter in result_dep.into_iter() {
-                result.deps.push(iter);
+                result.deps.push(dep);
+                // result_dep.insert(dep);
             }
 
-            result.deps.sort();
+            // result.deps.sort();
             let txnid = msg.txn.txn_id;
             let (client_id, index) = get_txnid(txnid);
             TXNS[client_id as usize][index as usize] = Node::new(msg.txn);
         }
-        // self.txns.insert(msg.txn.txn_id, msg.txn);
         // reply to coordinator
         msg.callback.send(Ok(result)).await;
-        // println!("send back prepareok {:?}", result);
     }
 
     async fn handle_accept(&mut self, msg: Msg) {

@@ -124,8 +124,6 @@ impl DepGraph {
             self.stack.push(txnid);
             while self.visit >= 0 {
                 let tid = self.stack[self.visit as usize];
-                // let client_id = get_client_id(tid);
-                // let index = tid >> CID_LEN;
                 let (client_id, index) = get_txnid(tid);
                 let mut node = TXNS[client_id as usize].get_mut(index as usize).unwrap();
 
@@ -141,8 +139,6 @@ impl DepGraph {
                         if *dep == 0 {
                             continue;
                         }
-                        // let dep_index = dep >> CID_LEN;
-                        // let dep_clientid = get_client_id(dep);
                         let (dep_clientid, dep_index) = get_txnid(*dep);
                         while TXNS[dep_clientid as usize].len() <= dep_index as usize
                             || !TXNS[dep_clientid as usize][dep_index as usize].committed

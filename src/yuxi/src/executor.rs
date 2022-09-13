@@ -129,7 +129,7 @@ impl Executor {
                 }
 
                 if final_ts > meta.smallest_wait_ts {
-                    println!("final ts {}, wait for {}", final_ts, meta.smallest_wait_ts);
+                    // println!("final ts {}, wait for {}", final_ts, meta.smallest_wait_ts);
                     waiting_for_read_result += 1;
                     // insert a read task
                     let execution_context = ExecuteContext {
