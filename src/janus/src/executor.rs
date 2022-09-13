@@ -100,6 +100,8 @@ impl Executor {
 
     async fn handle_commit(&mut self, commit: Msg) {
         let txnid = commit.txn.txn_id;
+
+        self.dep_graph.send(txnid);
         // println!("recv commit {:?}", get_txnid(txnid));
         unsafe {
             let (clientid, index) = get_txnid(txnid);
@@ -107,8 +109,6 @@ impl Executor {
             node.callback = Some(commit.callback);
             node.txn.deps = commit.txn.deps;
             node.committed = true;
-
-            self.dep_graph.send(txnid);
 
             // let mut result = JanusMsg {
             //     txn_id: txnid,
@@ -156,7 +156,7 @@ impl Executor {
                 let mut meta = META[*index].0.write().await;
                 let dep = meta.last_visited_txnid;
                 meta.last_visited_txnid = msg.txn.txn_id;
-                result.deps.push(dep);
+                // result.deps.push(dep);
                 // result_dep.insert(dep);
             }
 

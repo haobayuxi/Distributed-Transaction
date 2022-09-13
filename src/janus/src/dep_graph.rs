@@ -82,11 +82,11 @@ impl DepGraph {
         loop {
             match self.wait_list.try_recv() {
                 Ok(txnid) => {
-                    // self.execute_txn(txnid);
-                    self.apply(vec![txnid]);
+                    self.execute_txn(txnid);
+                    // self.apply(vec![txnid]);
                 }
                 Err(e) => {
-                    sleep(Duration::from_nanos(100));
+                    sleep(Duration::from_nanos(10));
                 }
             }
         }
@@ -125,7 +125,7 @@ impl DepGraph {
             while self.visit >= 0 {
                 let tid = self.stack[self.visit as usize];
                 let (client_id, index) = get_txnid(tid);
-                let mut node = TXNS[client_id as usize].get_mut(index as usize).unwrap();
+                let mut node = &mut TXNS[client_id as usize][index as usize];
 
                 // println!(
                 //     "find scc {},{}, dfn{}, low{}",
