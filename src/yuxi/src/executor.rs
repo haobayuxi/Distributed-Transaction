@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::{
-    peer::{Meta, DATA},
+    peer::{Meta, DATA, WAITING_TXN},
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
@@ -11,7 +11,7 @@ use common::{
 };
 use parking_lot::RwLock;
 use rpc::{
-    common::{ReadStruct, TxnOp, WriteStruct},
+    common::{ReadStruct, TxnOp, TxnType, WriteStruct},
     yuxi::YuxiMsg,
 };
 use tokio::sync::mpsc::{channel, unbounded_channel, Receiver, Sender};
@@ -157,30 +157,36 @@ impl Executor {
                 });
             }
         }
-        println!("wait for {}", waiting_for_read_result);
-        // if waiting_for_read_result == 0 {
-        // reply to coordinator
-        msg.callback.send(Ok(txn)).await;
-        // } else {
-        //     // spawn a new task for this
-        //     tokio::spawn(async move {
-        //         while waiting_for_read_result > 0 {
-        //             match receiver.recv().await {
-        //                 Some((key, value)) => {
-        //                     txn.read_set.push(ReadStruct {
-        //                         key,
-        //                         value: Some(value),
-        //                         timestamp: None,
-        //                     });
-        //                 }
-        //                 None => break,
-        //             }
 
-        //             waiting_for_read_result -= 1;
-        //         }
-        //         msg.callback.send(Ok(txn)).await;
-        //     });
-        // }
+        // println!("wait for {}", waiting_for_read_result);
+        if waiting_for_read_result == 0 {
+            // reply to coordinator
+            msg.callback.send(Ok(txn)).await;
+        } else {
+            unsafe {
+                let wait_txn_index = txn.txn_id % 64;
+                let mut guard = WAITING_TXN[wait_txn_index as usize].write();
+                guard.insert(txn.txn_id, (waiting_for_read_result, msg));
+            }
+            //     // spawn a new task for this
+            //     tokio::spawn(async move {
+            //         while waiting_for_read_result > 0 {
+            //             match receiver.recv().await {
+            //                 Some((key, value)) => {
+            //                     txn.read_set.push(ReadStruct {
+            //                         key,
+            //                         value: Some(value),
+            //                         timestamp: None,
+            //                     });
+            //                 }
+            //                 None => break,
+            //             }
+
+            //             waiting_for_read_result -= 1;
+            //         }
+            //         msg.callback.send(Ok(txn)).await;
+            //     });
+        }
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -270,8 +276,114 @@ impl Executor {
         msg.callback.send(Ok(result)).await;
     }
 
-    async fn handle_commit(&mut self, msg: Msg) {
-        // commit final version and execute
+    async fn commit_write(
+        &mut self,
+        final_ts: u64,
+        write_ts_in_waitlist: Vec<(WriteStruct, u64)>,
+        tid: u64,
+        txn_type: TxnType,
+    ) {
+        for (write, write_ts) in write_ts_in_waitlist.into_iter() {
+            let key = write.key;
+
+            let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
+            let meta = &mut meta_rwlock.write();
+            // let meta = &mut tuple.0;
+            if meta.maxts < final_ts {
+                meta.maxts = final_ts
+            }
+
+            if let Some(mut execution_context) = meta.waitlist.remove(&write_ts) {
+                execution_context.committed = true;
+                meta.waitlist.insert(final_ts, execution_context);
+            }
+            // check pending txns execute the context if the write is committed
+            let mut to_executed = Vec::new();
+            loop {
+                match meta.waitlist.pop_first() {
+                    Some((ts, context)) => {
+                        if context.committed {
+                            to_executed.push((ts, context));
+                        } else {
+                            meta.waitlist.insert(ts, context);
+                            if meta.smallest_wait_ts < ts {
+                                meta.smallest_wait_ts = ts;
+                            }
+                            break;
+                        }
+                    }
+                    None => {
+                        meta.smallest_wait_ts = MaxTs;
+                        break;
+                    }
+                }
+            }
+
+            // execute
+            for (ts, mut context) in to_executed {
+                unsafe {
+                    if context.read {
+                        // execute the read
+                        // get data
+                        let datas = &DATA[*data_index];
+                        let mut index = datas.len() - 1;
+                        while final_ts < datas[index].start_ts {
+                            index -= 1;
+                        }
+                        let data = datas[index].data.to_string();
+                        let callback = context.call_back.take().unwrap();
+                        callback.send((ts as i64, data));
+                        // // unsafe {
+                        // let wait_txn_index = tid % 64;
+                        // let mut guard = WAITING_TXN[wait_txn_index as usize].write();
+                        // let (mut wait, mut msg) = guard.remove(&tid).unwrap();
+                        // msg.tmsg.read_set.push(ReadStruct {
+                        //     key,
+                        //     value: Some(data),
+                        //     timestamp: None,
+                        // });
+                        // if wait != 1 {
+                        //     wait -= 1;
+                        //     guard.insert(tid, (wait, msg));
+                        // } else {
+                        //     let reply = msg.tmsg;
+                        //     let callback = msg.callback.clone();
+                        //     callback.send(Ok(reply)).await;
+                        // }
+                        // }
+                    } else {
+                        // execute the write
+                        let datas = &mut DATA[*data_index];
+                        match datas.last_mut() {
+                            Some(last_data) => {
+                                last_data.end_ts = ts;
+                            }
+                            None => {}
+                        }
+                        let mut version_data = VersionData {
+                            start_ts: ts,
+                            end_ts: MaxTs,
+                            data: Data::default(),
+                        };
+                        match txn_type {
+                            rpc::common::TxnType::TatpGetSubscriberData => {}
+                            rpc::common::TxnType::TatpGetNewDestination => {}
+                            rpc::common::TxnType::TatpGetAccessData => {}
+                            rpc::common::TxnType::TatpUpdateSubscriberData => {}
+                            rpc::common::TxnType::TatpUpdateLocation => {}
+                            rpc::common::TxnType::TatpInsertCallForwarding => {}
+                            rpc::common::TxnType::Ycsb => {
+                                version_data.data = Data::Ycsb(write.value.clone());
+                            }
+                        }
+                        datas.push(version_data);
+                    }
+                }
+            }
+        }
+    }
+
+    async fn commit_read(&mut self, msg: Msg) {
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;
         let isreply = if self.server_id == (msg.tmsg.from as u32) % 3 {
@@ -332,107 +444,45 @@ impl Executor {
         // println!("is reply {}, need wait?", isreply);
         if isreply {
             // do we need to wait
-            // if waiting_for_read_result == 0 {
-            // reply to coordinator
-            msg.callback.send(Ok(txn)).await;
-            // } else {
-            //     // spawn a new task for this
-            //     tokio::spawn(async move {
-            //         while waiting_for_read_result > 0 {
-            //             match receiver.recv().await {
-            //                 Some((key, value)) => {
-            //                     txn.read_set.push(ReadStruct {
-            //                         key,
-            //                         value: Some(value),
-            //                         timestamp: None,
-            //                     });
-            //                 }
-            //                 None => {
-            //                     break;
-            //                 }
-            //             }
-
-            //             waiting_for_read_result -= 1;
-            //         }
-            //         msg.callback.send(Ok(txn)).await;
-            //     });
-            // }
-        }
-
-        // println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
-        for (write, write_ts) in write_ts_in_waitlist.into_iter() {
-            let key = write.key;
-
-            let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
-            let meta = &mut meta_rwlock.write();
-            // let meta = &mut tuple.0;
-            if meta.maxts < final_ts {
-                meta.maxts = final_ts
-            }
-
-            if let Some(mut execution_context) = meta.waitlist.remove(&write_ts) {
-                execution_context.committed = true;
-                meta.waitlist.insert(final_ts, execution_context);
-            }
-            // check pending txns execute the context if the write is committed
-            loop {
-                match meta.waitlist.pop_first() {
-                    Some((ts, mut context)) => {
-                        if context.committed {
-                            unsafe {
-                                if context.read {
-                                    // execute the read
-                                    // get data
-                                    let data = &DATA[*data_index];
-                                    let mut index = data.len() - 1;
-                                    while final_ts < data[index].start_ts {
-                                        index -= 1;
-                                    }
-                                    let data = data[index].data.to_string();
-                                    let callback = context.call_back.take().unwrap();
-                                    callback.send((ts as i64, data));
-                                } else {
-                                    // execute the write
-                                    let datas = &mut DATA[*data_index];
-                                    match datas.last_mut() {
-                                        Some(last_data) => {
-                                            last_data.end_ts = ts;
-                                        }
-                                        None => {}
-                                    }
-                                    let mut version_data = VersionData {
-                                        start_ts: ts,
-                                        end_ts: MaxTs,
-                                        data: Data::default(),
-                                    };
-                                    match txn_type {
-                                        rpc::common::TxnType::TatpGetSubscriberData => {}
-                                        rpc::common::TxnType::TatpGetNewDestination => {}
-                                        rpc::common::TxnType::TatpGetAccessData => {}
-                                        rpc::common::TxnType::TatpUpdateSubscriberData => {}
-                                        rpc::common::TxnType::TatpUpdateLocation => {}
-                                        rpc::common::TxnType::TatpInsertCallForwarding => {}
-                                        rpc::common::TxnType::Ycsb => {
-                                            version_data.data = Data::Ycsb(write.value.clone());
-                                        }
-                                    }
-                                    datas.push(version_data);
-                                }
-                            }
-                        } else {
-                            meta.waitlist.insert(ts, context);
-                            if meta.smallest_wait_ts < ts {
-                                meta.smallest_wait_ts = ts;
-                            }
-                            break;
-                        }
-                    }
-                    None => {
-                        meta.smallest_wait_ts = MaxTs;
-                        break;
-                    }
+            if waiting_for_read_result == 0 {
+                // reply to coordinator
+                msg.callback.send(Ok(txn)).await;
+            } else {
+                unsafe {
+                    let wait_txn_index = txn.txn_id % 64;
+                    let mut guard = WAITING_TXN[wait_txn_index as usize].write();
+                    guard.insert(txn.txn_id, (waiting_for_read_result, msg));
                 }
+                // spawn a new task for this
+                // tokio::spawn(async move {
+                //     while waiting_for_read_result > 0 {
+                //         match receiver.recv().await {
+                //             Some((key, value)) => {
+                //                 txn.read_set.push(ReadStruct {
+                //                     key,
+                //                     value: Some(value),
+                //                     timestamp: None,
+                //                 });
+                //             }
+                //             None => {
+                //                 break;
+                //             }
+                //         }
+
+                //         waiting_for_read_result -= 1;
+                //     }
+                //     msg.callback.send(Ok(txn)).await;
+                // });
             }
         }
+
+        self.commit_write(final_ts, write_ts_in_waitlist, tid, txn_type)
+            .await;
+    }
+
+    async fn handle_commit(&mut self, msg: Msg) {
+        // commit final version and execute
+        self.commit_read(msg).await;
+        // println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
     }
 }
