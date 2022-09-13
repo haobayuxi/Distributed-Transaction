@@ -363,74 +363,74 @@ impl Executor {
         let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
         let mut read_set = txn.read_set.clone();
         txn.read_set.clear();
-        for read in read_set.iter_mut() {
-            let key = read.key;
-            {
-                let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
-                let meta = &mut meta_rwlock.write();
-                if meta.maxts < final_ts {
-                    meta.maxts = final_ts
-                }
-                if isreply {
-                    // get data
-                    if final_ts > meta.smallest_wait_ts {
-                        waiting_for_read_result += 1;
-                        // insert a read task
-                        let execution_context = ExecuteContext {
-                            committed: true,
-                            read: true,
-                            value: None,
-                            call_back: Some(sender.clone()),
-                            txnid: tid,
-                        };
-                        // let mut wait_list = tuple.1.write().await;
-                        meta.waitlist.insert(final_ts, execution_context);
-                        continue;
-                    }
-                    unsafe {
-                        let version_data = &DATA[*data_index];
-                        let mut index = version_data.len() - 1;
-                        while final_ts < version_data[index].start_ts {
-                            index -= 1;
-                        }
-                        let data = version_data[index].data.to_string();
-                        txn.read_set.push(ReadStruct {
-                            key,
-                            value: Some(data),
-                            timestamp: None,
-                        });
-                    }
-                }
-            }
-        }
+        // for read in read_set.iter_mut() {
+        //     let key = read.key;
+        //     {
+        //         let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
+        //         let meta = &mut meta_rwlock.write();
+        //         if meta.maxts < final_ts {
+        //             meta.maxts = final_ts
+        //         }
+        //         if isreply {
+        //             // get data
+        //             if final_ts > meta.smallest_wait_ts {
+        //                 waiting_for_read_result += 1;
+        //                 // insert a read task
+        //                 let execution_context = ExecuteContext {
+        //                     committed: true,
+        //                     read: true,
+        //                     value: None,
+        //                     call_back: Some(sender.clone()),
+        //                     txnid: tid,
+        //                 };
+        //                 // let mut wait_list = tuple.1.write().await;
+        //                 meta.waitlist.insert(final_ts, execution_context);
+        //                 continue;
+        //             }
+        //             unsafe {
+        //                 let version_data = &DATA[*data_index];
+        //                 let mut index = version_data.len() - 1;
+        //                 while final_ts < version_data[index].start_ts {
+        //                     index -= 1;
+        //                 }
+        //                 let data = version_data[index].data.to_string();
+        //                 txn.read_set.push(ReadStruct {
+        //                     key,
+        //                     value: Some(data),
+        //                     timestamp: None,
+        //                 });
+        //             }
+        //         }
+        //     }
+        // }
         // println!("is reply {}, need wait?", isreply);
         if isreply {
             // do we need to wait
-            if waiting_for_read_result == 0 {
-                // reply to coordinator
-                msg.callback.send(Ok(txn)).await;
-            } else {
-                // spawn a new task for this
-                tokio::spawn(async move {
-                    while waiting_for_read_result > 0 {
-                        match receiver.recv().await {
-                            Some((key, value)) => {
-                                txn.read_set.push(ReadStruct {
-                                    key,
-                                    value: Some(value),
-                                    timestamp: None,
-                                });
-                            }
-                            None => {
-                                break;
-                            }
-                        }
+            // if waiting_for_read_result == 0 {
+            // reply to coordinator
+            msg.callback.send(Ok(txn)).await;
+            // } else {
+            //     // spawn a new task for this
+            //     tokio::spawn(async move {
+            //         while waiting_for_read_result > 0 {
+            //             match receiver.recv().await {
+            //                 Some((key, value)) => {
+            //                     txn.read_set.push(ReadStruct {
+            //                         key,
+            //                         value: Some(value),
+            //                         timestamp: None,
+            //                     });
+            //                 }
+            //                 None => {
+            //                     break;
+            //                 }
+            //             }
 
-                        waiting_for_read_result -= 1;
-                    }
-                    msg.callback.send(Ok(txn)).await;
-                });
-            }
+            //             waiting_for_read_result -= 1;
+            //         }
+            //         msg.callback.send(Ok(txn)).await;
+            //     });
+            // }
         }
     }
 }
