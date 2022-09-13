@@ -102,6 +102,24 @@ impl Executor {
         // check read sets
         let mut abort = false;
         for read in msg.tmsg.read_set.iter() {
+            // match self.mem.get(&read.key).unwrap().try_read() {
+            //     Ok(read_guard) => {}
+            //     Err(_) => {
+            //         // abort the txn
+            //         let abort_msg = MeerkatMsg {
+            //             txn_id: msg.tmsg.txn_id,
+            //             read_set: Vec::new(),
+            //             write_set: Vec::new(),
+            //             executor_id: self.id,
+            //             op: TxnOp::TAbort.into(),
+            //             from: self.server_id,
+            //             timestamp: 0,
+            //         };
+            //         // send back to client
+            //         msg.callback.send(abort_msg).await;
+            //         return;
+            //     }
+            // }
             let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write();
             if read.timestamp.unwrap() < guard.0.version
@@ -176,6 +194,9 @@ impl Executor {
             let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write();
             guard.0.prepared_read.remove(&msg.tmsg.timestamp);
+            if guard.0.version < read.timestamp() {
+                guard.0.version = read.timestamp();
+            }
         }
 
         for write in msg.tmsg.write_set {
@@ -186,6 +207,9 @@ impl Executor {
             let mut guard = self.mem.get(&write.key).unwrap().write();
             guard.1 = write.value;
             guard.0.prepared_write.remove(&msg.tmsg.timestamp);
+            if guard.0.version < msg.tmsg.timestamp {
+                guard.0.version = msg.tmsg.timestamp
+            }
         }
     }
 
