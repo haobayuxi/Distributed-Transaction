@@ -140,7 +140,7 @@ impl Executor {
             }
             if executed {
                 node.executed = true;
-                println!("exec execute {}", txnid);
+                // println!("exec execute {}", txnid);
                 self.apply.send(txnid);
             }
 

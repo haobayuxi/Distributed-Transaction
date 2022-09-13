@@ -98,14 +98,11 @@ impl Apply {
     }
 
     async fn handle_execute(&mut self, txnid: u64) {
-        println!("execute txn {:?}", get_txnid(txnid));
+        // println!("execute txn {:?}", get_txnid(txnid));
         let (clientid, index) = get_txnid(txnid);
         unsafe {
             let node = &mut TXNS[clientid as usize][index as usize];
-            if node.executed {
-                return;
-            }
-            if node.txn.from % 3 == self.server_id {
+            if node.txn.from % 3 == self.server_id && node.callback.is_some() {
                 // execute
                 let mut result = JanusMsg {
                     txn_id: txnid,
