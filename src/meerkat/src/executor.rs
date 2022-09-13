@@ -82,7 +82,7 @@ impl Executor {
             result_read_set.push(result);
         }
         // send result back
-        println!("read set {:?}", result_read_set);
+        // println!("read set {:?}", result_read_set);
         let read_back = MeerkatMsg {
             txn_id: msg.tmsg.txn_id,
             read_set: result_read_set,
