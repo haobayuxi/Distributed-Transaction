@@ -123,7 +123,7 @@ impl Executor {
 
             let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
             {
-                let meta = &mut meta_rwlock.write();
+                let mut meta = meta_rwlock.write();
                 if meta.maxts < final_ts {
                     meta.maxts = final_ts;
                 }
@@ -157,29 +157,29 @@ impl Executor {
                 });
             }
         }
-        if waiting_for_read_result == 0 {
-            // reply to coordinator
-            msg.callback.send(Ok(txn)).await;
-        } else {
-            // spawn a new task for this
-            tokio::spawn(async move {
-                while waiting_for_read_result > 0 {
-                    match receiver.recv().await {
-                        Some((key, value)) => {
-                            txn.read_set.push(ReadStruct {
-                                key,
-                                value: Some(value),
-                                timestamp: None,
-                            });
-                        }
-                        None => break,
-                    }
+        // if waiting_for_read_result == 0 {
+        //     // reply to coordinator
+        msg.callback.send(Ok(txn)).await;
+        // } else {
+        //     // spawn a new task for this
+        //     tokio::spawn(async move {
+        //         while waiting_for_read_result > 0 {
+        //             match receiver.recv().await {
+        //                 Some((key, value)) => {
+        //                     txn.read_set.push(ReadStruct {
+        //                         key,
+        //                         value: Some(value),
+        //                         timestamp: None,
+        //                     });
+        //                 }
+        //                 None => break,
+        //             }
 
-                    waiting_for_read_result -= 1;
-                }
-                msg.callback.send(Ok(txn)).await;
-            });
-        }
+        //             waiting_for_read_result -= 1;
+        //         }
+        //         msg.callback.send(Ok(txn)).await;
+        //     });
+        // }
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -273,7 +273,7 @@ impl Executor {
         // commit final version and execute
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;
-        let isreply = if self.server_id == (tid as u32) % 3 {
+        let isreply = if self.server_id == (msg.tmsg.from as u32) % 3 {
             true
         } else {
             false
