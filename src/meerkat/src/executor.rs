@@ -51,7 +51,7 @@ impl Executor {
         loop {
             match self.recv.recv().await {
                 Some(msg) => match msg.tmsg.op() {
-                    TxnOp::Abort => self.handle_abort(msg).await,
+                    TxnOp::Abort => self.handle_abort(msg.tmsg).await,
                     TxnOp::ReadOnly => self.handle_read(msg).await,
                     TxnOp::Commit => self.handle_commit(msg).await,
                     TxnOp::Prepare => self.handle_prepare(msg).await,
@@ -141,6 +141,8 @@ impl Executor {
         // validate write set
         if abort {
             // println!("abort the txn");
+            // clean prepared read write
+            self.handle_abort(msg.tmsg).await;
             prepare_ok.op = TxnOp::Abort.into();
         } else {
             prepare_ok.op = TxnOp::PrepareRes.into();
@@ -177,21 +179,21 @@ impl Executor {
         }
     }
 
-    async fn handle_abort(&mut self, msg: Msg) {
+    async fn handle_abort(&mut self, msg: MeerkatMsg) {
         // release the prepare  read & prepare write
-        for read in msg.tmsg.read_set.iter() {
+        for read in msg.read_set.iter() {
             let key = read.key;
             let mut guard = self.mem.get(&key).unwrap().write();
-            guard.0.prepared_read.remove(&msg.tmsg.timestamp);
+            guard.0.prepared_read.remove(&msg.timestamp);
         }
 
-        for write in msg.tmsg.write_set {
+        for write in msg.write_set {
             // let mut guard = self.guards.remove(&write.key).unwrap();
             // guard.0 = msg.tmsg.txn_id;
             // guard.1 = write.value.clone();
             // update value
             let mut guard = self.mem.get(&write.key).unwrap().write();
-            guard.0.prepared_write.remove(&msg.tmsg.timestamp);
+            guard.0.prepared_write.remove(&msg.timestamp);
         }
     }
 }
