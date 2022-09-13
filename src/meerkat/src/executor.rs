@@ -109,11 +109,11 @@ impl Executor {
                     && msg.tmsg.timestamp < *guard.0.prepared_write.iter().min().unwrap())
             {
                 abort = true;
-                println!(
-                    "read ts {}, prepare write {}",
-                    read.timestamp(),
-                    *guard.0.prepared_write.iter().min().unwrap()
-                );
+                // println!(
+                //     "read ts {}, prepare write {}",
+                //     read.timestamp(),
+                //     *guard.0.prepared_write.iter().min().unwrap()
+                // );
                 break;
             }
             // insert ts to prepared read
