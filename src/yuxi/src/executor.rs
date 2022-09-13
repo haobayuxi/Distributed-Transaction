@@ -157,29 +157,29 @@ impl Executor {
                 });
             }
         }
-        // if waiting_for_read_result == 0 {
-        // reply to coordinator
-        msg.callback.send(Ok(txn)).await;
-        // } else {
-        //     // spawn a new task for this
-        //     tokio::spawn(async move {
-        //         while waiting_for_read_result > 0 {
-        //             match receiver.recv().await {
-        //                 Some((key, value)) => {
-        //                     txn.read_set.push(ReadStruct {
-        //                         key,
-        //                         value: Some(value),
-        //                         timestamp: None,
-        //                     });
-        //                 }
-        //                 None => break,
-        //             }
+        if waiting_for_read_result == 0 {
+            // reply to coordinator
+            msg.callback.send(Ok(txn)).await;
+        } else {
+            // spawn a new task for this
+            tokio::spawn(async move {
+                while waiting_for_read_result > 0 {
+                    match receiver.recv().await {
+                        Some((key, value)) => {
+                            txn.read_set.push(ReadStruct {
+                                key,
+                                value: Some(value),
+                                timestamp: None,
+                            });
+                        }
+                        None => break,
+                    }
 
-        //             waiting_for_read_result -= 1;
-        //         }
-        //         msg.callback.send(Ok(txn)).await;
-        //     });
-        // }
+                    waiting_for_read_result -= 1;
+                }
+                msg.callback.send(Ok(txn)).await;
+            });
+        }
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -268,27 +268,6 @@ impl Executor {
         };
         msg.callback.send(Ok(result)).await;
     }
-
-    // async fn handle_abort(&mut self, msg: Msg) {
-    //     // abort the transaction
-    //     let tid = msg.tmsg.txn_id;
-    //     let (txn, write_ts) = self.txns.remove(&tid).unwrap();
-
-    //     // for read in msg.tmsg.read_set.iter() {
-    //     //     let key = read.key;
-    //     //     // find and erase the ts
-    //     //     let mut guard = self.mem.get(&key).unwrap().write().await;
-    //     // }
-    //     unsafe {
-    //         for i in 0..write_ts.len() {}
-    //         for write in txn.write_set.iter() {
-    //             let key = write.key;
-    //             let index = self.index.get(&key).unwrap();
-    //             let mut guard = IN_MEMORY_DATA[*index].1.write().await;
-    //             // erase the ts from the wait list
-    //         }
-    //     }
-    // }
 
     async fn handle_commit(&mut self, msg: Msg) {
         // commit final version and execute
