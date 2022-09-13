@@ -116,8 +116,6 @@ impl MeerkatCoordinator {
     }
 
     async fn run_transaction(&mut self) -> bool {
-        let timestamp = get_local_time(self.id);
-        self.txn.timestamp = timestamp;
         // get the read set from server
         // execute phase
         let read_server_index = self.id % 3;
@@ -128,7 +126,7 @@ impl MeerkatCoordinator {
             executor_id: 0,
             op: TxnOp::ReadOnly.into(),
             from: self.id,
-            timestamp,
+            timestamp: 0,
             txn_type: Some(TxnType::Ycsb.into()),
         };
         // let result = client.txn_msg(read_request).await.unwrap().into_inner();
@@ -140,6 +138,8 @@ impl MeerkatCoordinator {
             read.value = None;
         }
         self.txn.op = TxnOp::Prepare.into();
+        let timestamp = get_local_time(self.id);
+        self.txn.timestamp = timestamp;
         // validate phase
         // prepare, prepare will send to all the server in the shard
         self.broadcast(self.txn.clone()).await;
