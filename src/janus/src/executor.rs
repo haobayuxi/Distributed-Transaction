@@ -73,7 +73,7 @@ impl Executor {
         let txnid = commit.txn.txn_id;
         self.committed += 1;
         // self.dep_graph.send(txnid);
-        println!("recv commit {:?}-{}", get_txnid(txnid), self.committed);
+        // println!("recv commit {:?}-{}", get_txnid(txnid), self.committed);
         unsafe {
             let (clientid, index) = get_txnid(txnid);
             let mut waiting = 0;
