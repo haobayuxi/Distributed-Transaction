@@ -96,6 +96,7 @@ impl Executor {
                     next.notify.push(notify_sender.clone());
                 }
             }
+            println!("waiting = {},dep ={:?}", waiting, deps);
 
             if waiting == 0 {
                 // execute
