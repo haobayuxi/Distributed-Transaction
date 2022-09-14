@@ -145,7 +145,7 @@ impl DepGraph {
                         {
                             // not committed
                             sleep(Duration::from_nanos(100));
-                            continue;
+                            // continue;
                         }
 
                         let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
