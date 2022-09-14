@@ -113,49 +113,35 @@ impl Executor {
             node.txn.deps = commit.txn.deps;
             node.committed = true;
 
-            let mut executed = true;
-            for dep in node.txn.deps.iter() {
-                if *dep == 0 {
-                    continue;
-                }
-                let (dep_clientid, dep_index) = get_txnid(*dep);
-                while TXNS[dep_clientid as usize].len() <= dep_index as usize
-                    || !TXNS[dep_clientid as usize][dep_index as usize].committed
-                {
-                    // not committed
-                    executed = false;
-                    break;
-                }
-                if executed {
-                    let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
-                    if next.executed {
-                        continue;
-                    } else {
-                        executed = false;
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-            if executed {
-                node.executed = true;
-                // println!("exec execute {}", txnid);
-                self.apply.send(txnid);
-            }
-
-            // let mut result = JanusMsg {
-            //     txn_id: txnid,
-            //     read_set: Vec::new(),
-            //     write_set: Vec::new(),
-            //     op: TxnOp::CommitRes.into(),
-            //     from: self.server_id,
-            //     deps: Vec::new(),
-            //     txn_type: None,
-            // };
-            // // reply to coordinator
-            // if commit.txn.from % 3 == self.server_id {
-            //     node.callback.take().unwrap().send(Ok(result)).await;
+            // let mut executed = true;
+            // for dep in node.txn.deps.iter() {
+            //     if *dep == 0 {
+            //         continue;
+            //     }
+            //     let (dep_clientid, dep_index) = get_txnid(*dep);
+            //     while TXNS[dep_clientid as usize].len() <= dep_index as usize
+            //         || !TXNS[dep_clientid as usize][dep_index as usize].committed
+            //     {
+            //         // not committed
+            //         executed = false;
+            //         break;
+            //     }
+            //     if executed {
+            //         let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
+            //         if next.executed {
+            //             continue;
+            //         } else {
+            //             executed = false;
+            //             break;
+            //         }
+            //     } else {
+            //         break;
+            //     }
+            // }
+            // if executed {
+            //     node.executed = true;
+            //     // println!("exec execute {}", txnid);
+            //     self.apply.send(txnid);
             // }
         }
     }
