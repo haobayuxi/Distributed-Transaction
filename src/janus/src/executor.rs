@@ -97,7 +97,10 @@ impl Executor {
                     let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
                     if !next.executed {
                         waiting += 1;
-                        next.notify.push(notify_sender.clone());
+                        let mut notifies = next.notify.write().await;
+                        if !next.executed {
+                            notifies.push(notify_sender.clone());
+                        }
                     }
                 }
                 if waiting != 0 {
@@ -231,7 +234,7 @@ pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
             *guard = write.value.clone();
         }
         // notify
-        for to_notify in node.notify.iter() {
+        for to_notify in node.notify.read().await.iter() {
             to_notify.send(0);
         }
     }

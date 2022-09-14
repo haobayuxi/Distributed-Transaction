@@ -25,12 +25,12 @@ use crate::{
 pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 pub static mut DATA: Vec<(RwLock<JanusMeta>, RwLock<String>)> = Vec::new();
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Node {
     pub executed: bool,
     pub committed: bool,
     pub waiting_dep: i32,
-    pub notify: Vec<UnboundedSender<u64>>,
+    pub notify: RwLock<Vec<UnboundedSender<u64>>>,
     // msg: Msg,
     pub txn: Option<JanusMsg>,
     pub callback: Option<Sender<Result<JanusMsg, Status>>>,
@@ -46,7 +46,7 @@ impl Node {
             committed: false,
             txn: Some(txn),
             callback: None,
-            notify: Vec::new(),
+            notify: RwLock::new(Vec::new()),
             dfn: -1,
             low: -1,
             waiting_dep: 0,
@@ -58,7 +58,7 @@ impl Node {
             committed: false,
             txn: None,
             callback: None,
-            notify: Vec::new(),
+            notify: RwLock::new(Vec::new()),
             dfn: -1,
             low: -1,
             waiting_dep: 0,
@@ -87,12 +87,12 @@ impl Peer {
     pub fn new(server_id: u32, config: Config) -> Self {
         // init data
         unsafe {
-            for i in 0..config.client_num {
-                // let mut in_memory_node = Vec::new();
-                // for _ in 0..500 {
-                //     in_memory_node.push(RwLock::new(Node::default()));
-                // }
-                TXNS.push(vec![Node::default(); 500]);
+            for _ in 0..config.client_num {
+                let mut in_memory_node = Vec::new();
+                for _ in 0..500 {
+                    in_memory_node.push(Node::default());
+                }
+                TXNS.push(in_memory_node);
             }
         }
         // self.mem = Arc::new(mem);
