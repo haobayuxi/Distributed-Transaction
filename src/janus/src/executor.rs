@@ -103,7 +103,7 @@ impl Executor {
                     node.waiting_dep = waiting;
                 }
             }
-
+            waiting == 0;
             // println!("waiting = {},dep ={:?}", waiting, deps);
 
             if waiting == 0 {
