@@ -83,7 +83,6 @@ impl DepGraph {
             match self.wait_list.try_recv() {
                 Ok(txnid) => {
                     self.execute_txn(txnid);
-                    // self.apply(vec![txnid]);
                 }
                 Err(e) => {
                     sleep(Duration::from_nanos(10));
@@ -145,7 +144,6 @@ impl DepGraph {
                         {
                             // not committed
                             sleep(Duration::from_nanos(100));
-                            // continue;
                         }
 
                         let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
