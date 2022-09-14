@@ -1,57 +1,19 @@
-use std::{sync::mpsc::Receiver, thread::sleep, time::Duration};
+use std::{collections::HashMap, sync::Arc, thread::sleep, time::Duration};
 
 use common::{get_client_id, get_txnid, CID_LEN};
 use rpc::janus::JanusMsg;
 
-use tokio::sync::mpsc::{Sender, UnboundedSender};
+use tokio::sync::mpsc::{Receiver, Sender, UnboundedSender};
 use tonic::Status;
 
-pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
-
-#[derive(Debug, Clone)]
-pub struct Node {
-    pub executed: bool,
-    pub committed: bool,
-    // msg: Msg,
-    pub txn: JanusMsg,
-    pub callback: Option<Sender<Result<JanusMsg, Status>>>,
-    // tarjan
-    dfn: i32,
-    low: i32,
-}
-
-impl Node {
-    pub fn new(txn: JanusMsg) -> Self {
-        Self {
-            executed: false,
-            committed: false,
-            txn,
-            callback: None,
-            dfn: -1,
-            low: -1,
-        }
-    }
-    pub fn default() -> Self {
-        Self {
-            executed: false,
-            committed: false,
-            txn: JanusMsg::default(),
-            callback: None,
-            dfn: -1,
-            low: -1,
-        }
-    }
-}
-
-// commit msg only contains executor ids , so just send txnid&callback to each executor to execute
+use crate::peer::TXNS;
 
 pub struct DepGraph {
     // dep graph
     // graph: Arc<RwLock<HashMap<i64, Node>>>,
+    meta_index: Arc<HashMap<i64, usize>>,
     // wait list
     wait_list: Receiver<u64>,
-    // job senders
-    apply: UnboundedSender<u64>,
 
     // stack for tarjan
     stack: Vec<u64>,
@@ -60,31 +22,27 @@ pub struct DepGraph {
 }
 
 impl DepGraph {
-    pub fn new(apply: UnboundedSender<u64>, wait_list: Receiver<u64>, client_num: usize) -> Self {
-        // init TXNS
-        unsafe {
-            for i in 0..client_num {
-                TXNS.push(vec![]);
-            }
-            // TXNS.reserve(client_num);
-        }
-
+    pub fn new(
+        wait_list: Receiver<u64>,
+        client_num: usize,
+        meta_index: Arc<HashMap<i64, usize>>,
+    ) -> Self {
         Self {
-            apply,
             wait_list,
             stack: Vec::new(),
             index: 0,
             visit: 0,
+            meta_index,
         }
     }
 
-    pub fn run(&mut self) {
+    pub async fn run(&mut self) {
         loop {
-            match self.wait_list.try_recv() {
-                Ok(txnid) => {
-                    self.execute_txn(txnid);
+            match self.wait_list.recv().await {
+                Some(txnid) => {
+                    self.execute_txn(txnid).await;
                 }
-                Err(e) => {
+                None => {
                     sleep(Duration::from_nanos(10));
                 }
             }
@@ -96,25 +54,24 @@ impl DepGraph {
             for txnid in txnids {
                 let (client_id, index) = get_txnid(txnid);
                 // println!("send to apply {:?}", get_txnid(txnid));
-                TXNS[client_id as usize][index as usize].executed = true;
-                self.apply.send(txnid);
+                // TXNS[client_id as usize][index as usize].executed = true;
             }
         }
     }
 
-    fn execute_txn(&mut self, txnid: u64) {
+    async fn execute_txn(&mut self, txnid: u64) {
         unsafe {
             let (client_id, index) = get_txnid(txnid);
 
             // println!("try to execute {},{}", client_id, index);
-            let node = &TXNS[client_id as usize][index as usize];
+            let node = TXNS[client_id as usize][index as usize].read().await;
             if !node.executed {
-                self.find_scc(txnid);
+                self.find_scc(txnid).await;
             }
         }
     }
 
-    fn find_scc(&mut self, txnid: u64) -> bool {
+    async fn find_scc(&mut self, txnid: u64) -> bool {
         unsafe {
             self.stack.clear();
             self.visit = 0;
@@ -124,7 +81,7 @@ impl DepGraph {
             while self.visit >= 0 {
                 let tid = self.stack[self.visit as usize];
                 let (client_id, index) = get_txnid(tid);
-                let mut node = &mut TXNS[client_id as usize][index as usize];
+                let mut node = TXNS[client_id as usize][index as usize].write().await;
 
                 // println!(
                 //     "find scc {},{}, dfn{}, low{}",
@@ -134,20 +91,20 @@ impl DepGraph {
                     self.index += 1;
                     node.dfn = self.index;
                     node.low = self.index;
-                    for dep in node.txn.deps.iter() {
-                        if *dep == 0 {
+                    let deps = node.txn.as_ref().unwrap().deps.clone();
+                    for dep in deps {
+                        if dep == 0 {
                             continue;
                         }
-                        let (dep_clientid, dep_index) = get_txnid(*dep);
-                        while TXNS[dep_clientid as usize].len() <= dep_index as usize
-                            || !TXNS[dep_clientid as usize][dep_index as usize].committed
-                        {
+                        let (dep_clientid, dep_index) = get_txnid(dep);
+                        let mut next = TXNS[dep_clientid as usize][dep_index as usize]
+                            .write()
+                            .await;
+                        while !next.committed {
                             // not committed
                             sleep(Duration::from_nanos(100));
-                            // continue;
                         }
 
-                        let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
                         if next.executed {
                             continue;
                         }
@@ -156,7 +113,7 @@ impl DepGraph {
                             // not in stack
                             // println!("push into stack {}, {}", dep_clientid, dep_index);
                             next.dfn = 0;
-                            self.stack.push(*dep);
+                            self.stack.push(dep);
                             self.visit += 1;
                         } else {
                             if node.low > next.dfn {

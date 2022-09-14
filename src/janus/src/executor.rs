@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::{mpsc::Sender, Arc},
+    sync::Arc,
 };
 
 use common::{get_client_id, get_txnid};
@@ -8,15 +8,11 @@ use rpc::{
     common::{ReadStruct, TxnOp},
     janus::JanusMsg,
 };
-use tokio::sync::{
-    mpsc::{UnboundedReceiver, UnboundedSender},
-    RwLock,
-};
+use tokio::sync::mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender};
 
 use crate::{
-    apply::Apply,
-    dep_graph::{Node, TXNS},
-    peer::META,
+    peer::DATA,
+    peer::{Node, TXNS},
     JanusMeta, Msg,
 };
 
@@ -29,23 +25,20 @@ pub struct Executor {
     //
     recv: UnboundedReceiver<Msg>,
     dep_graph: Sender<u64>,
-    apply: UnboundedSender<u64>,
 }
 
 impl Executor {
     pub fn new(
         server_id: u32,
-        meta_index: Arc<HashMap<i64, usize>>,
         dep_graph: Sender<u64>,
         recv: UnboundedReceiver<Msg>,
-        apply: UnboundedSender<u64>,
+        meta_index: Arc<HashMap<i64, usize>>,
     ) -> Self {
         Self {
             server_id,
-            meta_index,
             dep_graph,
             recv,
-            apply,
+            meta_index,
         }
     }
 
@@ -74,74 +67,57 @@ impl Executor {
         }
     }
 
-    // async fn handle_read_only(&mut self, msg: Msg) {
-    //     let txnid = msg.txn.txn_id;
-    //     let txn = self.txns.remove(&txnid).unwrap();
-    //     // execute
-    //     let mut result = JanusMsg {
-    //         txn_id: txnid,
-    //         read_set: Vec::new(),
-    //         write_set: Vec::new(),
-    //         op: TxnOp::CommitRes.into(),
-    //         from: self.server_id,
-    //         deps: Vec::new(),
-    //         txn_type: None,
-    //     };
-
-    //     for read in txn.read_set {
-    //         let read_result = ReadStruct {
-    //             key: read.key.clone(),
-    //             value: Some(self.mem.get(&read.key).unwrap().read().await.1.clone()),
-    //             timestamp: None,
-    //         };
-    //         result.read_set.push(read_result);
-    //     }
-
-    //     // reply to coordinator
-    //     msg.callback.send(Ok(result)).await;
-    // }
-
     async fn handle_commit(&mut self, commit: Msg) {
         let txnid = commit.txn.txn_id;
 
-        self.dep_graph.send(txnid);
+        // self.dep_graph.send(txnid);
         // println!("recv commit {:?}", get_txnid(txnid));
         unsafe {
             let (clientid, index) = get_txnid(txnid);
-            let node = &mut TXNS[clientid as usize][index as usize];
+            let mut node = TXNS[clientid as usize][index as usize].write().await;
             node.callback = Some(commit.callback);
-            node.txn.deps = commit.txn.deps;
-            node.committed = true;
-
-            let mut executed = true;
-            for dep in node.txn.deps.iter() {
+            let deps = commit.txn.deps;
+            node.executed = true;
+            let (notify_sender, mut recv) = unbounded_channel::<u64>();
+            let mut waiting = 0;
+            for dep in deps.iter() {
                 if *dep == 0 {
                     continue;
                 }
                 let (dep_clientid, dep_index) = get_txnid(*dep);
-                while TXNS[dep_clientid as usize].len() <= dep_index as usize
-                    || !TXNS[dep_clientid as usize][dep_index as usize].committed
-                {
-                    // not committed
-                    executed = false;
-                    break;
-                }
-                if executed {
-                    let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
-                    if next.executed {
-                        continue;
-                    } else {
-                        executed = false;
-                        break;
-                    }
-                } else {
-                    break;
+
+                let mut next = TXNS[dep_clientid as usize][dep_index as usize]
+                    .write()
+                    .await;
+                if !next.executed {
+                    waiting += 1;
+                    next.notify.push(notify_sender.clone());
                 }
             }
-            if executed {
-                node.executed = true;
-                // println!("exec execute {}", txnid);
-                self.apply.send(txnid);
+
+            if waiting == 0 {
+                // execute
+                let meta_index = self.meta_index.clone();
+                execute(txnid, meta_index).await;
+            } else {
+                // update in memory txn
+                node.waiting_dep = waiting;
+                self.dep_graph.send(txnid).await;
+                let meta_index = self.meta_index.clone();
+                tokio::spawn(async move {
+                    loop {
+                        match recv.recv().await {
+                            Some(_) => {
+                                waiting -= 1;
+                                if waiting == 0 {
+                                    execute(txnid, meta_index).await;
+                                    break;
+                                }
+                            }
+                            None => break,
+                        }
+                    }
+                });
             }
         }
     }
@@ -160,17 +136,17 @@ impl Executor {
         unsafe {
             // get the dep
             for read in msg.txn.read_set.iter() {
-                let index = self.meta_index.get(&read.key).unwrap();
-                // let meta = self.meta.get_mut(&read.key).unwrap();
-                let meta = META[*index].0.read().await;
+                let meta_index = self.meta_index.get(&read.key).unwrap();
+
+                let meta = DATA[*meta_index].0.read().await;
                 let dep = meta.last_visited_txnid;
                 result.deps.push(dep);
             }
 
             for write in msg.txn.write_set.iter() {
-                let index = self.meta_index.get(&write.key).unwrap();
-                // let meta = self.meta.get_mut(&read.key).unwrap();
-                let mut meta = META[*index].0.write().await;
+                let meta_index = self.meta_index.get(&write.key).unwrap();
+
+                let mut meta = DATA[*meta_index].0.write().await;
                 let dep = meta.last_visited_txnid;
                 meta.last_visited_txnid = msg.txn.txn_id;
                 result.deps.push(dep);
@@ -179,7 +155,7 @@ impl Executor {
             // result.deps.sort();
             let txnid = msg.txn.txn_id;
             let (client_id, index) = get_txnid(txnid);
-            TXNS[client_id as usize][index as usize] = Node::new(msg.txn);
+            TXNS[client_id as usize][index as usize].write().await.txn = Some(msg.txn);
         }
         // reply to coordinator
         msg.callback.send(Ok(result)).await;
@@ -199,5 +175,53 @@ impl Executor {
         // self.txns.insert(txnid, msg.txn);
         // reply accept ok to coordinator
         msg.callback.send(Ok(accept_ok)).await;
+    }
+}
+
+pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
+    unsafe {
+        let (clientid, index) = get_txnid(txnid);
+        let mut node = TXNS[clientid as usize][index as usize].write().await;
+        if node.executed {
+            return;
+        }
+        node.executed = true;
+        // println!("exec execute {}", txnid);
+        let txn = node.txn.as_ref().unwrap();
+        let write_set = txn.write_set.clone();
+        for write in write_set.iter() {
+            let meta_index = meta_index.get(&write.key).unwrap();
+            let mut guard = DATA[*meta_index].1.write().await;
+            *guard = write.value.clone();
+        }
+        // notify
+        for to_notify in node.notify.iter() {
+            to_notify.send(0);
+        }
+        if node.callback.is_some() {
+            // execute
+            let mut result = JanusMsg {
+                txn_id: txnid,
+                read_set: Vec::new(),
+                write_set: Vec::new(),
+                op: TxnOp::CommitRes.into(),
+                from: 0,
+                deps: Vec::new(),
+                txn_type: None,
+            };
+
+            for read in txn.read_set.iter() {
+                let meta_index = meta_index.get(&read.key).unwrap();
+
+                let read_result = ReadStruct {
+                    key: read.key.clone(),
+                    value: Some(DATA[*meta_index].1.read().await.clone()),
+                    timestamp: None,
+                };
+                result.read_set.push(read_result);
+            }
+            // println!("execute {:?}", get_txnid(txnid));
+            node.callback.take().unwrap().send(Ok(result)).await;
+        }
     }
 }

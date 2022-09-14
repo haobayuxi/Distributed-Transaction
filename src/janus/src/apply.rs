@@ -10,7 +10,7 @@ use tokio::{
     time::sleep,
 };
 
-use crate::{dep_graph::TXNS, peer::META, JanusMeta, Msg};
+use crate::{peer::TXNS, JanusMeta, Msg};
 
 // pub struct Apply {
 //     pub mem_index: Arc<HashMap<i64, usize>>,
@@ -99,37 +99,37 @@ impl Apply {
 
     async fn handle_execute(&mut self, txnid: u64) {
         // println!("execute txn {:?}", get_txnid(txnid));
-        let (clientid, index) = get_txnid(txnid);
-        unsafe {
-            let node = &mut TXNS[clientid as usize][index as usize];
-            if node.txn.from % 3 == self.server_id && node.callback.is_some() {
-                // execute
-                let mut result = JanusMsg {
-                    txn_id: txnid,
-                    read_set: Vec::new(),
-                    write_set: Vec::new(),
-                    op: TxnOp::CommitRes.into(),
-                    from: self.server_id,
-                    deps: Vec::new(),
-                    txn_type: None,
-                };
+        // let (clientid, index) = get_txnid(txnid);
+        // unsafe {
+        //     let node = &mut TXNS[clientid as usize][index as usize];
+        //     if node.txn.from % 3 == self.server_id && node.callback.is_some() {
+        //         // execute
+        //         let mut result = JanusMsg {
+        //             txn_id: txnid,
+        //             read_set: Vec::new(),
+        //             write_set: Vec::new(),
+        //             op: TxnOp::CommitRes.into(),
+        //             from: self.server_id,
+        //             deps: Vec::new(),
+        //             txn_type: None,
+        //         };
 
-                for read in node.txn.read_set.iter() {
-                    let read_result = ReadStruct {
-                        key: read.key.clone(),
-                        value: Some(self.mem.get(&read.key).unwrap().clone()),
-                        timestamp: None,
-                    };
-                    result.read_set.push(read_result);
-                }
-                // println!("execute {:?}", get_txnid(txnid));
-                node.callback.take().unwrap().send(Ok(result)).await;
-            }
-            for write in node.txn.write_set.iter() {
-                self.mem.insert(write.key, write.value.clone());
-            }
+        //         for read in node.txn.read_set.iter() {
+        //             let read_result = ReadStruct {
+        //                 key: read.key.clone(),
+        //                 value: Some(self.mem.get(&read.key).unwrap().clone()),
+        //                 timestamp: None,
+        //             };
+        //             result.read_set.push(read_result);
+        //         }
+        //         // println!("execute {:?}", get_txnid(txnid));
+        //         node.callback.take().unwrap().send(Ok(result)).await;
+        //     }
+        //     for write in node.txn.write_set.iter() {
+        //         self.mem.insert(write.key, write.value.clone());
+        //     }
 
-            // reply to coordinator
-        }
+        // reply to coordinator
+        // }
     }
 }

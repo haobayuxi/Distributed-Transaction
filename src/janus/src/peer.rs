@@ -1,40 +1,81 @@
-use std::{
-    collections::HashMap,
-    sync::{mpsc::channel, Arc},
-};
+use std::{collections::HashMap, sync::Arc};
 
 use common::{config::Config, convert_ip_addr, get_txnid, ycsb::init_ycsb};
 use log::info;
+// use parking_lot::RwLock;
+use rpc::janus::JanusMsg;
 use serde::{Deserialize, Serialize};
 
 use tokio::{
     sync::{
-        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
         RwLock,
     },
     task::spawn_blocking,
 };
+use tonic::Status;
 
 use crate::{
-    apply::Apply,
-    dep_graph::{DepGraph, Node, TXNS},
+    dep_graph::DepGraph,
     executor::Executor,
     peer_communication::{run_rpc_server, RpcServer},
     JanusMeta, Msg,
 };
+
+pub static mut TXNS: Vec<Vec<RwLock<Node>>> = Vec::new();
+pub static mut DATA: Vec<(RwLock<JanusMeta>, RwLock<String>)> = Vec::new();
+
+#[derive(Debug, Clone)]
+pub struct Node {
+    pub executed: bool,
+    pub committed: bool,
+    pub waiting_dep: i32,
+    pub notify: Vec<UnboundedSender<u64>>,
+    // msg: Msg,
+    pub txn: Option<JanusMsg>,
+    pub callback: Option<Sender<Result<JanusMsg, Status>>>,
+    // tarjan
+    pub dfn: i32,
+    pub low: i32,
+}
+
+impl Node {
+    pub fn new(txn: JanusMsg) -> Self {
+        Self {
+            executed: false,
+            committed: false,
+            txn: Some(txn),
+            callback: None,
+            notify: Vec::new(),
+            dfn: -1,
+            low: -1,
+            waiting_dep: 0,
+        }
+    }
+    pub fn default() -> Self {
+        Self {
+            executed: false,
+            committed: false,
+            txn: None,
+            callback: None,
+            notify: Vec::new(),
+            dfn: -1,
+            low: -1,
+            waiting_dep: 0,
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfigPerServer {
     id: i32,
 }
 
-pub static mut META: Vec<(RwLock<JanusMeta>, RwLock<String>)> = Vec::new();
-
 pub struct Peer {
     server_id: u32,
 
     // memory
-    // mem: Arc<HashMap<i64, RwLock<(JanusMeta, String)>>>,
+    // ycsb: HashMap<i64, (RwLock<JanusMeta>, RwLock<String>)>,
     // dispatcher
     executor_senders: HashMap<u32, UnboundedSender<Msg>>,
     // executor: Executor,
@@ -47,52 +88,47 @@ impl Peer {
         // init data
         unsafe {
             for i in 0..config.client_num {
-                TXNS.push(vec![Node::default(); 500]);
+                let mut in_memory_node = Vec::new();
+                for _ in 0..500 {
+                    in_memory_node.push(RwLock::new(Node::default()));
+                }
+                TXNS.push(in_memory_node);
             }
         }
         // self.mem = Arc::new(mem);
         let data = init_ycsb();
-        let mut meta = HashMap::new();
+        let mut meta_indexs = HashMap::new();
         unsafe {
             let mut index: usize = 0;
             for (id, value) in data.iter() {
-                META.push((
+                DATA.push((
                     RwLock::new(JanusMeta::default()),
                     RwLock::new(value.clone()),
                 ));
-                meta.insert(*id, index);
+                meta_indexs.insert(*id, index);
                 index += 1;
             }
         }
 
-        let (dep_sender, dep_receiver) = channel::<u64>();
-        let (apply_sender, apply_receiver) = unbounded_channel::<u64>();
+        let meta_index = Arc::new(meta_indexs);
 
-        let mut dep_graph = DepGraph::new(
-            apply_sender.clone(),
-            dep_receiver,
-            config.client_num as usize,
-        );
-        spawn_blocking(move || {
-            dep_graph.run();
-        });
-        // self.init_dep(apply_sender, dep_receiver, self.config.client_num as usize)
-        //     .await;
-        let mut apply = Apply::new(apply_receiver, data, server_id);
+        let (dep_sender, dep_receiver) = channel::<u64>(10000);
+        // let (apply_sender, apply_receiver) = unbounded_channel::<u64>();
+
+        let mut dep_graph =
+            DepGraph::new(dep_receiver, config.client_num as usize, meta_index.clone());
         tokio::spawn(async move {
-            apply.run().await;
+            dep_graph.run().await;
         });
-        let arc_meta = Arc::new(meta);
+        // let mut apply = Apply::new(apply_receiver, data, server_id);
+        // tokio::spawn(async move {
+        //     apply.run().await;
+        // });
         let mut exec_senders = HashMap::new();
         for i in 0..config.executor_num {
             let (exec_sender, exec_recv) = unbounded_channel::<Msg>();
-            let mut executor = Executor::new(
-                server_id,
-                arc_meta.clone(),
-                dep_sender.clone(),
-                exec_recv,
-                apply_sender.clone(),
-            );
+            let mut executor =
+                Executor::new(server_id, dep_sender.clone(), exec_recv, meta_index.clone());
             exec_senders.insert(i, exec_sender);
             tokio::spawn(async move {
                 executor.run().await;
