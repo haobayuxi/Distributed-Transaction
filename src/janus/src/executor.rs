@@ -80,6 +80,7 @@ impl Executor {
             let (notify_sender, mut recv) = unbounded_channel::<u64>();
             {
                 let mut node = TXNS[clientid as usize][index as usize].write().await;
+                node.committed = true;
                 if commit.txn.from % 3 == self.server_id {
                     node.callback = Some(commit.callback);
                 }
