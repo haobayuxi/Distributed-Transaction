@@ -124,7 +124,7 @@ impl Executor {
                 {
                     // not committed
                     executed = false;
-                    // break;
+                    break;
                 }
                 if executed {
                     let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
