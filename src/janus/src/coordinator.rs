@@ -79,18 +79,18 @@ impl JanusCoordinator {
         }
         self.txn.deps = result.deps;
         // println!("deps {:?}", self.txn.deps);
-        if !fast_commit {
-            // accept
-            // println!("accept");
-            let mut accept = self.txn.clone();
-            accept.read_set.clear();
-            accept.write_set.clear();
-            accept.op = TxnOp::Accept.into();
-            self.broadcast(accept).await;
-            for i in 0..3 {
-                self.recv.recv().await;
-            }
-        }
+        // if !fast_commit {
+        //     // accept
+        //     // println!("accept");
+        //     let mut accept = self.txn.clone();
+        //     accept.read_set.clear();
+        //     accept.write_set.clear();
+        //     accept.op = TxnOp::Accept.into();
+        //     self.broadcast(accept).await;
+        //     for i in 0..3 {
+        //         self.recv.recv().await;
+        //     }
+        // }
         // txn success
         let mut commit = self.txn.clone();
         commit.op = TxnOp::Commit.into();
