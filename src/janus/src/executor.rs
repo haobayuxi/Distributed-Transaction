@@ -83,6 +83,7 @@ impl Executor {
             {
                 let node = &mut TXNS[clientid as usize][index as usize];
                 node.committed = true;
+                node.txn.as_mut().unwrap().deps = deps.clone();
                 if commit.txn.from % 3 == self.server_id {
                     node.callback = Some(commit.callback);
                 }
