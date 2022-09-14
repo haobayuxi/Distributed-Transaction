@@ -140,7 +140,7 @@ impl DepGraph {
                         }
                         let (dep_clientid, dep_index) = get_txnid(*dep);
                         while TXNS[dep_clientid as usize].len() <= dep_index as usize
-                            || !TXNS[dep_clientid as usize][dep_index as usize].committed
+                        // || !TXNS[dep_clientid as usize][dep_index as usize].committed
                         {
                             // not committed
                             sleep(Duration::from_nanos(100));
