@@ -196,6 +196,7 @@ pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
     unsafe {
         let (clientid, index) = get_txnid(txnid);
         let node = &mut TXNS[clientid as usize][index as usize];
+        let notifies = node.notify.write().await;
         if node.executed {
             return;
         }
@@ -234,7 +235,7 @@ pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
             *guard = write.value.clone();
         }
         // notify
-        for to_notify in node.notify.read().await.iter() {
+        for to_notify in notifies.iter() {
             to_notify.send(0);
         }
     }
