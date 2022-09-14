@@ -77,7 +77,7 @@ impl Executor {
             let mut node = TXNS[clientid as usize][index as usize].write().await;
             node.callback = Some(commit.callback);
             let deps = commit.txn.deps;
-            node.executed = true;
+            // node.executed = true;
             let (notify_sender, mut recv) = unbounded_channel::<u64>();
             let mut waiting = 0;
             for dep in deps.iter() {
