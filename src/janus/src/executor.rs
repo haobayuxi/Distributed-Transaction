@@ -103,7 +103,6 @@ impl Executor {
                     node.waiting_dep = waiting;
                 }
             }
-            waiting = 0;
             // println!("waiting = {},dep ={:?}", waiting, deps);
 
             if waiting == 0 {
@@ -112,7 +111,7 @@ impl Executor {
                 execute(txnid, meta_index).await;
             } else {
                 // update in memory txn
-                // println!("spawn to wait {}", waiting);
+                println!("spawn to wait {}", waiting);
                 self.dep_graph.send(txnid).await;
                 let meta_index = self.meta_index.clone();
                 tokio::spawn(async move {

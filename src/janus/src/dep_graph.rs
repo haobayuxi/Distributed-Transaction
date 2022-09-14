@@ -1,9 +1,12 @@
-use std::{collections::HashMap, sync::Arc, thread::sleep, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use common::{get_client_id, get_txnid, CID_LEN};
 use rpc::janus::JanusMsg;
 
-use tokio::sync::mpsc::{Receiver, Sender, UnboundedSender};
+use tokio::{
+    sync::mpsc::{Receiver, Sender, UnboundedSender},
+    time::sleep,
+};
 use tonic::Status;
 
 use crate::{executor::execute, peer::TXNS};
@@ -100,7 +103,7 @@ impl DepGraph {
                             .await;
                         while !next.committed {
                             // not committed
-                            sleep(Duration::from_nanos(100));
+                            sleep(Duration::from_nanos(100)).await;
                         }
 
                         if next.executed {
