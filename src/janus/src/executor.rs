@@ -71,7 +71,7 @@ impl Executor {
         let txnid = commit.txn.txn_id;
 
         // self.dep_graph.send(txnid);
-        println!("recv commit {:?}", get_txnid(txnid));
+        // println!("recv commit {:?}", get_txnid(txnid));
         unsafe {
             let (clientid, index) = get_txnid(txnid);
             let mut waiting = 0;
@@ -111,7 +111,7 @@ impl Executor {
                 execute(txnid, meta_index).await;
             } else {
                 // update in memory txn
-                println!("spawn to wait {}", waiting);
+                // println!("spawn to wait {}", waiting);
                 self.dep_graph.send(txnid).await;
                 let meta_index = self.meta_index.clone();
                 tokio::spawn(async move {
@@ -191,14 +191,11 @@ impl Executor {
 pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
     unsafe {
         let (clientid, index) = get_txnid(txnid);
-        println!("execute {}-{}", clientid, index);
         let mut node = TXNS[clientid as usize][index as usize].write().await;
         if node.executed {
-            println!(" is executed");
             return;
         }
         node.executed = true;
-        println!("exec execute {}", txnid);
         let txn = node.txn.as_ref().unwrap();
         let write_set = txn.write_set.clone();
 
