@@ -65,7 +65,7 @@ impl DepGraph {
             let (client_id, index) = get_txnid(txnid);
 
             // println!("try to execute {},{}", client_id, index);
-            let node = TXNS[client_id as usize][index as usize].read().await;
+            let node = &TXNS[client_id as usize][index as usize];
             if !node.executed {
                 self.find_scc(txnid).await;
             }
@@ -82,7 +82,7 @@ impl DepGraph {
             while self.visit >= 0 {
                 let tid = self.stack[self.visit as usize];
                 let (client_id, index) = get_txnid(tid);
-                let mut node = TXNS[client_id as usize][index as usize].write().await;
+                let node = &mut TXNS[client_id as usize][index as usize];
 
                 // println!(
                 //     "find scc {},{}, dfn{}, low{}",
@@ -98,9 +98,7 @@ impl DepGraph {
                             continue;
                         }
                         let (dep_clientid, dep_index) = get_txnid(dep);
-                        let mut next = TXNS[dep_clientid as usize][dep_index as usize]
-                            .write()
-                            .await;
+                        let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
                         while !next.committed {
                             // not committed
                             sleep(Duration::from_nanos(100)).await;

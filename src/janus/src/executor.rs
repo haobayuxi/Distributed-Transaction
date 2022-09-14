@@ -81,7 +81,7 @@ impl Executor {
             let deps = commit.txn.deps;
             let (notify_sender, mut recv) = unbounded_channel::<u64>();
             {
-                let mut node = TXNS[clientid as usize][index as usize].write().await;
+                let node = &mut TXNS[clientid as usize][index as usize];
                 node.committed = true;
                 if commit.txn.from % 3 == self.server_id {
                     node.callback = Some(commit.callback);
@@ -93,9 +93,7 @@ impl Executor {
                     }
                     let (dep_clientid, dep_index) = get_txnid(*dep);
 
-                    let mut next = TXNS[dep_clientid as usize][dep_index as usize]
-                        .write()
-                        .await;
+                    let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
                     if !next.executed {
                         waiting += 1;
                         next.notify.push(notify_sender.clone());
@@ -167,7 +165,7 @@ impl Executor {
             // result.deps.sort();
             let txnid = msg.txn.txn_id;
             let (client_id, index) = get_txnid(txnid);
-            TXNS[client_id as usize][index as usize].write().await.txn = Some(msg.txn);
+            TXNS[client_id as usize][index as usize].txn = Some(msg.txn);
         }
         // reply to coordinator
         msg.callback.send(Ok(result)).await;
@@ -193,7 +191,7 @@ impl Executor {
 pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
     unsafe {
         let (clientid, index) = get_txnid(txnid);
-        let mut node = TXNS[clientid as usize][index as usize].write().await;
+        let node = &mut TXNS[clientid as usize][index as usize];
         if node.executed {
             return;
         }

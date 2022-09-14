@@ -22,7 +22,7 @@ use crate::{
     JanusMeta, Msg,
 };
 
-pub static mut TXNS: Vec<Vec<RwLock<Node>>> = Vec::new();
+pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 pub static mut DATA: Vec<(RwLock<JanusMeta>, RwLock<String>)> = Vec::new();
 
 #[derive(Debug, Clone)]
@@ -88,11 +88,11 @@ impl Peer {
         // init data
         unsafe {
             for i in 0..config.client_num {
-                let mut in_memory_node = Vec::new();
-                for _ in 0..500 {
-                    in_memory_node.push(RwLock::new(Node::default()));
-                }
-                TXNS.push(in_memory_node);
+                // let mut in_memory_node = Vec::new();
+                // for _ in 0..500 {
+                //     in_memory_node.push(RwLock::new(Node::default()));
+                // }
+                TXNS.push(vec![Node::default(); 500]);
             }
         }
         // self.mem = Arc::new(mem);
