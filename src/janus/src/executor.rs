@@ -74,27 +74,35 @@ impl Executor {
         println!("recv commit {:?}", get_txnid(txnid));
         unsafe {
             let (clientid, index) = get_txnid(txnid);
-            let mut node = TXNS[clientid as usize][index as usize].write().await;
-            if commit.txn.from % 3 == self.server_id {
-                node.callback = Some(commit.callback);
-            }
+            let mut waiting = 0;
+
             let deps = commit.txn.deps;
             let (notify_sender, mut recv) = unbounded_channel::<u64>();
-            let mut waiting = 0;
-            for dep in deps.iter() {
-                if *dep == 0 {
-                    continue;
+            {
+                let mut node = TXNS[clientid as usize][index as usize].write().await;
+                if commit.txn.from % 3 == self.server_id {
+                    node.callback = Some(commit.callback);
                 }
-                let (dep_clientid, dep_index) = get_txnid(*dep);
 
-                let mut next = TXNS[dep_clientid as usize][dep_index as usize]
-                    .write()
-                    .await;
-                if !next.executed {
-                    waiting += 1;
-                    next.notify.push(notify_sender.clone());
+                for dep in deps.iter() {
+                    if *dep == 0 {
+                        continue;
+                    }
+                    let (dep_clientid, dep_index) = get_txnid(*dep);
+
+                    let mut next = TXNS[dep_clientid as usize][dep_index as usize]
+                        .write()
+                        .await;
+                    if !next.executed {
+                        waiting += 1;
+                        next.notify.push(notify_sender.clone());
+                    }
+                }
+                if waiting != 0 {
+                    node.waiting_dep = waiting;
                 }
             }
+
             // println!("waiting = {},dep ={:?}", waiting, deps);
 
             if waiting == 0 {
@@ -104,7 +112,6 @@ impl Executor {
             } else {
                 // update in memory txn
                 println!("spawn to wait {}", waiting);
-                node.waiting_dep = waiting;
                 self.dep_graph.send(txnid).await;
                 let meta_index = self.meta_index.clone();
                 tokio::spawn(async move {
