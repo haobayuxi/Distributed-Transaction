@@ -145,6 +145,7 @@ impl DepGraph {
                         {
                             // not committed
                             sleep(Duration::from_nanos(100));
+                            continue;
                         }
 
                         let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
@@ -170,8 +171,6 @@ impl DepGraph {
                         let mut to_execute: Vec<u64> = Vec::new();
                         loop {
                             let tid = self.stack.pop().unwrap();
-                            // to_execute.push(self.graph.remove(&tid).unwrap().txn);
-                            // let (client_id, index) = get_txnid(tid);
                             to_execute.push(tid);
                             self.visit -= 1;
                             if tid == txnid {
@@ -180,18 +179,8 @@ impl DepGraph {
                         }
                         // to execute
                         to_execute.sort();
-                        // _by(|x, y| {
-                        //     if x.txn.txn_id < y.txn.txn_id {
-                        //         Ordering::Greater
-                        //     } else {
-                        //         Ordering::Less
-                        //     }
-                        // });
-                        // execute & update last_executed
-                        // for msg in to_execute {
                         // send txn to executor
                         self.apply(to_execute);
-                        // }
                     } else {
                         self.visit -= 1;
                     }
