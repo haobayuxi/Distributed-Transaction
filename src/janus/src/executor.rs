@@ -75,7 +75,9 @@ impl Executor {
         unsafe {
             let (clientid, index) = get_txnid(txnid);
             let mut node = TXNS[clientid as usize][index as usize].write().await;
-            node.callback = Some(commit.callback);
+            if commit.txn.from % 3 == self.server_id {
+                node.callback = Some(commit.callback);
+            }
             let deps = commit.txn.deps;
             // node.executed = true;
             let (notify_sender, mut recv) = unbounded_channel::<u64>();
@@ -189,15 +191,7 @@ pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
         // println!("exec execute {}", txnid);
         let txn = node.txn.as_ref().unwrap();
         let write_set = txn.write_set.clone();
-        for write in write_set.iter() {
-            let meta_index = meta_index.get(&write.key).unwrap();
-            let mut guard = DATA[*meta_index].1.write().await;
-            *guard = write.value.clone();
-        }
-        // notify
-        for to_notify in node.notify.iter() {
-            to_notify.send(0);
-        }
+
         if node.callback.is_some() {
             // execute
             let mut result = JanusMsg {
@@ -222,6 +216,15 @@ pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
             }
             // println!("execute {:?}", get_txnid(txnid));
             node.callback.take().unwrap().send(Ok(result)).await;
+        }
+        for write in write_set.iter() {
+            let meta_index = meta_index.get(&write.key).unwrap();
+            let mut guard = DATA[*meta_index].1.write().await;
+            *guard = write.value.clone();
+        }
+        // notify
+        for to_notify in node.notify.iter() {
+            to_notify.send(0);
         }
     }
 }

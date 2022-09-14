@@ -6,7 +6,7 @@ use rpc::janus::JanusMsg;
 use tokio::sync::mpsc::{Receiver, Sender, UnboundedSender};
 use tonic::Status;
 
-use crate::peer::TXNS;
+use crate::{executor::execute, peer::TXNS};
 
 pub struct DepGraph {
     // dep graph
@@ -49,12 +49,10 @@ impl DepGraph {
         }
     }
 
-    fn apply(&mut self, txnids: Vec<u64>) {
+    async fn apply(&mut self, txnids: Vec<u64>) {
         unsafe {
             for txnid in txnids {
-                let (client_id, index) = get_txnid(txnid);
-                // println!("send to apply {:?}", get_txnid(txnid));
-                // TXNS[client_id as usize][index as usize].executed = true;
+                execute(txnid, self.meta_index.clone()).await;
             }
         }
     }
@@ -136,7 +134,7 @@ impl DepGraph {
                         // to execute
                         to_execute.sort();
                         // send txn to executor
-                        self.apply(to_execute);
+                        self.apply(to_execute).await;
                     } else {
                         self.visit -= 1;
                     }
