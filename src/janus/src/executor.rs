@@ -188,7 +188,7 @@ pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
             return;
         }
         node.executed = true;
-        // println!("exec execute {}", txnid);
+        println!("exec execute {}", txnid);
         let txn = node.txn.as_ref().unwrap();
         let write_set = txn.write_set.clone();
 
