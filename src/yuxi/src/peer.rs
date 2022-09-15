@@ -28,12 +28,12 @@ struct ConfigPerServer {
     id: i32,
 }
 
-pub struct WaitingTxn {
-    pub waiting: usize,
-    pub callback: Option<Sender<Result<YuxiMsg, Status>>>,
-    pub result: YuxiMsg,
-    pub read_set: Vec<ReadStruct>,
-}
+// pub struct WaitingTxn {
+//     pub waiting: usize,
+//     pub callback: Option<Sender<Result<YuxiMsg, Status>>>,
+//     pub result: YuxiMsg,
+//     pub read_set: Vec<ReadStruct>,
+// }
 
 pub struct Meta {
     pub maxts: TS,

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::{
-    peer::{Meta, WaitingTxn, DATA},
+    peer::{Meta, DATA},
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
@@ -113,14 +113,6 @@ impl Executor {
         // let mut msg = msg;
         let mut txn = msg.tmsg.clone();
         let txnid = txn.txn_id;
-        // unsafe {
-        //     {
-        //         let from = txn.from;
-        //         let mut wait_txn = WAITING_TXN[from as usize].write().await;
-        //         wait_txn.waiting = 0;
-        //         wait_txn.read_set.clear();
-        //     }
-        // }
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
         let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
@@ -212,7 +204,7 @@ impl Executor {
 
                     waiting_for_read_result -= 1;
                 }
-                msg.callback.send(Ok(txn.clone())).await;
+                msg.callback.send(Ok(txn)).await;
             });
         }
     }
@@ -467,6 +459,9 @@ impl Executor {
                         let mut index = datas.len() - 1;
                         while final_ts < datas[index].start_ts {
                             index -= 1;
+                            if index == 0 {
+                                break;
+                            }
                         }
                         let data = datas[index].data.to_string();
                         // let (clientid, _) = get_txnid(context.txnid);
