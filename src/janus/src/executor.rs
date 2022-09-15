@@ -95,7 +95,7 @@ impl Executor {
                     let (dep_clientid, dep_index) = get_txnid(*dep);
 
                     let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
-                    if !next.executed {
+                    if !next.committed {
                         waiting += 1;
                         let mut notifies = next.notify.write().await;
                         if !next.executed {
@@ -186,7 +186,6 @@ impl Executor {
             deps: Vec::new(),
             txn_type: None,
         };
-        // self.txns.insert(txnid, msg.txn);
         // reply accept ok to coordinator
         msg.callback.send(Ok(accept_ok)).await;
     }
