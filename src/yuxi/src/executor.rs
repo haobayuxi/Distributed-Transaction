@@ -385,7 +385,7 @@ impl Executor {
         tid: u64,
         txn_type: TxnType,
     ) {
-        println!("{} commit write", self.executor_id);
+        // println!("{} commit write", self.executor_id);
         for (write, write_ts) in write_ts_in_waitlist.into_iter() {
             let key = write.key;
 
@@ -450,10 +450,10 @@ impl Executor {
                         //             .await;
                         //         println!("send back result {:?}", get_txnid(context.txnid));
                         //     }
-                        // }
+                        // }get_data(ts, *data_index)
 
                         let callback = context.call_back.take().unwrap();
-                        callback.send((ts as i64, get_data(ts, *data_index)));
+                        callback.send((ts as i64, String::from("aa")));
                     } else {
                         // execute the write
                         let datas = &mut DATA[*data_index];
@@ -488,7 +488,7 @@ impl Executor {
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
-        println!("{} handle commit", self.executor_id);
+        // println!("{} handle commit", self.executor_id);
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;
         let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
@@ -587,6 +587,6 @@ impl Executor {
 
         self.commit_write(final_ts, write_ts_in_waitlist, tid, msg.tmsg.txn_type())
             .await;
-        println!("{} handle commit done", self.executor_id);
+        // println!("{} handle commit done", self.executor_id);
     }
 }
