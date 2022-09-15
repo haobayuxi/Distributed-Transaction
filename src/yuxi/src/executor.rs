@@ -481,7 +481,7 @@ impl Executor {
             // execute
             // for (ts, mut context) in to_executed {}
         }
-        println!("{} commit write done", self.executor_id);
+        // println!("{} commit write done", self.executor_id);
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
