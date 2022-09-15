@@ -424,7 +424,7 @@ impl Executor {
                     }
                 }
             }
-            println!("{} commit execute context", self.executor_id);
+            // println!("{} commit execute context", self.executor_id);
             // execute
             for (ts, mut context) in to_executed {
                 unsafe {
@@ -451,7 +451,7 @@ impl Executor {
                         //         println!("send back result {:?}", get_txnid(context.txnid));
                         //     }
                         // }get_data(ts, *data_index)
-                        println!("index = {}", *data_index);
+                        // println!("index = {}", *data_index);
                         let callback = context.call_back.take().unwrap();
                         callback.send((ts as i64, get_data(ts, *data_index)));
                     } else {
@@ -484,7 +484,7 @@ impl Executor {
                 }
             }
         }
-        println!("{} commit write done", self.executor_id);
+        // println!("{} commit write done", self.executor_id);
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
