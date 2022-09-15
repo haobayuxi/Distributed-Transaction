@@ -451,9 +451,9 @@ impl Executor {
                         //         println!("send back result {:?}", get_txnid(context.txnid));
                         //     }
                         // }get_data(ts, *data_index)
-
+                        println!("index = {}", *data_index);
                         let callback = context.call_back.take().unwrap();
-                        callback.send((ts as i64, String::from("aa")));
+                        callback.send((ts as i64, get_data(ts, *data_index)));
                     } else {
                         // execute the write
                         let datas = &mut DATA[*data_index];
