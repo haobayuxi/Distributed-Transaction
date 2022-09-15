@@ -39,7 +39,7 @@ impl Default for Config {
         shards.insert(1, vec![0, 1, 2]);
         Self {
             server_addrs,
-            executor_num: 1,
+            executor_num: 32,
             req_per_query: 4,
             table_size: 1000,
             // zipf_theta: 0.0,
