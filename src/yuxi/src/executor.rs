@@ -479,7 +479,7 @@ impl Executor {
                                 version_data.data = Data::Ycsb(write.value.clone());
                             }
                         }
-                        // datas.push(version_data);
+                        datas.push(version_data);
                     }
                 }
             }
