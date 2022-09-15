@@ -8,6 +8,10 @@ import os
 import sys
 passwd_key = "hpcgrid3102\n"
 
+t01 = "192.168.50.11"
+t03 = "192.168.50.11"
+t05 = "192.168.50.11"
+
 
 def get_data(ip):
     cmdline = "scp root@%s:/home/wuhao/yuxi_data/*data ." % ip
@@ -62,5 +66,5 @@ if __name__ == "__main__":
     servertype = sys.argv[1]
     # if type == "t":
     print("aggregate throughput")
-    get_data("t01")
+    get_data(t01)
     read_throughput_results(servertype)
