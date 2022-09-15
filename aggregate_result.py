@@ -15,7 +15,7 @@ t05 = "192.168.50.11"
 
 def get_data(ip, id):
 
-    cmdline = "scp root@%s:/home/wuhao/yuxi/" + str(id)+".data ." % ip
+    cmdline = "scp root@%s:/home/wuhao/yuxi/%sdata ." % (ip, id)
     try:
         child = pexpect.spawn(cmdline)
         child.expect("password:")
