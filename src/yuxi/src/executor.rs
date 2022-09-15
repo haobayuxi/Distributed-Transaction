@@ -178,6 +178,12 @@ impl Executor {
                     if wait_txn.waiting == wait_txn.read_set.len() {
                         msg.callback.send(Ok(txn.clone())).await;
                     } else {
+                        println!(
+                            "{:?}wait {},{}",
+                            get_txnid(txn.txn_id),
+                            wait_txn.waiting,
+                            wait_txn.read_set.len()
+                        );
                         wait_txn.callback = Some(msg.callback);
                         wait_txn.result = txn.clone();
                     }
@@ -466,6 +472,12 @@ impl Executor {
                                 value: Some(data),
                                 timestamp: None,
                             });
+                            println!(
+                                "{:?}wait {},{}",
+                                get_txnid(context.txnid),
+                                wait_txn.waiting,
+                                wait_txn.read_set.len()
+                            );
                             if wait_txn.waiting == wait_txn.read_set.len() {
                                 wait_txn
                                     .callback
@@ -592,6 +604,12 @@ impl Executor {
                         if wait_txn.waiting == wait_txn.read_set.len() {
                             msg.callback.send(Ok(txn.clone())).await;
                         } else {
+                            println!(
+                                "{:?}wait {},{}",
+                                get_txnid(txn.txn_id),
+                                wait_txn.waiting,
+                                wait_txn.read_set.len()
+                            );
                             wait_txn.callback = Some(msg.callback);
                             wait_txn.result = txn.clone();
                         }
