@@ -113,9 +113,11 @@ impl Executor {
         let mut msg = msg;
         let txn = &mut msg.tmsg;
         unsafe {
-            let from = txn.from;
-            let mut wait_txn = WAITING_TXN[from as usize].write().await;
-            wait_txn.waiting = 0;
+            {
+                let from = txn.from;
+                let mut wait_txn = WAITING_TXN[from as usize].write().await;
+                wait_txn.waiting = 0;
+            }
         }
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
@@ -169,13 +171,15 @@ impl Executor {
         } else {
             unsafe {
                 let from = txn.from;
-                let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                wait_txn.waiting += waiting_for_read_result;
-                if wait_txn.waiting == 0 {
-                    msg.callback.send(Ok(txn.clone())).await;
-                } else {
-                    wait_txn.callback = Some(msg.callback);
-                    wait_txn.result = txn.clone();
+                {
+                    let mut wait_txn = WAITING_TXN[from as usize].write().await;
+                    wait_txn.waiting += waiting_for_read_result;
+                    if wait_txn.waiting == 0 {
+                        msg.callback.send(Ok(txn.clone())).await;
+                    } else {
+                        wait_txn.callback = Some(msg.callback);
+                        wait_txn.result = txn.clone();
+                    }
                 }
             }
             // println!("wait for {}", waiting_for_read_result);
@@ -406,6 +410,13 @@ impl Executor {
         } else {
             false
         };
+        unsafe {
+            {
+                let from = msg.tmsg.from;
+                let mut wait_txn = WAITING_TXN[from as usize].write().await;
+                wait_txn.waiting = 0;
+            }
+        }
         // get write_ts in waitlist to erase
         let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
 
@@ -466,13 +477,15 @@ impl Executor {
                 // spawn a new task for this
                 unsafe {
                     let from = txn.from;
-                    let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                    wait_txn.waiting += waiting_for_read_result;
-                    if wait_txn.waiting == 0 {
-                        msg.callback.send(Ok(txn.clone())).await;
-                    } else {
-                        wait_txn.callback = Some(msg.callback);
-                        wait_txn.result = txn.clone();
+                    {
+                        let mut wait_txn = WAITING_TXN[from as usize].write().await;
+                        wait_txn.waiting += waiting_for_read_result;
+                        if wait_txn.waiting == 0 {
+                            msg.callback.send(Ok(txn.clone())).await;
+                        } else {
+                            wait_txn.callback = Some(msg.callback);
+                            wait_txn.result = txn.clone();
+                        }
                     }
                 }
                 // tokio::spawn(async move {
