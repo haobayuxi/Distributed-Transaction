@@ -525,39 +525,33 @@ impl Executor {
     async fn commit_read(&mut self, msg: Msg) {
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;
-        let isreply = if self.server_id == (msg.tmsg.from as u32) % 3 {
-            true
-        } else {
-            false
-        };
-        unsafe {
-            {
-                let from = msg.tmsg.from;
-                let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                wait_txn.waiting = 0;
-                wait_txn.read_set.clear();
-            }
-        }
-        // get write_ts in waitlist to erase
         let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
-
-        let txn_type = txn.txn_type();
-        // execute read
-
-        let mut waiting_for_read_result = 0;
-        // let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
-        let mut read_set = txn.read_set.clone();
-        txn.read_set.clear();
-        for read in read_set.iter_mut() {
-            let key = read.key;
-            {
-                let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
-                let meta = &mut meta_rwlock.write().await;
-                if meta.maxts < final_ts {
-                    meta.maxts = final_ts
+        if self.server_id == (msg.tmsg.from as u32) % 3 {
+            unsafe {
+                {
+                    let from = msg.tmsg.from;
+                    let mut wait_txn = WAITING_TXN[from as usize].write().await;
+                    wait_txn.waiting = 0;
+                    wait_txn.read_set.clear();
                 }
-                if isreply {
-                    // get data
+            }
+            // get write_ts in waitlist to erase
+
+            let txn_type = txn.txn_type();
+            // execute read
+
+            let mut waiting_for_read_result = 0;
+            // let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
+            let mut read_set = txn.read_set.clone();
+            txn.read_set.clear();
+            for read in read_set.iter_mut() {
+                let key = read.key;
+                {
+                    let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
+                    let meta = &mut meta_rwlock.write().await;
+                    if meta.maxts < final_ts {
+                        meta.maxts = final_ts
+                    }
                     if final_ts > meta.smallest_wait_ts {
                         waiting_for_read_result += 1;
                         // insert a read task
@@ -572,6 +566,7 @@ impl Executor {
                         meta.waitlist.insert(final_ts, execution_context);
                         continue;
                     }
+
                     unsafe {
                         let version_data = &DATA[*data_index];
                         let mut index = version_data.len() - 1;
@@ -587,9 +582,7 @@ impl Executor {
                     }
                 }
             }
-        }
-        // println!("is reply {}, need wait?", isreply);
-        if isreply {
+            // println!("is reply {}, need wait?", isreply);
             // do we need to wait
             if waiting_for_read_result == 0 {
                 // reply to coordinator
@@ -637,7 +630,7 @@ impl Executor {
             }
         }
 
-        self.commit_write(final_ts, write_ts_in_waitlist, tid, txn_type)
+        self.commit_write(final_ts, write_ts_in_waitlist, tid, msg.tmsg.txn_type())
             .await;
     }
 
