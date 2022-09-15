@@ -5,12 +5,12 @@ use std::{
 
 use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
-use parking_lot::RwLock;
+// use parking_lot::RwLock;
 use rpc::yuxi::YuxiMsg;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
     mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
-    Mutex,
+    Mutex, RwLock,
 };
 
 use crate::{
@@ -20,10 +20,16 @@ use crate::{
 };
 
 pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
+pub static mut WAITING_TXN: Vec<Option<RwLock<WaitingTxn>>> = Vec::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfigPerServer {
     id: i32,
+}
+
+pub struct WaitingTxn {
+    pub waiting: i32,
+    pub msg: Msg,
 }
 
 pub struct Meta {
@@ -66,6 +72,9 @@ impl Peer {
     fn init_data(&mut self) -> HashMap<i64, (RwLock<Meta>, usize)> {
         // init
         unsafe {
+            for _ in 0..self.config.client_num {
+                WAITING_TXN.push(None);
+            }
             let mut indexs = HashMap::new();
             // self.mem = Arc::new(mem);
             let data = init_ycsb();

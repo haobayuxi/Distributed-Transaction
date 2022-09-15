@@ -15,7 +15,7 @@ use tokio::{
 
 use crate::peer_communication::RpcClient;
 
-static RETRY: i32 = 10;
+static RETRY: i32 = 20;
 
 pub struct MeerkatCoordinator {
     config: Config,
