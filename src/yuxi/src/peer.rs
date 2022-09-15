@@ -167,6 +167,7 @@ impl Peer {
                 .unwrap();
             for result in throughput {
                 throughput_file.write(result.to_string().as_bytes()).await;
+                throughput_file.write("\n".as_bytes()).await;
             }
             println!("finished");
         });
