@@ -157,6 +157,9 @@ impl Executor {
                 let mut index = version_data.len() - 1;
                 while final_ts <= version_data[index].start_ts {
                     index -= 1;
+                    if index == 0 {
+                        break;
+                    }
                 }
                 let data = version_data[index].data.to_string();
                 txn.read_set.push(ReadStruct {
