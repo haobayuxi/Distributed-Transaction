@@ -100,7 +100,6 @@ impl Executor {
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // let mut msg = msg;
-        println!("{} handle read only", self.executor_id);
         let mut txn = msg.tmsg.clone();
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
@@ -185,7 +184,6 @@ impl Executor {
                 msg.callback.send(Ok(txn)).await;
             });
         }
-        println!("{} handle read only done", self.executor_id);
     }
 
     async fn handle_prepare(&mut self, msg: Msg) {
@@ -387,6 +385,7 @@ impl Executor {
         tid: u64,
         txn_type: TxnType,
     ) {
+        println!("{} commit write", self.executor_id);
         for (write, write_ts) in write_ts_in_waitlist.into_iter() {
             let key = write.key;
 
@@ -425,7 +424,7 @@ impl Executor {
                     }
                 }
             }
-
+            println!("{} commit execute context", self.executor_id);
             // execute
             for (ts, mut context) in to_executed {
                 unsafe {
@@ -485,6 +484,7 @@ impl Executor {
                 }
             }
         }
+        println!("{} commit write done", self.executor_id);
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
