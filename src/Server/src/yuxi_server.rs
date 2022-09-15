@@ -3,7 +3,7 @@ use common::{config::Config, ConfigInFile};
 use tokio::sync::mpsc::unbounded_channel;
 use yuxi::peer::Peer;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 50)]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let f = std::fs::File::open("config.yml").unwrap();
     let server_config: ConfigInFile = serde_yaml::from_reader(f).unwrap();
