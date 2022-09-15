@@ -110,8 +110,8 @@ impl Executor {
     }
 
     async fn handle_read_only(&mut self, msg: Msg) {
-        let mut msg = msg;
-        let txn = &mut msg.tmsg;
+        // let mut msg = msg;
+        let mut txn = msg.tmsg.clone();
         let txnid = txn.txn_id;
         unsafe {
             {
@@ -123,7 +123,7 @@ impl Executor {
         }
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
-        // let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
+        let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
         let mut read_set = txn.read_set.clone();
         txn.read_set.clear();
         for read in read_set.iter_mut() {
@@ -144,7 +144,7 @@ impl Executor {
                         committed: true,
                         read: true,
                         value: None,
-                        // call_back: Some(sender.clone()),
+                        call_back: Some(sender.clone()),
                         txnid: txn.txn_id,
                     };
                     // let mut wait_list = tuple.1.write().await;
@@ -170,47 +170,47 @@ impl Executor {
         if waiting_for_read_result == 0 {
             // reply to coordinator
             msg.callback.send(Ok(txn.clone())).await;
-            println!("send back result {:?}", get_txnid(txnid));
+            // println!("send back result {:?}", get_txnid(txnid));
         } else {
-            unsafe {
-                let from = txn.from;
-                {
-                    let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                    wait_txn.waiting = waiting_for_read_result;
-                    if wait_txn.waiting == wait_txn.read_set.len() {
-                        println!("send back result {:?}", get_txnid(txnid));
-                        msg.callback.send(Ok(txn.clone())).await;
-                    } else {
-                        println!(
-                            "{:?}wait {},{}",
-                            get_txnid(txn.txn_id),
-                            wait_txn.waiting,
-                            wait_txn.read_set.len()
-                        );
-                        wait_txn.callback = Some(msg.callback);
-                        wait_txn.result = txn.clone();
-                    }
-                }
-            }
+            // unsafe {
+            //     let from = txn.from;
+            //     {
+            //         let mut wait_txn = WAITING_TXN[from as usize].write().await;
+            //         wait_txn.waiting = waiting_for_read_result;
+            //         if wait_txn.waiting == wait_txn.read_set.len() {
+            //             println!("send back result {:?}", get_txnid(txnid));
+            //             msg.callback.send(Ok(txn.clone())).await;
+            //         } else {
+            //             println!(
+            //                 "{:?}wait {},{}",
+            //                 get_txnid(txn.txn_id),
+            //                 wait_txn.waiting,
+            //                 wait_txn.read_set.len()
+            //             );
+            //             wait_txn.callback = Some(msg.callback);
+            //             wait_txn.result = txn.clone();
+            //         }
+            //     }
+            // }
             // println!("wait for {}", waiting_for_read_result);
             // spawn a new task for this
-            // tokio::spawn(async move {
-            //     while waiting_for_read_result > 0 {
-            //         match receiver.recv().await {
-            //             Some((key, value)) => {
-            //                 txn.read_set.push(ReadStruct {
-            //                     key,
-            //                     value: Some(value),
-            //                     timestamp: None,
-            //                 });
-            //             }
-            //             None => break,
-            //         }
+            tokio::spawn(async move {
+                while waiting_for_read_result > 0 {
+                    match receiver.recv().await {
+                        Some((key, value)) => {
+                            txn.read_set.push(ReadStruct {
+                                key,
+                                value: Some(value),
+                                timestamp: None,
+                            });
+                        }
+                        None => break,
+                    }
 
-            //         waiting_for_read_result -= 1;
-            //     }
-            //     msg.callback.send(Ok(txn)).await;
-            // });
+                    waiting_for_read_result -= 1;
+                }
+                msg.callback.send(Ok(txn.clone())).await;
+            });
         }
     }
 
@@ -249,7 +249,7 @@ impl Executor {
                     committed: false,
                     read: false,
                     value: Some(write.value.clone()),
-                    // call_back: None,
+                    call_back: None,
                     txnid: msg.tmsg.txn_id,
                 };
                 if meta.smallest_wait_ts > meta.maxts {
@@ -455,7 +455,7 @@ impl Executor {
             }
 
             // execute
-            for (ts, context) in to_executed {
+            for (ts, mut context) in to_executed {
                 unsafe {
                     if context.read {
                         // execute the read
@@ -466,28 +466,28 @@ impl Executor {
                             index -= 1;
                         }
                         let data = datas[index].data.to_string();
-                        let (clientid, _) = get_txnid(context.txnid);
-                        {
-                            let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
-                            // wait_txn.waiting -= 1;
-                            wait_txn.read_set.push(ReadStruct {
-                                key,
-                                value: Some(data),
-                                timestamp: None,
-                            });
-                            if wait_txn.waiting == wait_txn.read_set.len() {
-                                wait_txn
-                                    .callback
-                                    .take()
-                                    .unwrap()
-                                    .send(Ok(wait_txn.result.clone()))
-                                    .await;
-                                println!("send back result {:?}", get_txnid(context.txnid));
-                            }
-                        }
+                        // let (clientid, _) = get_txnid(context.txnid);
+                        // {
+                        //     let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
+                        //     // wait_txn.waiting -= 1;
+                        //     wait_txn.read_set.push(ReadStruct {
+                        //         key,
+                        //         value: Some(data),
+                        //         timestamp: None,
+                        //     });
+                        //     if wait_txn.waiting == wait_txn.read_set.len() {
+                        //         wait_txn
+                        //             .callback
+                        //             .take()
+                        //             .unwrap()
+                        //             .send(Ok(wait_txn.result.clone()))
+                        //             .await;
+                        //         println!("send back result {:?}", get_txnid(context.txnid));
+                        //     }
+                        // }
 
-                        // let callback = context.call_back.take().unwrap();
-                        // callback.send((ts as i64, data));
+                        let callback = context.call_back.take().unwrap();
+                        callback.send((ts as i64, data));
                     } else {
                         // execute the write
                         let datas = &mut DATA[*data_index];
@@ -539,7 +539,7 @@ impl Executor {
             // execute read
 
             let mut waiting_for_read_result = 0;
-            // let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
+            let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
             let mut read_set = txn.read_set.clone();
             txn.read_set.clear();
             for read in read_set.iter_mut() {
@@ -557,7 +557,7 @@ impl Executor {
                             committed: true,
                             read: true,
                             value: None,
-                            // call_back: Some(sender.clone()),
+                            call_back: Some(sender.clone()),
                             txnid: tid,
                         };
                         // let mut wait_list = tuple.1.write().await;
@@ -588,39 +588,40 @@ impl Executor {
                 println!("send back result {:?}", get_txnid(tid));
             } else {
                 // spawn a new task for this
-                unsafe {
-                    let from = txn.from;
-                    {
-                        let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                        wait_txn.waiting = waiting_for_read_result;
-                        if wait_txn.waiting == wait_txn.read_set.len() {
-                            msg.callback.send(Ok(txn.clone())).await;
-                            println!("send back result {:?}", get_txnid(tid));
-                        } else {
-                            wait_txn.callback = Some(msg.callback);
-                            wait_txn.result = txn.clone();
-                        }
-                    }
-                }
-                // tokio::spawn(async move {
-                //     while waiting_for_read_result > 0 {
-                //         match receiver.recv().await {
-                //             Some((key, value)) => {
-                //                 txn.read_set.push(ReadStruct {
-                //                     key,
-                //                     value: Some(value),
-                //                     timestamp: None,
-                //                 });
-                //             }
-                //             None => {
-                //                 break;
-                //             }
+                // unsafe {
+                //     let from = txn.from;
+                //     {
+                //         let mut wait_txn = WAITING_TXN[from as usize].write().await;
+                //         wait_txn.waiting = waiting_for_read_result;
+                //         if wait_txn.waiting == wait_txn.read_set.len() {
+                //             msg.callback.send(Ok(txn.clone())).await;
+                //             println!("send back result {:?}", get_txnid(tid));
+                //         } else {
+                //             wait_txn.callback = Some(msg.callback);
+                //             wait_txn.result = txn.clone();
                 //         }
-
-                //         waiting_for_read_result -= 1;
                 //     }
-                //     msg.callback.send(Ok(txn)).await;
-                // });
+                // }
+                let callback = msg.callback.clone();
+                tokio::spawn(async move {
+                    while waiting_for_read_result > 0 {
+                        match receiver.recv().await {
+                            Some((key, value)) => {
+                                txn.read_set.push(ReadStruct {
+                                    key,
+                                    value: Some(value),
+                                    timestamp: None,
+                                });
+                            }
+                            None => {
+                                break;
+                            }
+                        }
+
+                        waiting_for_read_result -= 1;
+                    }
+                    callback.send(Ok(txn)).await;
+                });
             }
         }
 
