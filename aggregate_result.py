@@ -14,8 +14,7 @@ t05 = "192.168.50.15"
 
 
 def get_data(ip, id):
-
-    cmdline = "scp root@%s:/home/wuhao/yuxi/%s.data ." % (ip, id)
+    cmdline = "scp root@%s:/home/wuhao/yuxi/%sthroughput.data ." % (ip, id)
     try:
         child = pexpect.spawn(cmdline)
         child.expect("password:")
@@ -26,17 +25,25 @@ def get_data(ip, id):
         print("get fail:", e)
 
 
+def per_server_throughput(id):
+    result = []
+    file_name = str(id) + "throughput.data"
+    f = open(file_name)
+    for line in f:
+        result.append(float(line.strip('\n')))
+    f.close()
+    os.remove(file_name)
+    result
+
+
 def read_throughput_results(type):
     result = 0.0
-    for file_name in os.listdir("."):
-        if "throughput" in file_name:
-            f = open(file_name)
-            line = f.readline()
-            print(float(line.strip('\n')))
-            result += float(line.strip('\n'))
-            print(result)
-            f.close()
-            os.remove(file_name)
+    result1 = per_server_throughput(1)
+    result2 = per_server_throughput(3)
+    result3 = per_server_throughput(5)
+    for i in range(0, 20):
+        aggregate = result1[i] + result2[i] + result3[i]
+        print(aggregate)
     file_name = type + "/throughput"
     result_file = open(file_name, 'a')
     result_file.write(str(result)+'\n')
@@ -67,5 +74,7 @@ if __name__ == "__main__":
     servertype = sys.argv[1]
     # if type == "t":
     print("aggregate throughput")
+    get_data(t01, 1)
     get_data(t03, 3)
+    get_data(t05, 5)
     read_throughput_results(servertype)
