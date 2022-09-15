@@ -42,7 +42,7 @@ def read_throughput_results(type):
     result2 = per_server_throughput(1)
     result3 = per_server_throughput(2)
     for i in range(0, 20):
-        aggregate = result1[i] + result2[i] + result3[i]
+        aggregate = float(result1[i]) + float(result2[i]) + float(result3[i])
         print(aggregate)
     file_name = type + "/throughput"
     result_file = open(file_name, 'a')
