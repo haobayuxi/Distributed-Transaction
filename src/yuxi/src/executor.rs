@@ -587,8 +587,8 @@ impl Executor {
                     let from = txn.from;
                     {
                         let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                        wait_txn.waiting += waiting_for_read_result;
-                        if wait_txn.waiting == 0 {
+                        wait_txn.waiting = waiting_for_read_result;
+                        if wait_txn.waiting == wait_txn.read_set.len() {
                             msg.callback.send(Ok(txn.clone())).await;
                         } else {
                             wait_txn.callback = Some(msg.callback);
