@@ -136,7 +136,7 @@ impl MeerkatCoordinator {
             read.value = None;
         }
         self.txn.op = TxnOp::Prepare.into();
-        let timestamp = (Local::now().timestamp_nanos() / 1000) as u64 + 100000;
+        let timestamp = (Local::now().timestamp_nanos() / 1000) as u64;
         self.txn.timestamp = timestamp;
         // validate phase
         // prepare, prepare will send to all the server in the shard
