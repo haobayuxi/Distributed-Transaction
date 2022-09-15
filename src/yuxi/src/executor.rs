@@ -104,6 +104,9 @@ impl Executor {
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // let mut msg = msg;
+        unsafe {
+            COMMITTED.fetch_add(1, Ordering::Relaxed);
+        }
         let mut txn = msg.tmsg.clone();
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
