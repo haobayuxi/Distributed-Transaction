@@ -251,9 +251,6 @@ impl Peer {
 
                     let to_execute = self.check_txn();
                     self.execute_txn(to_execute).await;
-                    unsafe {
-                        COMMITTED.fetch_add(1, Ordering::Relaxed);
-                    }
                 }
             }
             None => return,
@@ -261,9 +258,6 @@ impl Peer {
     }
 
     async fn handle_commit(&mut self, msg: DastMsg) {
-        // unsafe {
-        //     COMMITTED.fetch_add(1, Ordering::Relaxed);
-        // }
         // execute
         if self.maxTs[msg.from as usize] < msg.maxts {
             self.maxTs[msg.from as usize] = msg.maxts;
@@ -383,6 +377,9 @@ impl Peer {
                     //
                     // println!("execute {:?}", get_txnid(reply.txn_id));
                     callback.send(reply).await;
+                    unsafe {
+                        COMMITTED.fetch_add(1, Ordering::Relaxed);
+                    }
                 }
                 None => continue,
             }
