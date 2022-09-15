@@ -6,12 +6,13 @@ use std::{
 use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
 use log::info;
 // use parking_lot::RwLock;
-use rpc::yuxi::YuxiMsg;
+use rpc::{common::ReadStruct, yuxi::YuxiMsg};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
     mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
     Mutex, RwLock,
 };
+use tonic::Status;
 
 use crate::{
     executor::Executor,
@@ -20,7 +21,7 @@ use crate::{
 };
 
 pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
-pub static mut WAITING_TXN: Vec<Option<RwLock<WaitingTxn>>> = Vec::new();
+pub static mut WAITING_TXN: Vec<RwLock<WaitingTxn>> = Vec::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfigPerServer {
@@ -29,7 +30,8 @@ struct ConfigPerServer {
 
 pub struct WaitingTxn {
     pub waiting: i32,
-    pub msg: Msg,
+    pub callback: Option<Sender<Result<YuxiMsg, Status>>>,
+    pub result: YuxiMsg,
 }
 
 pub struct Meta {
@@ -73,7 +75,11 @@ impl Peer {
         // init
         unsafe {
             for _ in 0..self.config.client_num {
-                WAITING_TXN.push(None);
+                WAITING_TXN.push(RwLock::new(WaitingTxn {
+                    waiting: 0,
+                    callback: None,
+                    result: YuxiMsg::default(),
+                }));
             }
             let mut indexs = HashMap::new();
             // self.mem = Arc::new(mem);

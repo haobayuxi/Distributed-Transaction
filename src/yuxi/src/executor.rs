@@ -110,12 +110,13 @@ impl Executor {
     }
 
     async fn handle_read_only(&mut self, msg: Msg) {
-        // just wait for the earlier txn to be executed
-        // let reply = YuxiMsg::default();
-        // msg.callback.send(Ok(reply)).await;
-        // return;
         let mut msg = msg;
         let txn = &mut msg.tmsg;
+        unsafe {
+            let from = txn.from;
+            let mut wait_txn = WAITING_TXN[from as usize].write().await;
+            wait_txn.waiting = 0;
+        }
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
         // let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
@@ -168,10 +169,14 @@ impl Executor {
         } else {
             unsafe {
                 let from = txn.from;
-                WAITING_TXN[from as usize] = Some(RwLock::new(WaitingTxn {
-                    waiting: waiting_for_read_result,
-                    msg,
-                }));
+                let mut wait_txn = WAITING_TXN[from as usize].write().await;
+                wait_txn.waiting += waiting_for_read_result;
+                if wait_txn.waiting == 0 {
+                    msg.callback.send(Ok(txn.clone())).await;
+                } else {
+                    wait_txn.callback = Some(msg.callback);
+                    wait_txn.result = txn.clone();
+                }
             }
             // println!("wait for {}", waiting_for_read_result);
             // spawn a new task for this
@@ -293,40 +298,43 @@ impl Executor {
             let key = write.key;
 
             let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
-            let meta = &mut meta_rwlock.write().await;
-            // let meta = &mut tuple.0;
-            if meta.maxts < final_ts {
-                meta.maxts = final_ts
-            }
 
-            if let Some(mut execution_context) = meta.waitlist.remove(&write_ts) {
-                execution_context.committed = true;
-                meta.waitlist.insert(final_ts, execution_context);
-            }
-            // check pending txns execute the context if the write is committed
             let mut to_executed = Vec::new();
-            loop {
-                match meta.waitlist.pop_first() {
-                    Some((ts, context)) => {
-                        if context.committed {
-                            to_executed.push((ts, context));
-                        } else {
-                            meta.waitlist.insert(ts, context);
-                            if meta.smallest_wait_ts < ts {
-                                meta.smallest_wait_ts = ts;
+            {
+                let meta = &mut meta_rwlock.write().await;
+                // let meta = &mut tuple.0;
+                if meta.maxts < final_ts {
+                    meta.maxts = final_ts
+                }
+
+                if let Some(mut execution_context) = meta.waitlist.remove(&write_ts) {
+                    execution_context.committed = true;
+                    meta.waitlist.insert(final_ts, execution_context);
+                }
+                // check pending txns execute the context if the write is committed
+                loop {
+                    match meta.waitlist.pop_first() {
+                        Some((ts, context)) => {
+                            if context.committed {
+                                to_executed.push((ts, context));
+                            } else {
+                                meta.waitlist.insert(ts, context);
+                                if meta.smallest_wait_ts < ts {
+                                    meta.smallest_wait_ts = ts;
+                                }
+                                break;
                             }
+                        }
+                        None => {
+                            meta.smallest_wait_ts = MaxTs;
                             break;
                         }
-                    }
-                    None => {
-                        meta.smallest_wait_ts = MaxTs;
-                        break;
                     }
                 }
             }
 
             // execute
-            for (ts, mut context) in to_executed {
+            for (ts, context) in to_executed {
                 unsafe {
                     if context.read {
                         // execute the read
@@ -339,20 +347,20 @@ impl Executor {
                         let data = datas[index].data.to_string();
                         let (clientid, _) = get_txnid(context.txnid);
                         {
-                            let mut wait_txn = WAITING_TXN[clientid as usize]
-                                .as_ref()
-                                .unwrap()
-                                .write()
-                                .await;
+                            let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
                             wait_txn.waiting -= 1;
-                            wait_txn.msg.tmsg.read_set.push(ReadStruct {
+                            wait_txn.result.read_set.push(ReadStruct {
                                 key,
                                 value: Some(data),
                                 timestamp: None,
                             });
                             if wait_txn.waiting == 0 {
-                                let result = wait_txn.msg.tmsg.clone();
-                                wait_txn.msg.callback.send(Ok(result)).await;
+                                wait_txn
+                                    .callback
+                                    .take()
+                                    .unwrap()
+                                    .send(Ok(wait_txn.result.clone()))
+                                    .await;
                             }
                         }
 
@@ -405,7 +413,7 @@ impl Executor {
         // execute read
 
         let mut waiting_for_read_result = 0;
-        let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
+        // let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
         let mut read_set = txn.read_set.clone();
         txn.read_set.clear();
         for read in read_set.iter_mut() {
@@ -458,10 +466,14 @@ impl Executor {
                 // spawn a new task for this
                 unsafe {
                     let from = txn.from;
-                    WAITING_TXN[from as usize] = Some(RwLock::new(WaitingTxn {
-                        waiting: waiting_for_read_result,
-                        msg,
-                    }));
+                    let mut wait_txn = WAITING_TXN[from as usize].write().await;
+                    wait_txn.waiting += waiting_for_read_result;
+                    if wait_txn.waiting == 0 {
+                        msg.callback.send(Ok(txn.clone())).await;
+                    } else {
+                        wait_txn.callback = Some(msg.callback);
+                        wait_txn.result = txn.clone();
+                    }
                 }
                 // tokio::spawn(async move {
                 //     while waiting_for_read_result > 0 {
