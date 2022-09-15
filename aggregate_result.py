@@ -34,7 +34,7 @@ def per_server_throughput(id):
     f.close()
     # os.remove(file_name)
     print(result)
-    result
+    return result
 
 
 def read_throughput_results(type):
@@ -42,10 +42,9 @@ def read_throughput_results(type):
     result1 = per_server_throughput(0)
     result2 = per_server_throughput(1)
     result3 = per_server_throughput(2)
-
     for i in range(0, 15):
-        # aggregate = float()
-        print(result1[i] + result2[i] + result3[i])
+        aggregate = result1[i] + result2[i] + result3[i]
+        print(aggregate)
     file_name = type + "/throughput"
     result_file = open(file_name, 'a')
     result_file.write(str(result)+'\n')
