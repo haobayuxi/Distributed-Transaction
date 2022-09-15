@@ -117,6 +117,7 @@ impl Executor {
                 let from = txn.from;
                 let mut wait_txn = WAITING_TXN[from as usize].write().await;
                 wait_txn.waiting = 0;
+                wait_txn.read_set.clear();
             }
         }
         let final_ts = txn.timestamp;
@@ -173,8 +174,8 @@ impl Executor {
                 let from = txn.from;
                 {
                     let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                    wait_txn.waiting += waiting_for_read_result;
-                    if wait_txn.waiting == 0 {
+                    wait_txn.waiting = waiting_for_read_result;
+                    if wait_txn.waiting == wait_txn.read_set.len() {
                         msg.callback.send(Ok(txn.clone())).await;
                     } else {
                         wait_txn.callback = Some(msg.callback);
@@ -293,7 +294,7 @@ impl Executor {
 
         let (txn, write_ts_in_waitlist) = self.txns.get(&result.txn_id).unwrap();
 
-        for (write, write_ts) in write_ts_in_waitlist.into_iter() {
+        for (write, write_ts) in write_ts_in_waitlist.iter() {
             let key = write.key;
 
             let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
@@ -347,13 +348,12 @@ impl Executor {
                         let (clientid, _) = get_txnid(context.txnid);
                         {
                             let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
-                            wait_txn.waiting -= 1;
-                            wait_txn.result.read_set.push(ReadStruct {
+                            wait_txn.read_set.push(ReadStruct {
                                 key,
                                 value: Some(data),
                                 timestamp: None,
                             });
-                            if wait_txn.waiting == 0 {
+                            if wait_txn.waiting == wait_txn.read_set.len() {
                                 wait_txn
                                     .callback
                                     .take()
@@ -459,13 +459,13 @@ impl Executor {
                         let (clientid, _) = get_txnid(context.txnid);
                         {
                             let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
-                            wait_txn.waiting -= 1;
-                            wait_txn.result.read_set.push(ReadStruct {
+                            // wait_txn.waiting -= 1;
+                            wait_txn.read_set.push(ReadStruct {
                                 key,
                                 value: Some(data),
                                 timestamp: None,
                             });
-                            if wait_txn.waiting == 0 {
+                            if wait_txn.waiting == wait_txn.read_set.len() {
                                 wait_txn
                                     .callback
                                     .take()
@@ -522,6 +522,7 @@ impl Executor {
                 let from = msg.tmsg.from;
                 let mut wait_txn = WAITING_TXN[from as usize].write().await;
                 wait_txn.waiting = 0;
+                wait_txn.read_set.clear();
             }
         }
         // get write_ts in waitlist to erase

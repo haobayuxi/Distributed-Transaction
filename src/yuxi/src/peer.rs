@@ -29,9 +29,10 @@ struct ConfigPerServer {
 }
 
 pub struct WaitingTxn {
-    pub waiting: i32,
+    pub waiting: usize,
     pub callback: Option<Sender<Result<YuxiMsg, Status>>>,
     pub result: YuxiMsg,
+    pub read_set: Vec<ReadStruct>,
 }
 
 pub struct Meta {
@@ -79,6 +80,7 @@ impl Peer {
                     waiting: 0,
                     callback: None,
                     result: YuxiMsg::default(),
+                    read_set: Vec::new(),
                 }));
             }
             let mut indexs = HashMap::new();
