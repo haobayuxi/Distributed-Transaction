@@ -112,6 +112,7 @@ impl Executor {
     async fn handle_read_only(&mut self, msg: Msg) {
         let mut msg = msg;
         let txn = &mut msg.tmsg;
+        let txnid = txn.txn_id;
         unsafe {
             {
                 let from = txn.from;
@@ -169,6 +170,7 @@ impl Executor {
         if waiting_for_read_result == 0 {
             // reply to coordinator
             msg.callback.send(Ok(txn.clone())).await;
+            println!("send back result {:?}", get_txnid(txnid));
         } else {
             unsafe {
                 let from = txn.from;
@@ -176,6 +178,7 @@ impl Executor {
                     let mut wait_txn = WAITING_TXN[from as usize].write().await;
                     wait_txn.waiting = waiting_for_read_result;
                     if wait_txn.waiting == wait_txn.read_set.len() {
+                        println!("send back result {:?}", get_txnid(txnid));
                         msg.callback.send(Ok(txn.clone())).await;
                     } else {
                         println!(
@@ -472,12 +475,6 @@ impl Executor {
                                 value: Some(data),
                                 timestamp: None,
                             });
-                            println!(
-                                "{:?}wait {},{}",
-                                get_txnid(context.txnid),
-                                wait_txn.waiting,
-                                wait_txn.read_set.len()
-                            );
                             if wait_txn.waiting == wait_txn.read_set.len() {
                                 wait_txn
                                     .callback
@@ -485,6 +482,7 @@ impl Executor {
                                     .unwrap()
                                     .send(Ok(wait_txn.result.clone()))
                                     .await;
+                                println!("send back result {:?}", get_txnid(context.txnid));
                             }
                         }
 
@@ -597,12 +595,6 @@ impl Executor {
                         if wait_txn.waiting == wait_txn.read_set.len() {
                             msg.callback.send(Ok(txn.clone())).await;
                         } else {
-                            println!(
-                                "{:?}wait {},{}",
-                                get_txnid(txn.txn_id),
-                                wait_txn.waiting,
-                                wait_txn.read_set.len()
-                            );
                             wait_txn.callback = Some(msg.callback);
                             wait_txn.result = txn.clone();
                         }
