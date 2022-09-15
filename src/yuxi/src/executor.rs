@@ -585,7 +585,7 @@ impl Executor {
             if waiting_for_read_result == 0 {
                 // reply to coordinator
                 msg.callback.send(Ok(txn)).await;
-                println!("send back result {:?}", get_txnid(tid));
+                // println!("send back result {:?}", get_txnid(tid));
             } else {
                 // spawn a new task for this
                 // unsafe {
