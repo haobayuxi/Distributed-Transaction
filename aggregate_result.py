@@ -32,15 +32,15 @@ def per_server_throughput(id):
     for line in f:
         result.append(float(line.strip('\n')))
     f.close()
-    os.remove(file_name)
+    # os.remove(file_name)
     result
 
 
 def read_throughput_results(type):
     result = 0.0
-    result1 = per_server_throughput(1)
-    result2 = per_server_throughput(3)
-    result3 = per_server_throughput(5)
+    result1 = per_server_throughput(0)
+    result2 = per_server_throughput(1)
+    result3 = per_server_throughput(2)
     for i in range(0, 20):
         aggregate = result1[i] + result2[i] + result3[i]
         print(aggregate)
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     servertype = sys.argv[1]
     # if type == "t":
     print("aggregate throughput")
-    get_data(t01, 1)
-    get_data(t03, 3)
-    get_data(t05, 5)
+    get_data(t01, 0)
+    get_data(t03, 1)
+    get_data(t05, 2)
     read_throughput_results(servertype)
