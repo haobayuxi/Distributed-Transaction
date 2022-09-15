@@ -21,6 +21,19 @@ use tokio::sync::{
 use tokio::time::sleep;
 // use tokio::time::Duration;
 
+fn get_data(ts: u64, index: usize) -> String {
+    unsafe {
+        let version_data = &DATA[index];
+        let mut index = version_data.len() - 1;
+        while ts <= version_data[index].start_ts {
+            index -= 1;
+            if index == 0 {
+                break;
+            }
+        }
+        version_data[index].data.to_string()
+    }
+}
 pub struct Executor {
     executor_id: u32,
     server_id: u32,
@@ -68,30 +81,6 @@ impl Executor {
                     sleep(Duration::from_millis(2)).await;
                 }
             }
-            // }
-            // unsafe {
-            //     match IN_MEMORY_MQ[self.executor_id as usize][self.msg_queue_index].take() {
-            //         Some(msg) => {
-            //             self.handle_msg(msg).await;
-            //             println!("handle msg {}, {}", self.msg_queue_index, i);
-            //             i += 1;
-            //             self.msg_queue_index += 1;
-            //             if self.msg_queue_index == 1000 {
-            //                 self.msg_queue_index = 0;
-            //             }
-            //         }
-            //         None => {
-            //             println!(
-            //                 "executor msg queue empty {},{},{}",
-            //                 self.msg_queue_index, i, COUNT
-            //             );
-            //             if i == COUNT {
-            //                 sleep(Duration::from_millis(500)).await;
-            //             }
-            //             sleep(Duration::from_millis(20)).await;
-            //         }
-            //     }
-            // }
         }
     }
 
@@ -112,13 +101,12 @@ impl Executor {
     async fn handle_read_only(&mut self, msg: Msg) {
         // let mut msg = msg;
         let mut txn = msg.tmsg.clone();
-        let txnid = txn.txn_id;
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
         let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
-        let mut read_set = txn.read_set.clone();
+        let read_set = txn.read_set.clone();
         txn.read_set.clear();
-        for read in read_set.iter_mut() {
+        for read in read_set.iter() {
             let key = read.key;
 
             let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
@@ -144,22 +132,11 @@ impl Executor {
                     continue;
                 }
             }
-            unsafe {
-                let version_data = &DATA[*data_index];
-                let mut index = version_data.len() - 1;
-                while final_ts <= version_data[index].start_ts {
-                    index -= 1;
-                    if index == 0 {
-                        break;
-                    }
-                }
-                let data = version_data[index].data.to_string();
-                txn.read_set.push(ReadStruct {
-                    key,
-                    value: Some(data),
-                    timestamp: None,
-                });
-            }
+            txn.read_set.push(ReadStruct {
+                key,
+                value: Some(get_data(final_ts, *data_index)),
+                timestamp: None,
+            });
         }
 
         if waiting_for_read_result == 0 {
@@ -228,33 +205,31 @@ impl Executor {
         for write in msg.tmsg.write_set.iter() {
             let key = write.key;
 
-            {
-                let (meta_rwlock, data) = self.index.get(&key).unwrap();
-                let meta = &mut meta_rwlock.write().await;
-                if ts > meta.maxts {
-                    meta.maxts = ts;
-                } else {
-                    meta.maxts += 1;
-                    if prepare_response.timestamp < meta.maxts {
-                        prepare_response.timestamp = meta.maxts;
-                    }
+            let (meta_rwlock, data) = self.index.get(&key).unwrap();
+            let meta = &mut meta_rwlock.write().await;
+            if ts > meta.maxts {
+                meta.maxts = ts;
+            } else {
+                meta.maxts += 1;
+                if prepare_response.timestamp < meta.maxts {
+                    prepare_response.timestamp = meta.maxts;
                 }
-                // insert into wait list
-                let execute_context = ExecuteContext {
-                    committed: false,
-                    read: false,
-                    value: Some(write.value.clone()),
-                    call_back: None,
-                    txnid: msg.tmsg.txn_id,
-                };
-                if meta.smallest_wait_ts > meta.maxts {
-                    meta.smallest_wait_ts = meta.maxts;
-                }
-                let wait_ts = meta.maxts;
-                // println!("insert waitlist {},{}", key, wait_ts);
-                meta.waitlist.insert(wait_ts, execute_context);
-                write_ts_in_waitlist.push((write.clone(), wait_ts));
             }
+            // insert into wait list
+            let execute_context = ExecuteContext {
+                committed: false,
+                read: false,
+                value: Some(write.value.clone()),
+                call_back: None,
+                txnid: msg.tmsg.txn_id,
+            };
+            if meta.smallest_wait_ts > meta.maxts {
+                meta.smallest_wait_ts = meta.maxts;
+            }
+            let wait_ts = meta.maxts;
+            // println!("insert waitlist {},{}", key, wait_ts);
+            meta.waitlist.insert(wait_ts, execute_context);
+            write_ts_in_waitlist.push((write.clone(), wait_ts));
         }
 
         // println!(
@@ -455,15 +430,7 @@ impl Executor {
                     if context.read {
                         // execute the read
                         // get data
-                        let datas = &DATA[*data_index];
-                        let mut index = datas.len() - 1;
-                        while final_ts < datas[index].start_ts {
-                            index -= 1;
-                            if index == 0 {
-                                break;
-                            }
-                        }
-                        let data = datas[index].data.to_string();
+
                         // let (clientid, _) = get_txnid(context.txnid);
                         // {
                         //     let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
@@ -485,7 +452,7 @@ impl Executor {
                         // }
 
                         let callback = context.call_back.take().unwrap();
-                        callback.send((ts as i64, data));
+                        callback.send((ts as i64, get_data(ts, *data_index)));
                     } else {
                         // execute the write
                         let datas = &mut DATA[*data_index];
@@ -563,19 +530,11 @@ impl Executor {
                         continue;
                     }
 
-                    unsafe {
-                        let version_data = &DATA[*data_index];
-                        let mut index = version_data.len() - 1;
-                        while final_ts < version_data[index].start_ts {
-                            index -= 1;
-                        }
-                        let data = version_data[index].data.to_string();
-                        txn.read_set.push(ReadStruct {
-                            key,
-                            value: Some(data),
-                            timestamp: None,
-                        });
-                    }
+                    txn.read_set.push(ReadStruct {
+                        key,
+                        value: Some(get_data(final_ts, *data_index)),
+                        timestamp: None,
+                    });
                 }
             }
             // println!("is reply {}, need wait?", isreply);
@@ -630,6 +589,5 @@ impl Executor {
     async fn handle_commit(&mut self, msg: Msg) {
         // commit final version and execute
         self.commit_read(msg).await;
-        // println!("commit txid {},{:?}", self.executor_id, get_txnid(tid),);
     }
 }
