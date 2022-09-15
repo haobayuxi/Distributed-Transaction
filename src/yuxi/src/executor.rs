@@ -294,52 +294,12 @@ impl Executor {
                 meta.waitlist.insert(final_ts, execution_context);
             }
             // check pending txns execute the context if the write is committed
-            // let mut to_executed = Vec::new();
+            let mut to_executed = Vec::new();
             loop {
                 match meta.waitlist.pop_first() {
-                    Some((ts, mut context)) => {
+                    Some((ts, context)) => {
                         if context.committed {
-                            // to_executed.push((ts, context));
-                            unsafe {
-                                if context.read {
-                                    // execute the read
-                                    // get data
-                                    let datas = &DATA[*data_index];
-                                    let mut index = datas.len() - 1;
-                                    while final_ts < datas[index].start_ts {
-                                        index -= 1;
-                                    }
-                                    let data = datas[index].data.to_string();
-                                    let callback = context.call_back.take().unwrap();
-                                    callback.send((ts as i64, data));
-                                } else {
-                                    // execute the write
-                                    let datas = &mut DATA[*data_index];
-                                    match datas.last_mut() {
-                                        Some(last_data) => {
-                                            last_data.end_ts = ts;
-                                        }
-                                        None => {}
-                                    }
-                                    let mut version_data = VersionData {
-                                        start_ts: ts,
-                                        end_ts: MaxTs,
-                                        data: Data::default(),
-                                    };
-                                    match txn_type {
-                                        rpc::common::TxnType::TatpGetSubscriberData => {}
-                                        rpc::common::TxnType::TatpGetNewDestination => {}
-                                        rpc::common::TxnType::TatpGetAccessData => {}
-                                        rpc::common::TxnType::TatpUpdateSubscriberData => {}
-                                        rpc::common::TxnType::TatpUpdateLocation => {}
-                                        rpc::common::TxnType::TatpInsertCallForwarding => {}
-                                        rpc::common::TxnType::Ycsb => {
-                                            version_data.data = Data::Ycsb(write.value.clone());
-                                        }
-                                    }
-                                    datas.push(version_data);
-                                }
-                            }
+                            to_executed.push((ts, context));
                         } else {
                             meta.waitlist.insert(ts, context);
                             if meta.smallest_wait_ts < ts {
@@ -356,7 +316,48 @@ impl Executor {
             }
 
             // execute
-            // for (ts, mut context) in to_executed {}
+            for (ts, mut context) in to_executed {
+                unsafe {
+                    if context.read {
+                        // execute the read
+                        // get data
+                        let datas = &DATA[*data_index];
+                        let mut index = datas.len() - 1;
+                        while final_ts < datas[index].start_ts {
+                            index -= 1;
+                        }
+                        let data = datas[index].data.to_string();
+                        let callback = context.call_back.take().unwrap();
+                        callback.send((ts as i64, data));
+                    } else {
+                        // execute the write
+                        let datas = &mut DATA[*data_index];
+                        match datas.last_mut() {
+                            Some(last_data) => {
+                                last_data.end_ts = ts;
+                            }
+                            None => {}
+                        }
+                        let mut version_data = VersionData {
+                            start_ts: ts,
+                            end_ts: MaxTs,
+                            data: Data::default(),
+                        };
+                        match txn_type {
+                            rpc::common::TxnType::TatpGetSubscriberData => {}
+                            rpc::common::TxnType::TatpGetNewDestination => {}
+                            rpc::common::TxnType::TatpGetAccessData => {}
+                            rpc::common::TxnType::TatpUpdateSubscriberData => {}
+                            rpc::common::TxnType::TatpUpdateLocation => {}
+                            rpc::common::TxnType::TatpInsertCallForwarding => {}
+                            rpc::common::TxnType::Ycsb => {
+                                version_data.data = Data::Ycsb(write.value.clone());
+                            }
+                        }
+                        datas.push(version_data);
+                    }
+                }
+            }
         }
     }
 
