@@ -391,7 +391,7 @@ impl Executor {
 
             let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
 
-            let mut to_executed = Vec::new();
+            // let mut to_executed = Vec::new();
             {
                 let meta = &mut meta_rwlock.write().await;
                 // let meta = &mut tuple.0;
@@ -406,9 +406,63 @@ impl Executor {
                 // check pending txns execute the context if the write is committed
                 loop {
                     match meta.waitlist.pop_first() {
-                        Some((ts, context)) => {
+                        Some((ts, mut context)) => {
                             if context.committed {
-                                to_executed.push((ts, context));
+                                // to_executed.push((ts, context));
+                                unsafe {
+                                    if context.read {
+                                        // execute the read
+                                        // get data
+
+                                        // let (clientid, _) = get_txnid(context.txnid);
+                                        // {
+                                        //     let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
+                                        //     // wait_txn.waiting -= 1;
+                                        //     wait_txn.read_set.push(ReadStruct {
+                                        //         key,
+                                        //         value: Some(data),
+                                        //         timestamp: None,
+                                        //     });
+                                        //     if wait_txn.waiting == wait_txn.read_set.len() {
+                                        //         wait_txn
+                                        //             .callback
+                                        //             .take()
+                                        //             .unwrap()
+                                        //             .send(Ok(wait_txn.result.clone()))
+                                        //             .await;
+                                        //         println!("send back result {:?}", get_txnid(context.txnid));
+                                        //     }
+                                        // }get_data(ts, *data_index)
+                                        let callback = context.call_back.take().unwrap();
+                                        callback.send((ts as i64, get_data(ts, *data_index)));
+                                    } else {
+                                        // execute the write
+                                        let datas = &mut DATA[*data_index];
+                                        match datas.last_mut() {
+                                            Some(last_data) => {
+                                                last_data.end_ts = ts;
+                                            }
+                                            None => {}
+                                        }
+                                        let mut version_data = VersionData {
+                                            start_ts: ts,
+                                            end_ts: MaxTs,
+                                            data: Data::default(),
+                                        };
+                                        match txn_type {
+                                            rpc::common::TxnType::TatpGetSubscriberData => {}
+                                            rpc::common::TxnType::TatpGetNewDestination => {}
+                                            rpc::common::TxnType::TatpGetAccessData => {}
+                                            rpc::common::TxnType::TatpUpdateSubscriberData => {}
+                                            rpc::common::TxnType::TatpUpdateLocation => {}
+                                            rpc::common::TxnType::TatpInsertCallForwarding => {}
+                                            rpc::common::TxnType::Ycsb => {
+                                                version_data.data = Data::Ycsb(write.value.clone());
+                                            }
+                                        }
+                                        datas.push(version_data);
+                                    }
+                                }
                             } else {
                                 meta.waitlist.insert(ts, context);
                                 if meta.smallest_wait_ts < ts {
@@ -424,65 +478,8 @@ impl Executor {
                     }
                 }
             }
-            println!("{} commit execute context", self.executor_id);
             // execute
-            for (ts, mut context) in to_executed {
-                unsafe {
-                    if context.read {
-                        // execute the read
-                        // get data
-
-                        // let (clientid, _) = get_txnid(context.txnid);
-                        // {
-                        //     let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
-                        //     // wait_txn.waiting -= 1;
-                        //     wait_txn.read_set.push(ReadStruct {
-                        //         key,
-                        //         value: Some(data),
-                        //         timestamp: None,
-                        //     });
-                        //     if wait_txn.waiting == wait_txn.read_set.len() {
-                        //         wait_txn
-                        //             .callback
-                        //             .take()
-                        //             .unwrap()
-                        //             .send(Ok(wait_txn.result.clone()))
-                        //             .await;
-                        //         println!("send back result {:?}", get_txnid(context.txnid));
-                        //     }
-                        // }get_data(ts, *data_index)
-                        println!("index = {}", *data_index);
-                        let callback = context.call_back.take().unwrap();
-                        callback.send((ts as i64, get_data(ts, *data_index)));
-                    } else {
-                        // execute the write
-                        let datas = &mut DATA[*data_index];
-                        match datas.last_mut() {
-                            Some(last_data) => {
-                                last_data.end_ts = ts;
-                            }
-                            None => {}
-                        }
-                        let mut version_data = VersionData {
-                            start_ts: ts,
-                            end_ts: MaxTs,
-                            data: Data::default(),
-                        };
-                        match txn_type {
-                            rpc::common::TxnType::TatpGetSubscriberData => {}
-                            rpc::common::TxnType::TatpGetNewDestination => {}
-                            rpc::common::TxnType::TatpGetAccessData => {}
-                            rpc::common::TxnType::TatpUpdateSubscriberData => {}
-                            rpc::common::TxnType::TatpUpdateLocation => {}
-                            rpc::common::TxnType::TatpInsertCallForwarding => {}
-                            rpc::common::TxnType::Ycsb => {
-                                version_data.data = Data::Ycsb(write.value.clone());
-                            }
-                        }
-                        datas.push(version_data);
-                    }
-                }
-            }
+            // for (ts, mut context) in to_executed {}
         }
         println!("{} commit write done", self.executor_id);
     }
