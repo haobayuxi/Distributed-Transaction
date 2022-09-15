@@ -261,9 +261,9 @@ impl Peer {
     }
 
     async fn handle_commit(&mut self, msg: DastMsg) {
-        unsafe {
-            COMMITTED.fetch_add(1, Ordering::Relaxed);
-        }
+        // unsafe {
+        //     COMMITTED.fetch_add(1, Ordering::Relaxed);
+        // }
         // execute
         if self.maxTs[msg.from as usize] < msg.maxts {
             self.maxTs[msg.from as usize] = msg.maxts;
