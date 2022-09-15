@@ -83,6 +83,10 @@ impl Executor {
             {
                 let node = &mut TXNS[clientid as usize][index as usize];
                 node.committed = true;
+                // notify
+                for to_notify in node.notify.read().await.iter() {
+                    to_notify.send(0);
+                }
                 node.txn.as_mut().unwrap().deps = deps.clone();
                 if commit.txn.from % 3 == self.server_id {
                     node.callback = Some(commit.callback);
@@ -236,10 +240,6 @@ pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
             let meta_index = meta_index.get(&write.key).unwrap();
             let mut guard = DATA[*meta_index].1.write().await;
             *guard = write.value.clone();
-        }
-        // notify
-        for to_notify in node.notify.read().await.iter() {
-            to_notify.send(0);
         }
     }
 }
