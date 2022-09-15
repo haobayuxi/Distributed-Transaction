@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::{
-    peer::{Meta, WaitingTxn, DATA, WAITING_TXN},
+    peer::{Meta, WaitingTxn, DATA},
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
@@ -113,14 +113,14 @@ impl Executor {
         // let mut msg = msg;
         let mut txn = msg.tmsg.clone();
         let txnid = txn.txn_id;
-        unsafe {
-            {
-                let from = txn.from;
-                let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                wait_txn.waiting = 0;
-                wait_txn.read_set.clear();
-            }
-        }
+        // unsafe {
+        //     {
+        //         let from = txn.from;
+        //         let mut wait_txn = WAITING_TXN[from as usize].write().await;
+        //         wait_txn.waiting = 0;
+        //         wait_txn.read_set.clear();
+        //     }
+        // }
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
         let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
@@ -525,14 +525,14 @@ impl Executor {
         let final_ts = msg.tmsg.timestamp;
         let (mut txn, write_ts_in_waitlist) = self.txns.remove(&tid).unwrap();
         if self.server_id == (msg.tmsg.from as u32) % 3 {
-            unsafe {
-                {
-                    let from = msg.tmsg.from;
-                    let mut wait_txn = WAITING_TXN[from as usize].write().await;
-                    wait_txn.waiting = 0;
-                    wait_txn.read_set.clear();
-                }
-            }
+            // unsafe {
+            //     {
+            //         let from = msg.tmsg.from;
+            //         let mut wait_txn = WAITING_TXN[from as usize].write().await;
+            //         wait_txn.waiting = 0;
+            //         wait_txn.read_set.clear();
+            //     }
+            // }
             // get write_ts in waitlist to erase
 
             let txn_type = txn.txn_type();

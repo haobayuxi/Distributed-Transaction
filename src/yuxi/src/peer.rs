@@ -21,7 +21,7 @@ use crate::{
 };
 
 pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
-pub static mut WAITING_TXN: Vec<RwLock<WaitingTxn>> = Vec::new();
+// pub static mut WAITING_TXN: Vec<RwLock<WaitingTxn>> = Vec::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfigPerServer {
@@ -75,14 +75,14 @@ impl Peer {
     fn init_data(&mut self) -> HashMap<i64, (RwLock<Meta>, usize)> {
         // init
         unsafe {
-            for _ in 0..self.config.client_num {
-                WAITING_TXN.push(RwLock::new(WaitingTxn {
-                    waiting: 0,
-                    callback: None,
-                    result: YuxiMsg::default(),
-                    read_set: Vec::new(),
-                }));
-            }
+            // for _ in 0..self.config.client_num {
+            //     WAITING_TXN.push(RwLock::new(WaitingTxn {
+            //         waiting: 0,
+            //         callback: None,
+            //         result: YuxiMsg::default(),
+            //         read_set: Vec::new(),
+            //     }));
+            // }
             let mut indexs = HashMap::new();
             // self.mem = Arc::new(mem);
             let data = init_ycsb();
