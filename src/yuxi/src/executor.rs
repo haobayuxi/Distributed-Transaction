@@ -1,7 +1,11 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
 
 use crate::{
-    peer::{Meta, DATA},
+    peer::{Meta, COMMITTED, DATA},
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
@@ -103,7 +107,7 @@ impl Executor {
         let mut txn = msg.tmsg.clone();
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
-        let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
+        let (sender, mut receiver) = unbounded_channel::<usize>();
         let read_set = txn.read_set.clone();
         txn.read_set.clear();
         for read in read_set.iter() {
@@ -169,10 +173,10 @@ impl Executor {
             tokio::spawn(async move {
                 while waiting_for_read_result > 0 {
                     match receiver.recv().await {
-                        Some((key, value)) => {
+                        Some(index) => {
                             txn.read_set.push(ReadStruct {
-                                key,
-                                value: Some(value),
+                                key: 0,
+                                value: Some(get_data(final_ts, index)),
                                 timestamp: None,
                             });
                         }
@@ -434,7 +438,7 @@ impl Executor {
                                         //     }
                                         // }get_data(ts, *data_index)
                                         let callback = context.call_back.take().unwrap();
-                                        callback.send((ts as i64, get_data(ts, *data_index)));
+                                        callback.send(*data_index);
                                     } else {
                                         // execute the write
                                         let datas = &mut DATA[*data_index];
@@ -485,6 +489,9 @@ impl Executor {
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
+        unsafe {
+            COMMITTED.fetch_add(1, Ordering::Relaxed);
+        }
         // println!("{} handle commit", self.executor_id);
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;
@@ -504,7 +511,7 @@ impl Executor {
             // execute read
 
             let mut waiting_for_read_result = 0;
-            let (sender, mut receiver) = unbounded_channel::<(i64, String)>();
+            let (sender, mut receiver) = unbounded_channel::<usize>();
             let mut read_set = txn.read_set.clone();
             txn.read_set.clear();
             for read in read_set.iter_mut() {
@@ -563,10 +570,10 @@ impl Executor {
                 tokio::spawn(async move {
                     while waiting_for_read_result > 0 {
                         match receiver.recv().await {
-                            Some((key, value)) => {
+                            Some(index) => {
                                 txn.read_set.push(ReadStruct {
-                                    key,
-                                    value: Some(value),
+                                    key: 0,
+                                    value: Some(get_data(final_ts, index)),
                                     timestamp: None,
                                 });
                             }

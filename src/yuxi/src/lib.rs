@@ -27,7 +27,7 @@ pub struct ExecuteContext {
     committed: bool,
     read: bool,
     value: Option<String>,
-    call_back: Option<UnboundedSender<(i64, String)>>,
+    call_back: Option<UnboundedSender<usize>>,
 }
 
 pub static MaxTs: TS = 1 << 62;

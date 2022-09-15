@@ -1,11 +1,24 @@
 #! /usr/bin/env python
 #ClientNum = 900
 #RequestPerClient = 100
-
+import pexpect
 # read throughput first, then latency
 
 import os
 import sys
+passwd_key = "hpcgrid3102\n"
+
+
+def get_data(ip):
+    cmdline = "scp root@%s:/home/wuhao/yuxi_data/*data ." % ip
+    try:
+        child = pexpect.spawn(cmdline)
+        child.expect("password:")
+        child.sendline(passwd_key)
+        child.expect(pexpect.EOF)
+        print("%s get success", ip)
+    except Exception as e:
+        print("get fail:", e)
 
 
 def read_throughput_results(type):
@@ -49,4 +62,5 @@ if __name__ == "__main__":
     servertype = sys.argv[1]
     # if type == "t":
     print("aggregate throughput")
+    get_data("t01")
     read_throughput_results(servertype)

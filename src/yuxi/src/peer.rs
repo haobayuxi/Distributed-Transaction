@@ -1,6 +1,9 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
@@ -8,9 +11,15 @@ use log::info;
 // use parking_lot::RwLock;
 use rpc::{common::ReadStruct, yuxi::YuxiMsg};
 use serde::{Deserialize, Serialize};
-use tokio::sync::{
-    mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
-    Mutex, RwLock,
+use tokio::{
+    fs::OpenOptions,
+    io::AsyncWriteExt,
+    sync::{
+        mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
+        Mutex, RwLock,
+    },
+    time::sleep,
+    time::Duration,
 };
 use tonic::Status;
 
@@ -21,19 +30,13 @@ use crate::{
 };
 
 pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
+pub static mut COMMITTED: AtomicU64 = AtomicU64::new(0);
 // pub static mut WAITING_TXN: Vec<RwLock<WaitingTxn>> = Vec::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfigPerServer {
     id: i32,
 }
-
-// pub struct WaitingTxn {
-//     pub waiting: usize,
-//     pub callback: Option<Sender<Result<YuxiMsg, Status>>>,
-//     pub result: YuxiMsg,
-//     pub read_set: Vec<ReadStruct>,
-// }
 
 pub struct Meta {
     pub maxts: TS,
@@ -142,6 +145,31 @@ impl Peer {
     async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {
         let mut recv = recv;
         // let mut i = 0;
+        let serverid = self.server_id;
+        tokio::spawn(async move {
+            let mut throughput = Vec::new();
+            let mut last = 0;
+            unsafe {
+                for _ in 0..20 {
+                    sleep(Duration::from_secs(1)).await;
+                    let now = COMMITTED.load(Ordering::Relaxed);
+                    throughput.push(now - last);
+                    last = now;
+                }
+            }
+            //
+            let throughput_file_name = serverid.to_string() + "throughput.data";
+            let mut throughput_file = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(throughput_file_name)
+                .await
+                .unwrap();
+            for result in throughput {
+                throughput_file.write(result.to_string().as_bytes()).await;
+            }
+            println!("finished");
+        });
         loop {
             match recv.recv().await {
                 Some(msg) => {
