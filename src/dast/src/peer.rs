@@ -1,13 +1,21 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    sync::Arc,
-    time::Duration,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use chrono::Local;
 use common::{config::Config, convert_ip_addr, get_txnid, ycsb::init_ycsb};
 use rpc::{common::TxnOp, dast::DastMsg};
-use tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedReceiver, UnboundedSender};
+use tokio::{
+    fs::OpenOptions,
+    io::AsyncWriteExt,
+    sync::mpsc::{channel, Receiver, Sender, UnboundedReceiver, UnboundedSender},
+    time::sleep,
+    time::Duration,
+};
 use tracing::info;
 
 use crate::{
@@ -15,6 +23,7 @@ use crate::{
     ClientMsg, Msg,
 };
 
+pub static mut COMMITTED: AtomicU64 = AtomicU64::new(0);
 #[derive(Clone, Debug)]
 struct TxnInMemory {
     txn: DastMsg,
@@ -249,6 +258,9 @@ impl Peer {
     }
 
     async fn handle_commit(&mut self, msg: DastMsg) {
+        unsafe {
+            COMMITTED.fetch_add(1, Ordering::Relaxed);
+        }
         // execute
         if self.maxTs[msg.from as usize] < msg.maxts {
             self.maxTs[msg.from as usize] = msg.maxts;
@@ -450,6 +462,34 @@ impl Peer {
 
     pub async fn init_run(&mut self, sender: UnboundedSender<Msg>) {
         self.init_rpc(sender).await;
+        let serverid = self.id;
+        tokio::spawn(async move {
+            let mut throughput = Vec::new();
+            let mut last = 0;
+            unsafe {
+                for _ in 0..15 {
+                    sleep(Duration::from_secs(1)).await;
+                    let now = COMMITTED.load(Ordering::Relaxed);
+                    throughput.push(now - last);
+                    last = now;
+                }
+            }
+            //
+            let throughput_file_name = serverid.to_string() + "throughput.data";
+            let mut throughput_file = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(throughput_file_name)
+                .await
+                .unwrap();
+            for result in throughput {
+                throughput_file.write(result.to_string().as_bytes()).await;
+                throughput_file.write("\n".as_bytes()).await;
+            }
+            throughput_file.flush();
+
+            println!("finished");
+        });
         loop {
             match self.recv.recv().await {
                 Some(msg) => self.handle_msg(msg).await,
