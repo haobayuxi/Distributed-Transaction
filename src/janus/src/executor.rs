@@ -122,11 +122,11 @@ impl Executor {
                     loop {
                         match recv.recv().await {
                             Some(_) => {
-                                waiting -= 1;
-                                if waiting == 0 {
-                                    execute(txnid, meta_index).await;
-                                    break;
-                                }
+                                // waiting -= 1;
+                                // if waiting == 0 {
+                                execute(txnid, meta_index).await;
+                                break;
+                                // }
                             }
                             None => break,
                         }
