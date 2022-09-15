@@ -155,7 +155,7 @@ impl Executor {
             unsafe {
                 let version_data = &DATA[*data_index];
                 let mut index = version_data.len() - 1;
-                while final_ts < version_data[index].start_ts {
+                while final_ts <= version_data[index].start_ts {
                     index -= 1;
                 }
                 let data = version_data[index].data.to_string();
