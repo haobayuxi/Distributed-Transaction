@@ -114,6 +114,7 @@ impl JanusCoordinator {
         self.txn.txn_type = Some(TxnType::Ycsb.into());
         let mut latency_result = Vec::new();
         // send msgs
+        let mut finished = 0;
         let total_start = Instant::now();
         for i in 0..self.txns_per_client {
             self.workload.generate();
@@ -123,9 +124,10 @@ impl JanusCoordinator {
             let end_time = start.elapsed().as_micros();
             // println!("latency time = {}", end_time);
             latency_result.push(end_time);
+            finished += 1;
         }
         let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
-        let throughput_result = self.txns_per_client as f64 / total_end;
+        let throughput_result = finished as f64 / total_end;
         println!("throughput = {}", throughput_result);
         // write results to file
         let latency_file_name = self.id.to_string() + "latency.data";
