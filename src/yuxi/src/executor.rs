@@ -290,112 +290,113 @@ impl Executor {
             txn_type: msg.tmsg.txn_type,
         };
 
-        let accept_ts = msg.tmsg.timestamp;
-
-        let (txn, write_ts_in_waitlist) = self.txns.get(&result.txn_id).unwrap();
-
-        for (write, write_ts) in write_ts_in_waitlist.iter() {
-            let key = write.key;
-
-            let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
-
-            let mut to_executed = Vec::new();
-            {
-                let meta = &mut meta_rwlock.write().await;
-                // let meta = &mut tuple.0;
-                if meta.maxts < accept_ts {
-                    meta.maxts = accept_ts
-                }
-
-                if let Some(execution_context) = meta.waitlist.remove(&write_ts) {
-                    // execution_context.committed = true;
-                    meta.waitlist.insert(accept_ts, execution_context);
-                }
-                // check pending txns execute the context if the write is committed
-                loop {
-                    match meta.waitlist.pop_first() {
-                        Some((ts, context)) => {
-                            if context.committed {
-                                to_executed.push((ts, context));
-                            } else {
-                                meta.waitlist.insert(ts, context);
-                                if meta.smallest_wait_ts < ts {
-                                    meta.smallest_wait_ts = ts;
-                                }
-                                break;
-                            }
-                        }
-                        None => {
-                            meta.smallest_wait_ts = MaxTs;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // execute
-            for (ts, context) in to_executed {
-                unsafe {
-                    if context.read {
-                        // execute the read
-                        // get data
-                        let datas = &DATA[*data_index];
-                        let mut index = datas.len() - 1;
-                        while accept_ts < datas[index].start_ts {
-                            index -= 1;
-                        }
-                        let data = datas[index].data.to_string();
-                        let (clientid, _) = get_txnid(context.txnid);
-                        {
-                            let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
-                            wait_txn.read_set.push(ReadStruct {
-                                key,
-                                value: Some(data),
-                                timestamp: None,
-                            });
-                            if wait_txn.waiting == wait_txn.read_set.len() {
-                                wait_txn
-                                    .callback
-                                    .take()
-                                    .unwrap()
-                                    .send(Ok(wait_txn.result.clone()))
-                                    .await;
-                            }
-                        }
-
-                        // let callback = context.call_back.take().unwrap();
-                        // callback.send((ts as i64, data));
-                    } else {
-                        // execute the write
-                        let datas = &mut DATA[*data_index];
-                        match datas.last_mut() {
-                            Some(last_data) => {
-                                last_data.end_ts = ts;
-                            }
-                            None => {}
-                        }
-                        let mut version_data = VersionData {
-                            start_ts: ts,
-                            end_ts: MaxTs,
-                            data: Data::default(),
-                        };
-                        match msg.tmsg.txn_type() {
-                            rpc::common::TxnType::TatpGetSubscriberData => {}
-                            rpc::common::TxnType::TatpGetNewDestination => {}
-                            rpc::common::TxnType::TatpGetAccessData => {}
-                            rpc::common::TxnType::TatpUpdateSubscriberData => {}
-                            rpc::common::TxnType::TatpUpdateLocation => {}
-                            rpc::common::TxnType::TatpInsertCallForwarding => {}
-                            rpc::common::TxnType::Ycsb => {
-                                version_data.data = Data::Ycsb(write.value.clone());
-                            }
-                        }
-                        datas.push(version_data);
-                    }
-                }
-            }
-        }
         msg.callback.send(Ok(result)).await;
+
+        // let accept_ts = msg.tmsg.timestamp;
+
+        // let (txn, write_ts_in_waitlist) = self.txns.get(&msg.tmsg.txn_id).unwrap();
+
+        // for (write, write_ts) in write_ts_in_waitlist.iter() {
+        //     let key = write.key;
+
+        //     let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
+
+        //     let mut to_executed = Vec::new();
+        //     {
+        //         let meta = &mut meta_rwlock.write().await;
+        //         // let meta = &mut tuple.0;
+        //         if meta.maxts < accept_ts {
+        //             meta.maxts = accept_ts
+        //         }
+
+        //         if let Some(execution_context) = meta.waitlist.remove(&write_ts) {
+        //             // execution_context.committed = true;
+        //             meta.waitlist.insert(accept_ts, execution_context);
+        //         }
+        //         // check pending txns execute the context if the write is committed
+        //         loop {
+        //             match meta.waitlist.pop_first() {
+        //                 Some((ts, context)) => {
+        //                     if context.committed {
+        //                         to_executed.push((ts, context));
+        //                     } else {
+        //                         meta.waitlist.insert(ts, context);
+        //                         if meta.smallest_wait_ts < ts {
+        //                             meta.smallest_wait_ts = ts;
+        //                         }
+        //                         break;
+        //                     }
+        //                 }
+        //                 None => {
+        //                     meta.smallest_wait_ts = MaxTs;
+        //                     break;
+        //                 }
+        //             }
+        //         }
+        //     }
+
+        //     // execute
+        //     for (ts, context) in to_executed {
+        //         unsafe {
+        //             if context.read {
+        //                 // execute the read
+        //                 // get data
+        //                 let datas = &DATA[*data_index];
+        //                 let mut index = datas.len() - 1;
+        //                 while accept_ts < datas[index].start_ts {
+        //                     index -= 1;
+        //                 }
+        //                 let data = datas[index].data.to_string();
+        //                 let (clientid, _) = get_txnid(context.txnid);
+        //                 {
+        //                     let mut wait_txn = WAITING_TXN[clientid as usize].write().await;
+        //                     wait_txn.read_set.push(ReadStruct {
+        //                         key,
+        //                         value: Some(data),
+        //                         timestamp: None,
+        //                     });
+        //                     if wait_txn.waiting == wait_txn.read_set.len() {
+        //                         wait_txn
+        //                             .callback
+        //                             .take()
+        //                             .unwrap()
+        //                             .send(Ok(wait_txn.result.clone()))
+        //                             .await;
+        //                     }
+        //                 }
+
+        //                 // let callback = context.call_back.take().unwrap();
+        //                 // callback.send((ts as i64, data));
+        //             } else {
+        //                 // execute the write
+        //                 let datas = &mut DATA[*data_index];
+        //                 match datas.last_mut() {
+        //                     Some(last_data) => {
+        //                         last_data.end_ts = ts;
+        //                     }
+        //                     None => {}
+        //                 }
+        //                 let mut version_data = VersionData {
+        //                     start_ts: ts,
+        //                     end_ts: MaxTs,
+        //                     data: Data::default(),
+        //                 };
+        //                 match msg.tmsg.txn_type() {
+        //                     rpc::common::TxnType::TatpGetSubscriberData => {}
+        //                     rpc::common::TxnType::TatpGetNewDestination => {}
+        //                     rpc::common::TxnType::TatpGetAccessData => {}
+        //                     rpc::common::TxnType::TatpUpdateSubscriberData => {}
+        //                     rpc::common::TxnType::TatpUpdateLocation => {}
+        //                     rpc::common::TxnType::TatpInsertCallForwarding => {}
+        //                     rpc::common::TxnType::Ycsb => {
+        //                         version_data.data = Data::Ycsb(write.value.clone());
+        //                     }
+        //                 }
+        //                 datas.push(version_data);
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     async fn commit_write(
