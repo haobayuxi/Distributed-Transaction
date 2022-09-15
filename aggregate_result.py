@@ -44,8 +44,8 @@ def read_throughput_results(type):
     result3 = per_server_throughput(2)
 
     for i in range(0, 15):
-        aggregate = float(result1[i] + result2[i] + result3[i])
-        print(aggregate)
+        # aggregate = float()
+        print(result1[i] + result2[i] + result3[i])
     file_name = type + "/throughput"
     result_file = open(file_name, 'a')
     result_file.write(str(result)+'\n')
@@ -76,6 +76,7 @@ if __name__ == "__main__":
     servertype = sys.argv[1]
     # if type == "t":
     print("aggregate throughput")
+
     get_data(t01, 0)
     get_data(t03, 1)
     get_data(t05, 2)
