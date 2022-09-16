@@ -110,7 +110,7 @@ impl Peer {
         let mut throughput = Vec::new();
         let mut last = 0;
         unsafe {
-            for _ in 0..15 {
+            for _ in 0..16 {
                 sleep(Duration::from_secs(1)).await;
                 let now = COMMITTED.load(Ordering::Relaxed);
                 throughput.push((now - last) / 3);
