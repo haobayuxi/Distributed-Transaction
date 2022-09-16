@@ -1,4 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+};
 
 use common::{config::Config, convert_ip_addr, get_txnid, ycsb::init_ycsb};
 use log::info;
@@ -7,11 +13,15 @@ use rpc::janus::JanusMsg;
 use serde::{Deserialize, Serialize};
 
 use tokio::{
+    fs::OpenOptions,
+    io::AsyncWriteExt,
     sync::{
         mpsc::{channel, unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
         RwLock,
     },
     task::spawn_blocking,
+    time::sleep,
+    time::Duration,
 };
 use tonic::Status;
 
@@ -24,6 +34,7 @@ use crate::{
 
 pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 pub static mut DATA: Vec<(RwLock<JanusMeta>, RwLock<String>)> = Vec::new();
+pub static mut COMMITTED: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug)]
 pub struct Node {
@@ -179,6 +190,35 @@ impl Peer {
     // }
 
     async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {
+        let serverid = self.server_id;
+        tokio::spawn(async move {
+            let mut throughput = Vec::new();
+            let mut last = 0;
+            unsafe {
+                for _ in 0..15 {
+                    sleep(Duration::from_secs(1)).await;
+                    let now = COMMITTED.load(Ordering::Relaxed);
+                    throughput.push((now - last) / 3);
+                    last = now;
+                }
+            }
+            //
+            let throughput_file_name = serverid.to_string() + "throughput.data";
+            let mut throughput_file = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(throughput_file_name)
+                .await
+                .unwrap();
+            for result in throughput {
+                throughput_file.write(result.to_string().as_bytes()).await;
+                throughput_file.write("\n".as_bytes()).await;
+            }
+            throughput_file.flush();
+
+            println!("finished");
+        });
+
         let mut recv = recv;
         loop {
             match recv.recv().await {

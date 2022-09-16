@@ -30,7 +30,8 @@ use crate::{
 };
 
 pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
-pub static mut COMMITTED: AtomicU64 = AtomicU64::new(0);
+pub static mut READ_ONLY_COMMITTED: AtomicU64 = AtomicU64::new(0);
+pub static mut READ_WRITE_COMMITTED: AtomicU64 = AtomicU64::new(0);
 // pub static mut WAITING_TXN: Vec<RwLock<WaitingTxn>> = Vec::new();
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -148,13 +149,18 @@ impl Peer {
         let serverid = self.server_id;
         tokio::spawn(async move {
             let mut throughput = Vec::new();
-            let mut last = 0;
+            let mut read_only_last = 0;
+            let mut read_write_last = 0;
             unsafe {
                 for _ in 0..15 {
                     sleep(Duration::from_secs(1)).await;
-                    let now = COMMITTED.load(Ordering::Relaxed);
-                    throughput.push(now - last);
-                    last = now;
+                    let read_only_now = READ_ONLY_COMMITTED.load(Ordering::Relaxed);
+                    let read_write_now = READ_WRITE_COMMITTED.load(Ordering::Relaxed);
+                    throughput.push(
+                        (read_only_now - read_only_last) + (read_write_now - read_write_last) / 3,
+                    );
+                    read_only_last = read_only_now;
+                    read_write_last = read_write_now;
                 }
             }
             //

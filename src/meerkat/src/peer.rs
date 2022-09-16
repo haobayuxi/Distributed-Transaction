@@ -105,7 +105,7 @@ impl Peer {
                 for _ in 0..15 {
                     sleep(Duration::from_secs(1)).await;
                     let now = COMMITTED.load(Ordering::Relaxed);
-                    throughput.push(now - last);
+                    throughput.push((now - last) / 3);
                     last = now;
                 }
             }
