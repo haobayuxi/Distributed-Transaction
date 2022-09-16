@@ -112,7 +112,7 @@ impl Peer {
 
     pub fn create_ts(&mut self) -> u64 {
         let time = (Local::now().timestamp_nanos() / 1000) as u64;
-        let mut ts = time << 12 + self.id << 5;
+        let mut ts = time << 12 + self.id << 10;
         if ts < self.maxTs[self.id as usize] {
             let maxts = self.maxTs[self.id as usize] >> 12;
             ts = (maxts + 1) << 12 + (self.id as u64);
