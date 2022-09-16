@@ -38,7 +38,7 @@ pub struct Peer {
     // memory
     mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
     // dispatcher
-    executor_senders: HashMap<u32, UnboundedSender<Msg>>,
+    // executor_senders: Arc<HashMap<u32, UnboundedSender<Msg>>>,
     executor_num: u32,
     config: Config,
 }
@@ -57,7 +57,7 @@ impl Peer {
         Self {
             server_id,
             mem: Arc::new(mem),
-            executor_senders: HashMap::new(),
+            // executor_senders: HashMap::new(),
             executor_num: 0,
             config,
         }
@@ -67,33 +67,41 @@ impl Peer {
         let (dispatcher_sender, dispatcher_receiver) = unbounded_channel::<Msg>();
 
         println!("init data done");
-        self.init_executors(self.config.clone());
-        self.init_rpc(self.config.clone(), dispatcher_sender).await;
+        let executor_senders = self.init_executors(self.config.clone());
+        self.init_rpc(self.config.clone(), dispatcher_sender, executor_senders)
+            .await;
         println!("init rpc done");
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
+    async fn init_rpc(
+        &mut self,
+        config: Config,
+        sender: UnboundedSender<Msg>,
+        executor_senders: Arc<HashMap<u32, UnboundedSender<Msg>>>,
+    ) {
         // start server for client to connect
         let mut listen_ip = config.server_addrs.get(&self.server_id).unwrap().clone();
         listen_ip = convert_ip_addr(listen_ip, false);
         println!("server listen ip {}", listen_ip);
-        let server = RpcServer::new(listen_ip, sender);
+        let server = RpcServer::new(listen_ip, sender, executor_senders);
         tokio::spawn(async move {
             run_rpc_server(server).await;
         });
     }
 
-    fn init_executors(&mut self, config: Config) {
+    fn init_executors(&mut self, config: Config) -> Arc<HashMap<u32, UnboundedSender<Msg>>> {
         self.executor_num = config.executor_num;
+        let mut executor_senders = HashMap::new();
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<Msg>();
-            self.executor_senders.insert(i, sender);
+            executor_senders.insert(i, sender);
             let mut exec = Executor::new_ycsb(i, self.server_id, self.mem.clone(), receiver);
             tokio::spawn(async move {
                 exec.run().await;
             });
         }
+        Arc::new(executor_senders)
     }
 
     async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {
@@ -126,17 +134,17 @@ impl Peer {
             println!("finished");
         });
         let mut recv = recv;
-        loop {
-            match recv.recv().await {
-                Some(msg) => {
-                    // println!("txnid = {}", msg.tmsg.txn_id);
+        // loop {
+        //     match recv.recv().await {
+        //         Some(msg) => {
+        //             // println!("txnid = {}", msg.tmsg.txn_id);
 
-                    let executor_id = (msg.tmsg.from as u32) % self.executor_num;
-                    // send to executor
-                    self.executor_senders.get(&executor_id).unwrap().send(msg);
-                }
-                None => continue,
-            }
-        }
+        //             let executor_id = (msg.tmsg.from as u32) % self.executor_num;
+        //             // send to executor
+        //             self.executor_senders.get(&executor_id).unwrap().send(msg);
+        //         }
+        //         None => continue,
+        //     }
+        // }
     }
 }

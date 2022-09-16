@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use log::info;
@@ -22,13 +24,19 @@ use crate::Msg;
 pub struct RpcServer {
     addr_to_listen: String,
     sender: UnboundedSender<Msg>,
+    executors: Arc<HashMap<u32, UnboundedSender<Msg>>>,
 }
 
 impl RpcServer {
-    pub fn new(addr_to_listen: String, sender: UnboundedSender<Msg>) -> Self {
+    pub fn new(
+        addr_to_listen: String,
+        sender: UnboundedSender<Msg>,
+        executors: Arc<HashMap<u32, UnboundedSender<Msg>>>,
+    ) -> Self {
         Self {
             sender,
             addr_to_listen,
+            executors,
         }
     }
 }
@@ -52,16 +60,18 @@ impl Meerkat for RpcServer {
     ) -> Result<Response<Self::TxnMsgStream>, Status> {
         let (callback_sender, mut receiver) = channel::<Result<MeerkatMsg, Status>>(100);
         let mut in_stream = request.into_inner();
-        let sender = self.sender.clone();
+        let executor_senders = self.executors.clone();
+        let executor_num = executor_senders.len() as u32;
         tokio::spawn(async move {
             while let Some(result) = in_stream.next().await {
                 match result {
                     Ok(txn) => {
+                        let executor_id = txn.from % executor_num;
                         let msg = Msg {
                             tmsg: txn,
                             callback: callback_sender.clone(),
                         };
-                        sender.send(msg);
+                        executor_senders.get(&executor_id).unwrap().send(msg);
                     }
                     Err(_) => {
                         break;
