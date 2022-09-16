@@ -176,7 +176,7 @@ impl Executor {
             // result.deps.sort();
             let txnid = msg.txn.txn_id;
             let (client_id, index) = get_txnid(txnid);
-            TXNS[client_id as usize].push(Node::new(msg.txn));
+            TXNS[client_id as usize][index as usize].txn = Some(msg.txn);
         }
         // reply to coordinator
         msg.callback.send(Ok(result)).await;

@@ -99,10 +99,10 @@ impl Peer {
         // init data
         unsafe {
             for _ in 0..config.client_num {
-                // let mut in_memory_node = Vec::new();
-                // for _ in 0..500 {
-                //     in_memory_node.push(Node::default());
-                // }
+                let mut in_memory_node = Vec::new();
+                for _ in 0..10000 {
+                    in_memory_node.push(Node::default());
+                }
                 TXNS.push(Vec::new());
             }
         }
