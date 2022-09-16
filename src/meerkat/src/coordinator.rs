@@ -57,6 +57,8 @@ impl MeerkatCoordinator {
         println!("init rpc done");
         // run transactions
         let mut latency_result = Vec::new();
+
+        self.txn.from = self.id;
         // send msgs
         let total_start = Instant::now();
         loop {
