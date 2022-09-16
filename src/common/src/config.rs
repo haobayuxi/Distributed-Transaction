@@ -20,7 +20,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         let addr0 = String::from("http://192.168.50.11:50051");
-        let addr1 = String::from("http://192.168.50.13:50051");
+        let addr1 = String::from("http://192.168.50.17:50051");
         let addr2 = String::from("http://192.168.50.15:50051");
         let mut server_addrs = HashMap::new();
         server_addrs.insert(0, addr0);
@@ -28,7 +28,7 @@ impl Default for Config {
         server_addrs.insert(2, addr2);
 
         let propose_addr0 = String::from("http://192.168.50.11:50151");
-        let propose_addr1 = String::from("http://192.168.50.13:50151");
+        let propose_addr1 = String::from("http://192.168.50.17:50151");
         let propose_addr2 = String::from("http://192.168.50.15:50151");
         let mut propose_addrs = HashMap::new();
         propose_addrs.insert(0, propose_addr0);
