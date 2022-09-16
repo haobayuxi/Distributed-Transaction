@@ -98,6 +98,9 @@ impl DepGraph {
                             continue;
                         }
                         let (dep_clientid, dep_index) = get_txnid(dep);
+                        while TXNS[dep_clientid as usize].len() + 1 < dep_index as usize {
+                            sleep(Duration::from_nanos(100)).await;
+                        }
                         let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
                         while !next.committed {
                             // not committed

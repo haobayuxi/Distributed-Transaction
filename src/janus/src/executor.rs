@@ -102,7 +102,7 @@ impl Executor {
                     let (dep_clientid, dep_index) = get_txnid(*dep);
 
                     let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
-                    if !next.committed {
+                    if !next.executed {
                         waiting += 1;
                         let mut notifies = next.notify.write().await;
                         if !next.executed {
@@ -176,7 +176,7 @@ impl Executor {
             // result.deps.sort();
             let txnid = msg.txn.txn_id;
             let (client_id, index) = get_txnid(txnid);
-            TXNS[client_id as usize][index as usize].txn = Some(msg.txn);
+            TXNS[client_id as usize].push(Node::new(msg.txn));
         }
         // reply to coordinator
         msg.callback.send(Ok(result)).await;
