@@ -29,7 +29,7 @@ def per_server_throughput(id):
     result = []
     file_name = str(id) + "throughput.data"
     f = open(file_name)
-    x = f.readlines(15)
+    x = f.readlines()
     print(x)
     for i in range(0, 15):
         result.append(float(x[i].strip('\n')))
