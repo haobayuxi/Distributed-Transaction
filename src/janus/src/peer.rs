@@ -103,7 +103,7 @@ impl Peer {
                 for _ in 0..10000 {
                     in_memory_node.push(Node::default());
                 }
-                TXNS.push(Vec::new());
+                TXNS.push(in_memory_node);
             }
         }
         // self.mem = Arc::new(mem);
