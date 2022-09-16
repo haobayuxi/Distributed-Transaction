@@ -46,7 +46,7 @@ pub struct Executor {
     // Vec<TS> is used to index the write in waitlist
     txns: HashMap<u64, (YuxiMsg, Vec<(WriteStruct, TS)>)>,
     // ycsb
-    index: Arc<HashMap<i64, (RwLock<Meta>, usize)>>,
+    index: Arc<HashMap<u64, (RwLock<Meta>, usize)>>,
     // tatp
     subscriber: Arc<HashMap<u64, usize>>,
     access_info: Arc<HashMap<u64, usize>>,
@@ -59,7 +59,7 @@ impl Executor {
         executor_id: u32,
         server_id: u32,
         recv: Receiver<Msg>,
-        index: Arc<HashMap<i64, (RwLock<Meta>, usize)>>,
+        index: Arc<HashMap<u64, (RwLock<Meta>, usize)>>,
     ) -> Self {
         Self {
             executor_id,
@@ -101,6 +101,24 @@ impl Executor {
             TxnOp::CommitRes => {}
         }
     }
+
+    // async fn get_index(&mut self, key: u64, txn_type: TxnType)-> usize {
+    //     match txn_type {
+    //         TxnType::TatpGetSubscriberData => {
+    //             return self.subscriber.get(&key).unwrap().clone();
+    //         },
+    //         TxnType::TatpGetNewDestination => {
+    //             return self..get(&key).unwrap().clone();
+    //         },
+    //         TxnType::TatpGetAccessData => todo!(),
+    //         TxnType::TatpUpdateSubscriberData => todo!(),
+    //         TxnType::TatpUpdateLocation => todo!(),
+    //         TxnType::TatpInsertCallForwarding => todo!(),
+    //         TxnType::Ycsb => {
+    //             return self.
+    //         },
+    //     }
+    // }
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // let mut msg = msg;

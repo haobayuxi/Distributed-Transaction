@@ -36,7 +36,7 @@ pub struct Peer {
     server_id: u32,
 
     // memory
-    mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
+    mem: Arc<HashMap<u64, RwLock<(MeerkatMeta, String)>>>,
     // dispatcher
     // executor_senders: Arc<HashMap<u32, UnboundedSender<Msg>>>,
     executor_num: u32,

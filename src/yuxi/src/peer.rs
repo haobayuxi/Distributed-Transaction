@@ -21,7 +21,6 @@ use tokio::{
     time::sleep,
     time::Duration,
 };
-use tonic::Status;
 
 use crate::{
     executor::Executor,
@@ -76,7 +75,7 @@ impl Peer {
         self.run_dispatcher(dispatcher_receiver).await;
     }
 
-    fn init_data(&mut self) -> HashMap<i64, (RwLock<Meta>, usize)> {
+    fn init_data(&mut self) -> HashMap<u64, (RwLock<Meta>, usize)> {
         // init
         unsafe {
             // for _ in 0..self.config.client_num {
@@ -88,10 +87,8 @@ impl Peer {
             //     }));
             // }
             let mut indexs = HashMap::new();
-            // self.mem = Arc::new(mem);
             let data = init_ycsb();
 
-            // IN_MEMORY_DATA.reserve(data.len());
             let mut index: usize = 0;
             for (key, value) in data {
                 let version_data = VersionData {
@@ -130,7 +127,7 @@ impl Peer {
         });
     }
 
-    fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<i64, (RwLock<Meta>, usize)>>) {
+    fn init_executors(&mut self, config: Config, indexs: Arc<HashMap<u64, (RwLock<Meta>, usize)>>) {
         // self.executor_num = config.executor_num;
         self.executor_num = config.executor_num;
         for i in 0..self.executor_num {

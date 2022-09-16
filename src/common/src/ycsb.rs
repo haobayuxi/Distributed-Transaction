@@ -75,13 +75,13 @@ impl YcsbQuery {
 
             if op * 100.0 <= self.read_perc as f64 {
                 self.read_set.push(ReadStruct {
-                    key: key as i64,
+                    key: key as u64,
                     value: None,
                     timestamp: None,
                 });
             } else {
                 self.write_set.push(WriteStruct {
-                    key: key as i64,
+                    key: key as u64,
                     value: self.write_value.clone(),
                     // timestamp: None,
                 });
@@ -121,7 +121,7 @@ pub fn zeta(n: u64, theta: f64) -> f64 {
     return sum;
 }
 
-pub fn init_ycsb() -> HashMap<i64, String> {
+pub fn init_ycsb() -> HashMap<u64, String> {
     // let shard_num = config.shards.len();
     let value: Vec<char> = vec!['a'; 100];
     let mut write_value = String::from("");
@@ -130,7 +130,7 @@ pub fn init_ycsb() -> HashMap<i64, String> {
     for key in 0..YCSBTableSize {
         // if key % shard_num == shard_id as usize {
         //
-        data.insert(key as i64, write_value.clone());
+        data.insert(key as u64, write_value.clone());
         // }
     }
     data

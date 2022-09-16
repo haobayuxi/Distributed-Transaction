@@ -19,7 +19,7 @@ use crate::{
 pub struct Executor {
     server_id: u32,
     // memory
-    meta_index: Arc<HashMap<i64, usize>>,
+    meta_index: Arc<HashMap<u64, usize>>,
     // txns
     // txns: Arc<HashMap<u64, JanusMsg>>,
     //
@@ -33,7 +33,7 @@ impl Executor {
         server_id: u32,
         dep_graph: Sender<u64>,
         recv: UnboundedReceiver<Msg>,
-        meta_index: Arc<HashMap<i64, usize>>,
+        meta_index: Arc<HashMap<u64, usize>>,
     ) -> Self {
         Self {
             server_id,
@@ -198,7 +198,7 @@ impl Executor {
     }
 }
 
-pub async fn execute(txnid: u64, meta_index: Arc<HashMap<i64, usize>>) {
+pub async fn execute(txnid: u64, meta_index: Arc<HashMap<u64, usize>>) {
     unsafe {
         let (clientid, index) = get_txnid(txnid);
         let node = &mut TXNS[clientid as usize][index as usize];

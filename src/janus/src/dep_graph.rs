@@ -14,7 +14,7 @@ use crate::{executor::execute, peer::TXNS};
 pub struct DepGraph {
     // dep graph
     // graph: Arc<RwLock<HashMap<i64, Node>>>,
-    meta_index: Arc<HashMap<i64, usize>>,
+    meta_index: Arc<HashMap<u64, usize>>,
     // wait list
     wait_list: Receiver<u64>,
 
@@ -28,7 +28,7 @@ impl DepGraph {
     pub fn new(
         wait_list: Receiver<u64>,
         client_num: usize,
-        meta_index: Arc<HashMap<i64, usize>>,
+        meta_index: Arc<HashMap<u64, usize>>,
     ) -> Self {
         Self {
             wait_list,

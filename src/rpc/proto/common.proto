@@ -5,13 +5,13 @@ package common;
 
 
 message Read_Struct{
-    int64 key = 1;
+    uint64 key = 1;
     optional string value = 2;
     optional uint64 timestamp = 3;
 }
 
 message Write_Struct {
-    int64 key = 1;
+    uint64 key = 1;
     string value = 2;
 }
 

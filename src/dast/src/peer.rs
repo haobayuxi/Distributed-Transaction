@@ -72,7 +72,7 @@ pub struct Peer {
     recv: UnboundedReceiver<Msg>,
 
     // data
-    ycsb: HashMap<i64, String>,
+    ycsb: HashMap<u64, String>,
     // executed: u64,
 }
 

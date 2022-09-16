@@ -20,7 +20,7 @@ pub struct Executor {
     id: u32,
     server_id: u32,
     // ycsb
-    mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
+    mem: Arc<HashMap<u64, RwLock<(MeerkatMeta, String)>>>,
     // tatp
     subscriber: Arc<HashMap<u64, Subscriber>>,
     access_info: Arc<HashMap<u64, AccessInfo>>,
@@ -35,7 +35,7 @@ impl Executor {
     pub fn new_ycsb(
         id: u32,
         server_id: u32,
-        mem: Arc<HashMap<i64, RwLock<(MeerkatMeta, String)>>>,
+        mem: Arc<HashMap<u64, RwLock<(MeerkatMeta, String)>>>,
         recv: UnboundedReceiver<Msg>,
     ) -> Self {
         Self {
