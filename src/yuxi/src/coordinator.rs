@@ -122,7 +122,7 @@ impl YuxiCoordinator {
         let server_id = self.id % 3;
         // let server_id = ;
         // println!("read only");
-        let time = (Local::now().timestamp_nanos() / 1000) as u64;
+        let time = (Local::now().timestamp_nanos() / 1000) as u64 + 10000;
         self.txn.timestamp = time;
         self.servers
             .get(&server_id)
