@@ -277,9 +277,9 @@ impl Executor {
 
         let accept_ts = msg.tmsg.timestamp;
 
-        let (txn, write_ts_in_waitlist) = self.txns.get(&msg.tmsg.txn_id).unwrap();
+        let (txn, write_ts_in_waitlist) = self.txns.get_mut(&msg.tmsg.txn_id).unwrap();
 
-        for (write, write_ts) in write_ts_in_waitlist.iter() {
+        for (write, write_ts) in write_ts_in_waitlist.iter_mut() {
             let key = write.key;
 
             let (meta_rwlock, data_index) = self.index.get(&key).unwrap();
@@ -294,6 +294,7 @@ impl Executor {
                 if let Some(execution_context) = meta.waitlist.remove(&write_ts) {
                     // execution_context.committed = true;
                     meta.waitlist.insert(accept_ts, execution_context);
+                    *write_ts = accept_ts;
                 }
                 // check pending txns execute the context if the write is committed
                 loop {
