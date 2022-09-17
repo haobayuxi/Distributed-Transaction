@@ -183,13 +183,13 @@ impl Peer {
         // );
         // println!("self maxts {:?}", self.maxTs);
         // update notified ts
-        // let mut notified_txn_ts = Vec::new();
-        // if self.notifiedTs[msg.from as usize] < msg.timestamp {
-        //     let notified_range = self
-        //         .mytxns
-        //         .range(self.notifiedTs[msg.from as usize]..msg.timestamp);
-        //     notified_range.for_each(|(ts, txn)| notified_txn_ts.push(*ts));
-        // }
+        let mut notified_txn_ts = Vec::new();
+        if self.notifiedTs[msg.from as usize] < msg.timestamp {
+            let notified_range = self
+                .mytxns
+                .range(self.notifiedTs[msg.from as usize]..msg.timestamp);
+            notified_range.for_each(|(ts, txn)| notified_txn_ts.push(*ts));
+        }
         self.notifiedTs[msg.from as usize] = msg.timestamp;
         //reply ack
         let ack = DastMsg {
