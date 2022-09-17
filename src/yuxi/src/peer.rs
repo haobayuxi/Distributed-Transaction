@@ -156,6 +156,11 @@ impl Peer {
                     throughput.push(
                         (read_only_now - read_only_last) + (read_write_now - read_write_last) / 3,
                     );
+                    println!(
+                        "{}-{}",
+                        read_only_now - read_only_last,
+                        (read_write_now - read_write_last) / 3
+                    );
                     read_only_last = read_only_now;
                     read_write_last = read_write_now;
                 }
