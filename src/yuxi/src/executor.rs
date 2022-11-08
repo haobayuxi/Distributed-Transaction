@@ -10,8 +10,8 @@ use crate::{
 };
 use common::{
     get_txnid,
+    mem::Tuple,
     tatp::{AccessInfo, CallForwarding, Subscriber},
-    Data,
 };
 // use parking_lot::RwLock;
 use rpc::{
@@ -326,7 +326,7 @@ impl Executor {
                                         let mut version_data = VersionData {
                                             start_ts: ts,
                                             end_ts: MaxTs,
-                                            data: Data::default(),
+                                            data: Tuple::default(),
                                         };
                                         match msg.tmsg.txn_type() {
                                             rpc::common::TxnType::TatpGetSubscriberData => {}
@@ -336,7 +336,8 @@ impl Executor {
                                             rpc::common::TxnType::TatpUpdateLocation => {}
                                             rpc::common::TxnType::TatpInsertCallForwarding => {}
                                             rpc::common::TxnType::Ycsb => {
-                                                version_data.data = Data::Ycsb(write.value.clone());
+                                                version_data.data =
+                                                    Tuple::Ycsb(write.value.clone());
                                             }
                                         }
                                         datas.push(version_data);
@@ -429,7 +430,7 @@ impl Executor {
                                         let mut version_data = VersionData {
                                             start_ts: ts,
                                             end_ts: MaxTs,
-                                            data: Data::default(),
+                                            data: Tuple::default(),
                                         };
                                         match txn_type {
                                             rpc::common::TxnType::TatpGetSubscriberData => {}
@@ -439,7 +440,8 @@ impl Executor {
                                             rpc::common::TxnType::TatpUpdateLocation => {}
                                             rpc::common::TxnType::TatpInsertCallForwarding => {}
                                             rpc::common::TxnType::Ycsb => {
-                                                version_data.data = Data::Ycsb(write.value.clone());
+                                                version_data.data =
+                                                    Tuple::Ycsb(write.value.clone());
                                             }
                                         }
                                         datas.push(version_data);

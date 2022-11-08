@@ -1,0 +1,14 @@
+[package]
+name = "erpc-sys"
+version = "0.1.0"
+authors = ["wuhao2016 <whaohit@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+dirs = "2.0"
+cc = "1.0"

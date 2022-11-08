@@ -1,7 +1,7 @@
 #![feature(map_first_last)]
 use std::collections::BTreeMap;
 
-use common::Data;
+use common::mem::Tuple;
 use rpc::yuxi::YuxiMsg;
 use tokio::sync::mpsc::{Sender, UnboundedSender};
 use tonic::Status;
@@ -18,7 +18,7 @@ pub type WaitList = BTreeMap<u64, ExecuteContext>;
 pub struct VersionData {
     start_ts: u64,
     end_ts: u64,
-    data: Data,
+    data: Tuple,
 }
 
 #[derive(Debug)]

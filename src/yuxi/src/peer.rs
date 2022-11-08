@@ -6,7 +6,12 @@ use std::{
     },
 };
 
-use common::{config::Config, convert_ip_addr, ycsb::init_ycsb};
+use common::{
+    config::Config,
+    convert_ip_addr,
+    mem::{DataStore, Tuple},
+    ycsb::init_ycsb,
+};
 use log::info;
 // use parking_lot::RwLock;
 use rpc::{common::ReadStruct, yuxi::YuxiMsg};
@@ -31,6 +36,7 @@ use crate::{
 pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
 pub static mut READ_ONLY_COMMITTED: AtomicU64 = AtomicU64::new(0);
 pub static mut READ_WRITE_COMMITTED: AtomicU64 = AtomicU64::new(0);
+pub static mut Z: Vec<DataStore> = Vec::new();
 // pub static mut WAITING_TXN: Vec<RwLock<WaitingTxn>> = Vec::new();
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -94,7 +100,7 @@ impl Peer {
                 let version_data = VersionData {
                     start_ts: 0,
                     end_ts: MaxTs,
-                    data: common::Data::Ycsb(value),
+                    data: Tuple::Ycsb(value),
                 };
                 DATA.push(vec![version_data]);
                 indexs.insert(
