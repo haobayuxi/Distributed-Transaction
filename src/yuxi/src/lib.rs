@@ -1,4 +1,3 @@
-#![feature(map_first_last)]
 use std::collections::BTreeMap;
 
 use common::mem::Tuple;

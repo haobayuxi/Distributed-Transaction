@@ -1,4 +1,3 @@
-#![feature(map_first_last)]
 use rpc::dast::DastMsg;
 use tokio::sync::mpsc::Sender;
 
