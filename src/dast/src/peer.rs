@@ -304,6 +304,7 @@ impl Peer {
                             // execute
                             if safe {
                                 //
+                                // let key = self.readyq.first_key_value().unwrap()
                                 let txn = self.readyq.pop_first().unwrap().1.unwrap();
 
                                 executed.push(txn);

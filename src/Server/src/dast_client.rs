@@ -61,7 +61,7 @@ impl ProposeClient {
         let mut latency_result = Vec::new();
         // send msgs
         let total_start = Instant::now();
-        loop {
+        for i in 0..self.txns_per_client {
             self.workload.generate();
             self.txn_id += 1;
             self.txn = DastMsg {

@@ -17,19 +17,26 @@ pub struct Config {
     // pub local_nodes: Vec<Vec<i32>>,
 }
 
+// optane08 192.168.1.88
+// optane09 192.168.1.89
+// optane10 192.168.1.70
+// optane11 192.168.1.71
+// optane12 192.168.1.72
+// optane13 192.168.1.73
+
 impl Default for Config {
     fn default() -> Self {
-        let addr0 = String::from("http://192.168.50.11:50051");
-        let addr1 = String::from("http://192.168.50.17:50051");
-        let addr2 = String::from("http://192.168.50.15:50051");
+        let addr0 = String::from("http://192.168.1.71:10051");
+        let addr1 = String::from("http://192.168.1.72:10051");
+        let addr2 = String::from("http://192.168.1.72:10051");
         let mut server_addrs = HashMap::new();
         server_addrs.insert(0, addr0);
         server_addrs.insert(1, addr1);
         server_addrs.insert(2, addr2);
 
-        let propose_addr0 = String::from("http://192.168.50.11:50151");
-        let propose_addr1 = String::from("http://192.168.50.17:50151");
-        let propose_addr2 = String::from("http://192.168.50.15:50151");
+        let propose_addr0 = String::from("http://192.168.1.71:10151");
+        let propose_addr1 = String::from("http://192.168.1.72:10151");
+        let propose_addr2 = String::from("http://192.168.1.73:10151");
         let mut propose_addrs = HashMap::new();
         propose_addrs.insert(0, propose_addr0);
         propose_addrs.insert(1, propose_addr1);
