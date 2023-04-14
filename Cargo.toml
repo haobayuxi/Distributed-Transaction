@@ -6,6 +6,4 @@ members = [
     "src/yuxi",
     "src/dast",
     "src/Server",
-    "src/erpc-sys",
-    "src/erpc",
 ]

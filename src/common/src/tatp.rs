@@ -346,6 +346,8 @@ impl TatpWorkload {
             //
         } else if op * 100.0 < 80 as f64 {
             //
+        } else {
+            
         }
         return TatpQuery::GetAccessData(GetAccessDataQuery {
             s_id: 0,
