@@ -119,7 +119,7 @@ impl ProposeClient {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
-    let id = args[1].parse::<u32>().unwrap();
+    // let id = args[1].parse::<u32>().unwrap();
     let f = std::fs::File::open("config.yml").unwrap();
     let config_in_file: ConfigInFile = serde_yaml::from_reader(f).unwrap();
 
@@ -134,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut client = ProposeClient::new(
                 c,
                 config_in_file.read_perc,
-                id,
+                i,
                 config_in_file.txns_per_client,
                 config_in_file.is_ycsb,
                 config_in_file.zipf,
