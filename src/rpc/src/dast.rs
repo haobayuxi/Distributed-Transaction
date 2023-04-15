@@ -16,7 +16,9 @@ pub struct DastMsg {
     pub timestamp: u64,
     #[prost(uint64, tag = "8")]
     pub maxts: u64,
-    #[prost(enumeration = "super::common::TxnType", optional, tag = "9")]
+    #[prost(bool, tag = "9")]
+    pub success: bool,
+    #[prost(enumeration = "super::common::TxnType", optional, tag = "10")]
     pub txn_type: ::core::option::Option<i32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

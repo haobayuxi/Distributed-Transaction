@@ -79,6 +79,7 @@ impl ProposeClient {
                 timestamp: 0,
                 maxts: 0,
                 txn_type: Some(TxnType::Ycsb.into()),
+                success: false,
             };
             let start = Instant::now();
             let _reply = self.client.propose(self.txn.clone()).await;
@@ -139,11 +140,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 config_in_file.zipf,
             )
             .await;
-            client.run_transactions().await;
+            sender.send(client.run_transactions().await).await;
         });
     }
-    let total_throughput = 0;
-    for i in 0..60 {}
-
+    let mut total_throughput = 0.0;
+    for i in 0..60 {
+        total_throughput += recv.recv().await.unwrap();
+    }
+    println!("throughput = {}", total_throughput);
     Ok(())
 }

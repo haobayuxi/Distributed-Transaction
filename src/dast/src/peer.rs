@@ -202,6 +202,7 @@ impl Peer {
             timestamp: msg.timestamp,
             txn_type: msg.txn_type,
             maxts: self.maxTs[self.id as usize],
+            success: true,
         };
         self.send_to_peer(ack, dst_id).await;
     }
@@ -244,6 +245,7 @@ impl Peer {
                         txn_type: txn.txn_type,
                         notified_txn_ts: Vec::new(),
                         maxts: self.maxTs[self.id as usize],
+                        success: true,
                     };
 
                     self.broadcast(commit).await;

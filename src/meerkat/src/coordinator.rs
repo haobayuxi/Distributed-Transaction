@@ -51,7 +51,7 @@ impl MeerkatCoordinator {
         }
     }
 
-    pub async fn init_run(&mut self, sender: Sender<MeerkatMsg>) {
+    pub async fn init_run(&mut self, sender: Sender<MeerkatMsg>) -> f64 {
         // self.init_workload();
         self.init_rpc(sender).await;
         println!("init rpc done");
@@ -61,48 +61,47 @@ impl MeerkatCoordinator {
         self.txn.from = self.id;
         // send msgs
         let total_start = Instant::now();
-        loop {
+        for i in 0..self.txns_per_client {
             self.txn_id += 1;
             self.txn.txn_id = self.txn_id;
             self.workload.generate();
             self.txn.read_set = self.workload.read_set.clone();
             self.txn.write_set = self.workload.write_set.clone();
             let start = Instant::now();
-            for _ in 0..RETRY {
-                if self.run_transaction().await {
-                    break;
-                }
+
+            if self.run_transaction().await {
+                let end_time = start.elapsed().as_micros();
+                // println!("latency time = {}", end_time);
+                latency_result.push(end_time);
             }
-            let end_time = start.elapsed().as_micros();
-            println!("latency time = {}", end_time);
-            latency_result.push(end_time);
         }
         let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
-        let throughput_result = self.txns_per_client as f64 / total_end;
-        println!("throughput = {}", throughput_result);
-        // write results to file
-        let latency_file_name = self.id.to_string() + "latency.data";
-        let mut latency_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(latency_file_name)
-            .await
-            .unwrap();
-        for iter in latency_result {
-            latency_file.write(iter.to_string().as_bytes()).await;
-            latency_file.write("\n".as_bytes()).await;
-        }
-        let throughput_file_name = self.id.to_string() + "throughput.data";
-        let mut throughput_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(throughput_file_name)
-            .await
-            .unwrap();
-        throughput_file
-            .write(throughput_result.to_string().as_bytes())
-            .await;
-        throughput_file.write("\n".as_bytes()).await;
+        let throughput_result = latency_result.len() as f64 / total_end;
+        throughput_result
+        // println!("throughput = {}", throughput_result);
+        // // write results to file
+        // let latency_file_name = self.id.to_string() + "latency.data";
+        // let mut latency_file = OpenOptions::new()
+        //     .create(true)
+        //     .write(true)
+        //     .open(latency_file_name)
+        //     .await
+        //     .unwrap();
+        // for iter in latency_result {
+        //     latency_file.write(iter.to_string().as_bytes()).await;
+        //     latency_file.write("\n".as_bytes()).await;
+        // }
+        // let throughput_file_name = self.id.to_string() + "throughput.data";
+        // let mut throughput_file = OpenOptions::new()
+        //     .create(true)
+        //     .write(true)
+        //     .open(throughput_file_name)
+        //     .await
+        //     .unwrap();
+        // throughput_file
+        //     .write(throughput_result.to_string().as_bytes())
+        //     .await;
+        // throughput_file.write("\n".as_bytes()).await;
     }
 
     async fn broadcast(&mut self, msg: MeerkatMsg) {
