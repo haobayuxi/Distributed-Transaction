@@ -25,7 +25,7 @@ use crate::{
     MeerkatMeta, Msg,
 };
 
-pub static mut COMMITTED: AtomicU64 = AtomicU64::new(0);
+// pub static mut COMMITTED: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfigPerServer {
@@ -68,23 +68,21 @@ impl Peer {
 
         println!("init data done");
         let executor_senders = self.init_executors(self.config.clone());
-        self.init_rpc(self.config.clone(), dispatcher_sender, executor_senders)
-            .await;
+        self.init_rpc(self.config.clone(), executor_senders).await;
         println!("init rpc done");
-        self.run_dispatcher(dispatcher_receiver).await;
     }
 
     async fn init_rpc(
         &mut self,
         config: Config,
-        sender: UnboundedSender<Msg>,
+        // sender: UnboundedSender<Msg>,
         executor_senders: Arc<HashMap<u32, UnboundedSender<Msg>>>,
     ) {
         // start server for client to connect
         let mut listen_ip = config.server_addrs.get(&self.server_id).unwrap().clone();
         listen_ip = convert_ip_addr(listen_ip, false);
         println!("server listen ip {}", listen_ip);
-        let server = RpcServer::new(listen_ip, sender, executor_senders);
+        let server = RpcServer::new(listen_ip, executor_senders);
         tokio::spawn(async move {
             run_rpc_server(server).await;
         });
@@ -104,47 +102,23 @@ impl Peer {
         Arc::new(executor_senders)
     }
 
-    async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {
-        let serverid = self.server_id;
-        // tokio::spawn(async move {
-        let mut throughput = Vec::new();
-        let mut last = 0;
-        unsafe {
-            for _ in 0..16 {
-                sleep(Duration::from_secs(1)).await;
-                let now = COMMITTED.load(Ordering::Relaxed);
-                throughput.push((now - last) / 3);
-                last = now;
-            }
-        }
-        //
-        let throughput_file_name = serverid.to_string() + "throughput.data";
-        let mut throughput_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(throughput_file_name)
-            .await
-            .unwrap();
-        for result in throughput {
-            throughput_file.write(result.to_string().as_bytes()).await;
-            throughput_file.write("\n".as_bytes()).await;
-        }
-        throughput_file.flush();
+    // async fn run_dispatcher(&mut self, recv: UnboundedReceiver<Msg>) {
+    //     let serverid = self.server_id;
+    //     // tokio::spawn(async move {
 
-        println!("finished");
-        // });
-        let mut recv = recv;
-        // loop {
-        //     match recv.recv().await {
-        //         Some(msg) => {
-        //             // println!("txnid = {}", msg.tmsg.txn_id);
+    //     // });
+    //     let mut recv = recv;
+    //     // loop {
+    //     //     match recv.recv().await {
+    //     //         Some(msg) => {
+    //     //             // println!("txnid = {}", msg.tmsg.txn_id);
 
-        //             let executor_id = (msg.tmsg.from as u32) % self.executor_num;
-        //             // send to executor
-        //             self.executor_senders.get(&executor_id).unwrap().send(msg);
-        //         }
-        //         None => continue,
-        //     }
-        // }
-    }
+    //     //             let executor_id = (msg.tmsg.from as u32) % self.executor_num;
+    //     //             // send to executor
+    //     //             self.executor_senders.get(&executor_id).unwrap().send(msg);
+    //     //         }
+    //     //         None => continue,
+    //     //     }
+    //     // }
+    // }
 }

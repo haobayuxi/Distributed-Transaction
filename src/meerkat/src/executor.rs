@@ -14,7 +14,7 @@ use rpc::{
 };
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::{peer::COMMITTED, MeerkatMeta, Msg};
+use crate::{MeerkatMeta, Msg};
 
 pub struct Executor {
     id: u32,
@@ -160,9 +160,6 @@ impl Executor {
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
-        unsafe {
-            COMMITTED.fetch_add(1, Ordering::Relaxed);
-        }
         let txn = self.txns.remove(&msg.tmsg.txn_id).unwrap();
         // update
         // release the prepare  read & prepare write

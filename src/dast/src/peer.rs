@@ -23,7 +23,7 @@ use crate::{
     ClientMsg, Msg,
 };
 
-pub static mut COMMITTED: AtomicU64 = AtomicU64::new(0);
+// pub static mut COMMITTED: AtomicU64 = AtomicU64::new(0);
 #[derive(Clone, Debug)]
 struct TxnInMemory {
     txn: DastMsg,
@@ -378,9 +378,9 @@ impl Peer {
                     //
                     // println!("execute {:?}", get_txnid(reply.txn_id));
                     callback.send(reply).await;
-                    unsafe {
-                        COMMITTED.fetch_add(1, Ordering::Relaxed);
-                    }
+                    // unsafe {
+                    //     COMMITTED.fetch_add(1, Ordering::Relaxed);
+                    // }
                 }
                 None => continue,
             }
@@ -459,33 +459,33 @@ impl Peer {
     pub async fn init_run(&mut self, sender: UnboundedSender<Msg>) {
         self.init_rpc(sender).await;
         let serverid = self.id;
-        tokio::spawn(async move {
-            let mut throughput = Vec::new();
-            let mut last = 0;
-            unsafe {
-                for _ in 0..15 {
-                    sleep(Duration::from_secs(1)).await;
-                    let now = COMMITTED.load(Ordering::Relaxed);
-                    throughput.push(now - last);
-                    last = now;
-                }
-            }
-            //
-            let throughput_file_name = serverid.to_string() + "throughput.data";
-            let mut throughput_file = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .open(throughput_file_name)
-                .await
-                .unwrap();
-            for result in throughput {
-                throughput_file.write(result.to_string().as_bytes()).await;
-                throughput_file.write("\n".as_bytes()).await;
-            }
-            throughput_file.flush();
+        // tokio::spawn(async move {
+        //     let mut throughput = Vec::new();
+        //     let mut last = 0;
+        //     unsafe {
+        //         for _ in 0..15 {
+        //             sleep(Duration::from_secs(1)).await;
+        //             let now = COMMITTED.load(Ordering::Relaxed);
+        //             throughput.push(now - last);
+        //             last = now;
+        //         }
+        //     }
+        //     //
+        //     let throughput_file_name = serverid.to_string() + "throughput.data";
+        //     let mut throughput_file = OpenOptions::new()
+        //         .create(true)
+        //         .write(true)
+        //         .open(throughput_file_name)
+        //         .await
+        //         .unwrap();
+        //     for result in throughput {
+        //         throughput_file.write(result.to_string().as_bytes()).await;
+        //         throughput_file.write("\n".as_bytes()).await;
+        //     }
+        //     throughput_file.flush();
 
-            println!("finished");
-        });
+        //     println!("finished");
+        // });
         loop {
             match self.recv.recv().await {
                 Some(msg) => self.handle_msg(msg).await,

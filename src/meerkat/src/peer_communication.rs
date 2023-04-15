@@ -23,18 +23,18 @@ use crate::Msg;
 
 pub struct RpcServer {
     addr_to_listen: String,
-    sender: UnboundedSender<Msg>,
+    // sender: UnboundedSender<Msg>,
     executors: Arc<HashMap<u32, UnboundedSender<Msg>>>,
 }
 
 impl RpcServer {
     pub fn new(
         addr_to_listen: String,
-        sender: UnboundedSender<Msg>,
+        // sender: UnboundedSender<Msg>,
         executors: Arc<HashMap<u32, UnboundedSender<Msg>>>,
     ) -> Self {
         Self {
-            sender,
+            // sender,
             addr_to_listen,
             executors,
         }

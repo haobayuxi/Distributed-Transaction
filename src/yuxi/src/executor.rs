@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    peer::{Meta, DATA, READ_ONLY_COMMITTED, READ_WRITE_COMMITTED},
+    peer::{Meta, DATA},
     ExecuteContext, MaxTs, Msg, VersionData, TS,
 };
 use common::{
@@ -122,9 +122,9 @@ impl Executor {
 
     async fn handle_read_only(&mut self, msg: Msg) {
         // let mut msg = msg;
-        unsafe {
-            READ_ONLY_COMMITTED.fetch_add(1, Ordering::Relaxed);
-        }
+        // unsafe {
+        //     READ_ONLY_COMMITTED.fetch_add(1, Ordering::Relaxed);
+        // }
         let mut txn = msg.tmsg.clone();
         let final_ts = txn.timestamp;
         let mut waiting_for_read_result = 0;
@@ -469,9 +469,9 @@ impl Executor {
     }
 
     async fn handle_commit(&mut self, msg: Msg) {
-        unsafe {
-            READ_WRITE_COMMITTED.fetch_add(1, Ordering::Relaxed);
-        }
+        // unsafe {
+        //     READ_WRITE_COMMITTED.fetch_add(1, Ordering::Relaxed);
+        // }
         // println!("{} handle commit", self.executor_id);
         let tid = msg.tmsg.txn_id;
         let final_ts = msg.tmsg.timestamp;

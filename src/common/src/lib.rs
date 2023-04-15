@@ -9,7 +9,7 @@ pub mod ycsb;
 pub static CID_LEN: u32 = 50;
 pub static EXECUTOR_NUM: u32 = 16;
 
-#[derive(Default, Deserialize)]
+#[derive(Default, Deserialize, Clone, Copy)]
 pub struct ConfigInFile {
     pub id: u32,
     pub read_perc: i32,

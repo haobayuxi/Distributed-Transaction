@@ -1,6 +1,10 @@
 use std::{env, time::Duration};
 
-use common::{config::Config, ycsb::YcsbQuery, ConfigInFile, CID_LEN};
+use common::{
+    config::{self, Config},
+    ycsb::YcsbQuery,
+    ConfigInFile, CID_LEN,
+};
 use rpc::{
     common::{TxnOp, TxnType},
     dast::{client_service_client::ClientServiceClient, dast_client::DastClient, DastMsg},
@@ -8,6 +12,7 @@ use rpc::{
 use tokio::{
     fs::OpenOptions,
     io::AsyncWriteExt,
+    sync::mpsc::channel,
     time::{sleep, Instant},
 };
 use tonic::transport::Channel;
@@ -57,7 +62,7 @@ impl ProposeClient {
         }
     }
 
-    pub async fn run_transaction(&mut self) {
+    pub async fn run_transactions(&mut self) -> f64 {
         let mut latency_result = Vec::new();
         // send msgs
         let total_start = Instant::now();
@@ -82,30 +87,31 @@ impl ProposeClient {
         }
         let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
         let throughput_result = self.txns_per_client as f64 / total_end;
-        println!("throughput = {}", throughput_result);
+        // println!("throughput = {}", throughput_result);
+        throughput_result
         // write results to file
-        let latency_file_name = self.id.to_string() + "latency.data";
-        let mut latency_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(latency_file_name)
-            .await
-            .unwrap();
-        for iter in latency_result {
-            latency_file.write(iter.to_string().as_bytes()).await;
-            latency_file.write("\n".as_bytes()).await;
-        }
-        let throughput_file_name = self.id.to_string() + "throughput.data";
-        let mut throughput_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(throughput_file_name)
-            .await
-            .unwrap();
-        throughput_file
-            .write(throughput_result.to_string().as_bytes())
-            .await;
-        throughput_file.write("\n".as_bytes()).await;
+        // let latency_file_name = self.id.to_string() + "latency.data";
+        // let mut latency_file = OpenOptions::new()
+        //     .create(true)
+        //     .write(true)
+        //     .open(latency_file_name)
+        //     .await
+        //     .unwrap();
+        // for iter in latency_result {
+        //     latency_file.write(iter.to_string().as_bytes()).await;
+        //     latency_file.write("\n".as_bytes()).await;
+        // }
+        // let throughput_file_name = self.id.to_string() + "throughput.data";
+        // let mut throughput_file = OpenOptions::new()
+        //     .create(true)
+        //     .write(true)
+        //     .open(throughput_file_name)
+        //     .await
+        //     .unwrap();
+        // throughput_file
+        //     .write(throughput_result.to_string().as_bytes())
+        //     .await;
+        // throughput_file.write("\n".as_bytes()).await;
     }
 }
 
@@ -117,16 +123,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_in_file: ConfigInFile = serde_yaml::from_reader(f).unwrap();
 
     let config = Config::default();
+
     // let client_config = ConfigPerClient::default();
-    let mut client = ProposeClient::new(
-        config,
-        config_in_file.read_perc,
-        id,
-        config_in_file.txns_per_client,
-        config_in_file.is_ycsb,
-        config_in_file.zipf,
-    )
-    .await;
-    client.run_transaction().await;
+    let (result_sender, mut recv) = channel::<(f64)>(10000);
+    for i in 0..60 {
+        let c = config.clone();
+        let sender = result_sender.clone();
+        tokio::spawn(async move {
+            let mut client = ProposeClient::new(
+                c,
+                config_in_file.read_perc,
+                id,
+                config_in_file.txns_per_client,
+                config_in_file.is_ycsb,
+                config_in_file.zipf,
+            )
+            .await;
+            client.run_transactions().await;
+        });
+    }
+    let total_throughput = 0;
+    for i in 0..60 {}
+
     Ok(())
 }

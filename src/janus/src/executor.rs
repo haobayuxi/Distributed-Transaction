@@ -11,8 +11,8 @@ use rpc::{
 use tokio::sync::mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender};
 
 use crate::{
+    peer::DATA,
     peer::{Node, TXNS},
-    peer::{COMMITTED, DATA},
     JanusMeta, Msg,
 };
 
@@ -70,9 +70,9 @@ impl Executor {
     }
 
     async fn handle_commit(&mut self, commit: Msg) {
-        unsafe {
-            COMMITTED.fetch_add(1, Ordering::Relaxed);
-        }
+        // unsafe {
+        //     COMMITTED.fetch_add(1, Ordering::Relaxed);
+        // }
         let txnid = commit.txn.txn_id;
         self.committed += 1;
         // self.dep_graph.send(txnid);

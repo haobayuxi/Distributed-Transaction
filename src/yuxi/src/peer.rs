@@ -34,8 +34,8 @@ use crate::{
 };
 
 pub static mut DATA: Vec<Vec<VersionData>> = Vec::new();
-pub static mut READ_ONLY_COMMITTED: AtomicU64 = AtomicU64::new(0);
-pub static mut READ_WRITE_COMMITTED: AtomicU64 = AtomicU64::new(0);
+// pub static mut READ_ONLY_COMMITTED: AtomicU64 = AtomicU64::new(0);
+// pub static mut READ_WRITE_COMMITTED: AtomicU64 = AtomicU64::new(0);
 pub static mut Z: Vec<DataStore> = Vec::new();
 // pub static mut WAITING_TXN: Vec<RwLock<WaitingTxn>> = Vec::new();
 
@@ -150,43 +150,43 @@ impl Peer {
         let mut recv = recv;
         // let mut i = 0;
         let serverid = self.server_id;
-        tokio::spawn(async move {
-            let mut throughput = Vec::new();
-            let mut read_only_last = 0;
-            let mut read_write_last = 0;
-            unsafe {
-                for _ in 0..15 {
-                    sleep(Duration::from_secs(1)).await;
-                    let read_only_now = READ_ONLY_COMMITTED.load(Ordering::Relaxed);
-                    let read_write_now = READ_WRITE_COMMITTED.load(Ordering::Relaxed);
-                    throughput.push(
-                        (read_only_now - read_only_last) + (read_write_now - read_write_last) / 3,
-                    );
-                    println!(
-                        "{}-{}",
-                        read_only_now - read_only_last,
-                        (read_write_now - read_write_last) / 3
-                    );
-                    read_only_last = read_only_now;
-                    read_write_last = read_write_now;
-                }
-            }
-            //
-            let throughput_file_name = serverid.to_string() + "throughput.data";
-            let mut throughput_file = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .open(throughput_file_name)
-                .await
-                .unwrap();
-            for result in throughput {
-                throughput_file.write(result.to_string().as_bytes()).await;
-                throughput_file.write("\n".as_bytes()).await;
-            }
-            throughput_file.flush();
+        // tokio::spawn(async move {
+        //     let mut throughput = Vec::new();
+        //     let mut read_only_last = 0;
+        //     let mut read_write_last = 0;
+        //     unsafe {
+        //         for _ in 0..15 {
+        //             sleep(Duration::from_secs(1)).await;
+        //             let read_only_now = READ_ONLY_COMMITTED.load(Ordering::Relaxed);
+        //             let read_write_now = READ_WRITE_COMMITTED.load(Ordering::Relaxed);
+        //             throughput.push(
+        //                 (read_only_now - read_only_last) + (read_write_now - read_write_last) / 3,
+        //             );
+        //             println!(
+        //                 "{}-{}",
+        //                 read_only_now - read_only_last,
+        //                 (read_write_now - read_write_last) / 3
+        //             );
+        //             read_only_last = read_only_now;
+        //             read_write_last = read_write_now;
+        //         }
+        //     }
+        //     //
+        //     let throughput_file_name = serverid.to_string() + "throughput.data";
+        //     let mut throughput_file = OpenOptions::new()
+        //         .create(true)
+        //         .write(true)
+        //         .open(throughput_file_name)
+        //         .await
+        //         .unwrap();
+        //     for result in throughput {
+        //         throughput_file.write(result.to_string().as_bytes()).await;
+        //         throughput_file.write("\n".as_bytes()).await;
+        //     }
+        //     throughput_file.flush();
 
-            println!("finished");
-        });
+        //     println!("finished");
+        // });
         loop {
             match recv.recv().await {
                 Some(msg) => {
