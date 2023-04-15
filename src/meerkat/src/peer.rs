@@ -83,9 +83,9 @@ impl Peer {
         listen_ip = convert_ip_addr(listen_ip, false);
         println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(listen_ip, executor_senders);
-        tokio::spawn(async move {
-            run_rpc_server(server).await;
-        });
+        // tokio::spawn(async move {
+        run_rpc_server(server).await;
+        // });
     }
 
     fn init_executors(&mut self, config: Config) -> Arc<HashMap<u32, UnboundedSender<Msg>>> {
