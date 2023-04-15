@@ -62,7 +62,7 @@ impl YcsbQuery {
         self.read_set.clear();
         self.write_set.clear();
         let mut keys = Vec::new();
-        for _ in 0..self.req_per_query {
+        for _ in 0..1 {
             let op = f64_rand(0.0, 1.0, 0.01);
 
             let key = self.zipf(self.table_size as u64, self.theta);
