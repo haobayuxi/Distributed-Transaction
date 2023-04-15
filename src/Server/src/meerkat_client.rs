@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::default();
     let (result_sender, mut recv) = channel::<(f64)>(10000);
-    for i in 0..100 {
+    for i in 0..client_config.client_num {
         let c = config.clone();
         let sender = result_sender.clone();
         tokio::spawn(async move {
