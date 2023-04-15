@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let id = args[1].parse::<u32>().unwrap();
     let f = std::fs::File::open("config.yml").unwrap();
     let client_config: ConfigInFile = serde_yaml::from_reader(f).unwrap();
-
+    // println!("client num = {}", client_config.client_num);
     let config = Config::default();
     let (result_sender, mut recv) = channel::<(f64)>(10000);
     for i in 0..client_config.client_num {
@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
     let mut final_thoughput = 0.0;
-    for i in 0..60 {
+    for i in 0..client_config.client_num {
         final_thoughput += recv.recv().await.unwrap();
     }
     println!("throughput = {}", final_thoughput);
