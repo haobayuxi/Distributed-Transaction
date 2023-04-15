@@ -11,10 +11,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let id = args[1].parse::<u32>().unwrap();
     let f = std::fs::File::open("config.yml").unwrap();
     let client_config: ConfigInFile = serde_yaml::from_reader(f).unwrap();
+    let start_id = client_config.id;
     // println!("client num = {}", client_config.client_num);
     let config = Config::default();
     let (result_sender, mut recv) = channel::<(f64)>(10000);
-    for i in 0..client_config.client_num {
+    for i in start_id * client_config.client_num..((start_id + 1) * client_config.client_num) {
         let c = config.clone();
         let sender = result_sender.clone();
         tokio::spawn(async move {
