@@ -47,7 +47,7 @@ impl Default for Config {
         Self {
             server_addrs,
             executor_num: 40,
-            req_per_query: 4,
+            req_per_query: 1,
             table_size: 1000,
             // zipf_theta: 0.0,
             manager_ids: vec![0, 1, 2],
