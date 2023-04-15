@@ -54,7 +54,7 @@ impl MeerkatCoordinator {
     pub async fn init_run(&mut self, sender: Sender<MeerkatMsg>) -> f64 {
         // self.init_workload();
         self.init_rpc(sender).await;
-        println!("init rpc done");
+        // println!("init rpc done");
         // run transactions
         let mut latency_result = Vec::new();
 

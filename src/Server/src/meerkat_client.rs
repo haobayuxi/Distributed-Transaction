@@ -17,16 +17,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..60 {
         let c = config.clone();
         let sender = result_sender.clone();
-        let (client_msg_sender, recv) = channel::<MeerkatMsg>(1000);
-        let mut client = MeerkatCoordinator::new(
-            i,
-            c,
-            client_config.read_perc,
-            client_config.txns_per_client,
-            recv,
-            client_config.zipf,
-        );
-        sender.send(client.init_run(client_msg_sender).await).await;
+        tokio::spawn(async move {
+            let (client_msg_sender, recv) = channel::<MeerkatMsg>(1000);
+            let mut client = MeerkatCoordinator::new(
+                i,
+                c,
+                client_config.read_perc,
+                client_config.txns_per_client,
+                recv,
+                client_config.zipf,
+            );
+            sender.send(client.init_run(client_msg_sender).await).await;
+        });
     }
     let mut final_thoughput = 0.0;
     for i in 0..60 {
