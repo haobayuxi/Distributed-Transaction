@@ -28,7 +28,7 @@ impl Default for Config {
     fn default() -> Self {
         let addr0 = String::from("http://192.168.1.71:10051");
         let addr1 = String::from("http://192.168.1.72:10051");
-        let addr2 = String::from("http://192.168.1.72:10051");
+        let addr2 = String::from("http://192.168.1.73:10051");
         let mut server_addrs = HashMap::new();
         server_addrs.insert(0, addr0);
         server_addrs.insert(1, addr1);
